@@ -408,6 +408,113 @@ describe('subscribeEvents agent scope gate (M26-T02)', () => {
 });
 
 describe('subscribeEvents at fleet scale (M30-T08)', () => {
+  it('coalesces overflow outside the domain queue and re-arms after another gap', async () => {
+    const sub = fakeSubscription();
+    const handler = createEventsHandler(fakeDb(['org-1']), fakeNats(sub), { maxQueue: 1 });
+    const iter = handler.subscribeEvents({ orgId: 'org-1', projectId: 'mine' }, ctxFor({ kind: 'user', userId: 'usr-1' }).ctx);
+    expect((await iter.next()).value.subject).toBe('stream.ready');
+    sub.push('domain.task.updated', { orgId: 'org-1', projectId: 'mine' });
+    for (let i = 0; i < 20; i++) sub.push('domain.artifact.updated', { orgId: 'org-1', projectId: 'mine' });
+    await Bun.sleep(10);
+    const first = (await iter.next()).value;
+    expect(first).toEqual({ subject: 'stream.resync', orgId: '', projectId: undefined, occurredAt: expect.any(String) });
+    expect((await iter.next()).value).toMatchObject({ subject: 'domain.artifact.updated', orgId: 'org-1', projectId: 'mine' });
+    sub.push('domain.task.updated', { orgId: 'org-1', projectId: 'mine' });
+    sub.push('domain.folder.updated', { orgId: 'org-1', projectId: 'mine' });
+    await Bun.sleep(10);
+    expect((await iter.next()).value.subject).toBe('stream.resync');
+    expect((await iter.next()).value.subject).toBe('domain.folder.updated');
+    sub.end();
+    expect((await iter.next()).done).toBe(true);
+  });
+
+  it('refreshes membership when overflow discarded its revocation event', async () => {
+    const sub = fakeSubscription(), db = fakeDb(['org-1']);
+    const handler = createEventsHandler(db, fakeNats(sub), { maxQueue: 1 });
+    const iter = handler.subscribeEvents({}, ctxFor({ kind: 'user', userId: 'usr-1' }).ctx);
+    await iter.next();
+    sub.push('domain.org.member_removed', { orgId: 'org-1' });
+    sub.push('domain.task.updated', { orgId: 'org-1', projectId: 'formerly-mine' });
+    await Bun.sleep(10);
+    db.orgIds = [];
+    sub.end();
+    expect((await iter.next()).value.subject).toBe('stream.resync');
+    expect((await iter.next()).done).toBe(true);
+  });
+
+  it('revalidates expired credentials before yielding a pending resync', async () => {
+    const sub = fakeSubscription();
+    let clock = 0;
+    const handler = createEventsHandler(fakeDb(['org-1']), fakeNats(sub), {
+      maxQueue: 1, revalidateMs: 1, now: () => clock, reauthenticate: async () => null,
+    });
+    const iter = handler.subscribeEvents({}, ctxFor({ kind: 'user', userId: 'usr-1' }).ctx);
+    await iter.next();
+    sub.push('domain.task.updated', { orgId: 'org-1' });
+    sub.push('domain.artifact.updated', { orgId: 'org-1' });
+    await Bun.sleep(10);
+    clock = 2;
+    await expect(iter.next()).rejects.toMatchObject({ code: Code.Unauthenticated });
+  });
+
+  it('does not signal a gap for traffic outside the authorized project', async () => {
+    const sub = fakeSubscription();
+    const handler = createEventsHandler(fakeDb(['org-1']), fakeNats(sub), { maxQueue: 1 });
+    const iter = handler.subscribeEvents({ orgId: 'org-1', projectId: 'mine' }, ctxFor({ kind: 'user', userId: 'usr-1' }).ctx);
+    await iter.next();
+    sub.push('domain.task.created', { orgId: 'org-1', projectId: 'mine' });
+    for (let i = 0; i < 20; i++) {
+      sub.push('domain.task.created', { orgId: 'org-2', projectId: 'secret' });
+      sub.push('domain.task.created', { orgId: 'org-1', projectId: 'other' });
+    }
+    await Bun.sleep(10);
+    sub.end();
+    expect((await iter.next()).value).toMatchObject({ subject: 'domain.task.created', orgId: 'org-1', projectId: 'mine' });
+    expect((await iter.next()).done).toBe(true);
+  });
+
+  it('keeps foreign membership bursts outside the domain queue and resync signal', async () => {
+    const sub = fakeSubscription();
+    const handler = createEventsHandler(fakeDb(['org-1']), fakeNats(sub), { maxQueue: 1 });
+    const iter = handler.subscribeEvents({ orgId: 'org-1', projectId: 'mine' }, ctxFor({ kind: 'user', userId: 'usr-1' }).ctx);
+    await iter.next();
+    sub.push('domain.task.updated', { orgId: 'org-1', projectId: 'mine' });
+    for (let i = 0; i < 50; i++) sub.push('domain.org.member_removed', { orgId: 'foreign-org' });
+    await Bun.sleep(10);
+    sub.end();
+    expect((await iter.next()).value).toMatchObject({ subject: 'domain.task.updated', orgId: 'org-1', projectId: 'mine' });
+    expect((await iter.next()).done).toBe(true);
+  });
+
+  it('discovers newly authorized organizations through coalesced membership refresh', async () => {
+    const sub = fakeSubscription(), db = fakeDb(['org-1']);
+    const handler = createEventsHandler(db, fakeNats(sub), { maxQueue: 1 });
+    const iter = handler.subscribeEvents({}, ctxFor({ kind: 'user', userId: 'usr-1' }).ctx);
+    await iter.next();
+    db.orgIds = ['org-1', 'new-org'];
+    sub.push('domain.org.member_added', { orgId: 'new-org' });
+    await Bun.sleep(10);
+    expect((await iter.next()).value).toMatchObject({ subject: 'stream.resync', orgId: '', projectId: undefined });
+    sub.push('domain.task.created', { orgId: 'new-org', projectId: 'new-project' });
+    expect((await iter.next()).value).toMatchObject({ subject: 'domain.task.created', orgId: 'new-org' });
+    await iter.return(undefined);
+  });
+
+  it('signals authorization changes found by periodic refresh without a membership event', async () => {
+    const sub = fakeSubscription(), db = fakeDb(['org-1']);
+    const principal = { kind: 'user' as const, userId: 'usr-1' };
+    let clock = 0;
+    const handler = createEventsHandler(db, fakeNats(sub), {
+      heartbeatMs: 1, revalidateMs: 1, now: () => clock, reauthenticate: async () => principal,
+    });
+    const iter = handler.subscribeEvents({}, ctxFor(principal).ctx);
+    await iter.next();
+    db.orgIds = [];
+    clock = 2;
+    expect((await iter.next()).value).toMatchObject({ subject: 'stream.resync', orgId: '' });
+    await iter.return(undefined);
+  });
+
   it('shares one broker subscription across clients, and drops it with the last one', async () => {
     const sub = fakeSubscription();
     let subscribes = 0;
@@ -508,6 +615,7 @@ describe('subscription credential lifetime (M44)', () => {
     now = 31;
     sub.push('domain.task.created', { orgId: 'o' });
     sub.push('domain.task.created', { orgId: 'keep' });
+    expect((await iter.next()).value.subject).toBe('stream.resync');
     expect((await iter.next()).value.orgId).toBe('keep');
     expect(db.memberQueryCount).toBe(2);
     controller.abort();

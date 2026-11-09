@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -36,7 +35,7 @@ func printApproval(cmd *cobra.Command, msg proto.Message, a *healthv1.Transition
 
 func decideApproval(approve bool) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewTaskServiceClient().DecideTransitionApproval(context.Background(), connect.NewRequest(&healthv1.DecideTransitionApprovalRequest{
+		res, err := backend.NewTaskServiceClient().DecideTransitionApproval(cmd.Context(), connect.NewRequest(&healthv1.DecideTransitionApprovalRequest{
 			Id: args[0], Approve: approve, Reason: optionalString(cmd, "reason"),
 		}))
 		if err != nil {
@@ -65,7 +64,7 @@ var tasksApprovalCmd = &cobra.Command{
 	Short: "Show one approval request and, once made, its decision",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewTaskServiceClient().GetTransitionApproval(context.Background(), connect.NewRequest(&healthv1.GetTransitionApprovalRequest{Id: args[0]}))
+		res, err := backend.NewTaskServiceClient().GetTransitionApproval(cmd.Context(), connect.NewRequest(&healthv1.GetTransitionApprovalRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get the approval: %w", err)
 		}
@@ -92,14 +91,14 @@ var tasksApprovalsCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, req.Msg, func() (proto.Message, error) {
-				r, err := client.ListTransitionApprovals(context.Background(), req)
+				r, err := client.ListTransitionApprovals(cmd.Context(), req)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListTransitionApprovals(context.Background(), req)
+		res, err := client.ListTransitionApprovals(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to list approvals: %w", err)
 		}

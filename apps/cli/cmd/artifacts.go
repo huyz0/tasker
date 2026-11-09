@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -57,14 +56,14 @@ var artifactsListCmd = &cobra.Command{
 			})
 			if pageAllRequested(cmd) {
 				return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-					r, err := client.ListArtifacts(context.Background(), listReq)
+					r, err := client.ListArtifacts(cmd.Context(), listReq)
 					if err != nil {
 						return nil, err
 					}
 					return r.Msg, nil
 				})
 			}
-			res, err := client.ListArtifacts(context.Background(), listReq)
+			res, err := client.ListArtifacts(cmd.Context(), listReq)
 			if err != nil {
 				return fmt.Errorf("failed to list artifacts: %w", err)
 			}
@@ -91,14 +90,14 @@ var artifactsListCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq2.Msg, func() (proto.Message, error) {
-				r, err := client.ListFolders(context.Background(), listReq2)
+				r, err := client.ListFolders(cmd.Context(), listReq2)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListFolders(context.Background(), listReq2)
+		res, err := client.ListFolders(cmd.Context(), listReq2)
 		if err != nil {
 			return fmt.Errorf("failed to list folders: %w", err)
 		}
@@ -134,11 +133,11 @@ var artifactsReadCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
 
-		meta, err := client.GetArtifact(context.Background(), connect.NewRequest(&healthv1.GetArtifactRequest{ArtifactId: args[0]}))
+		meta, err := client.GetArtifact(cmd.Context(), connect.NewRequest(&healthv1.GetArtifactRequest{ArtifactId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to read artifact: %w", err)
 		}
-		body, err := client.GetArtifactContent(context.Background(), connect.NewRequest(&healthv1.GetArtifactContentRequest{ArtifactId: args[0]}))
+		body, err := client.GetArtifactContent(cmd.Context(), connect.NewRequest(&healthv1.GetArtifactContentRequest{ArtifactId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to read artifact: %w", err)
 		}
@@ -210,7 +209,7 @@ var artifactsCreateCmd = &cobra.Command{
 		}
 
 		client := backend.NewArtifactServiceClient()
-		res, err := client.CreateArtifact(context.Background(), connect.NewRequest(&healthv1.CreateArtifactRequest{
+		res, err := client.CreateArtifact(cmd.Context(), connect.NewRequest(&healthv1.CreateArtifactRequest{
 			FolderId:    folderID,
 			Name:        name,
 			Description: description,
@@ -248,7 +247,7 @@ var foldersCreateCmd = &cobra.Command{
 		}
 
 		client := backend.NewArtifactServiceClient()
-		res, err := client.CreateFolder(context.Background(), connect.NewRequest(&healthv1.CreateFolderRequest{
+		res, err := client.CreateFolder(cmd.Context(), connect.NewRequest(&healthv1.CreateFolderRequest{
 			ProjectId: projectID,
 			ParentId:  parentID,
 			Name:      name,
@@ -306,7 +305,7 @@ var artifactsUpdateContentCmd = &cobra.Command{
 		}
 
 		client := backend.NewArtifactServiceClient()
-		res, err := client.UpdateArtifactContent(context.Background(), connect.NewRequest(req))
+		res, err := client.UpdateArtifactContent(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to update artifact content: %w", err)
 		}
@@ -338,7 +337,7 @@ var artifactsUpdateFolderCmd = &cobra.Command{
 		}
 
 		client := backend.NewArtifactServiceClient()
-		res, err := client.UpdateFolder(context.Background(), connect.NewRequest(&healthv1.UpdateFolderRequest{
+		res, err := client.UpdateFolder(cmd.Context(), connect.NewRequest(&healthv1.UpdateFolderRequest{
 			FolderId: args[0],
 			Name:     name,
 		}))
@@ -379,7 +378,7 @@ var artifactsListTaskLinksCmd = &cobra.Command{
 		}
 
 		client := backend.NewArtifactServiceClient()
-		res, err := client.ListTaskArtifactLinks(context.Background(), connect.NewRequest(req))
+		res, err := client.ListTaskArtifactLinks(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to list task-artifact links: %w", err)
 		}
@@ -406,7 +405,7 @@ var artifactsDeleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
-		_, err := client.ArchiveArtifact(context.Background(), connect.NewRequest(&healthv1.ArchiveArtifactRequest{ArtifactId: args[0]}))
+		_, err := client.ArchiveArtifact(cmd.Context(), connect.NewRequest(&healthv1.ArchiveArtifactRequest{ArtifactId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to delete artifact: %w", err)
 		}
@@ -428,7 +427,7 @@ var artifactsRestoreCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
-		_, err := client.RestoreArtifact(context.Background(), connect.NewRequest(&healthv1.RestoreArtifactRequest{ArtifactId: args[0]}))
+		_, err := client.RestoreArtifact(cmd.Context(), connect.NewRequest(&healthv1.RestoreArtifactRequest{ArtifactId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to restore artifact: %w", err)
 		}
@@ -450,7 +449,7 @@ var foldersDeleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
-		_, err := client.ArchiveFolder(context.Background(), connect.NewRequest(&healthv1.ArchiveFolderRequest{FolderId: args[0]}))
+		_, err := client.ArchiveFolder(cmd.Context(), connect.NewRequest(&healthv1.ArchiveFolderRequest{FolderId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to delete folder: %w", err)
 		}
@@ -472,7 +471,7 @@ var foldersRestoreCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
-		_, err := client.RestoreFolder(context.Background(), connect.NewRequest(&healthv1.RestoreFolderRequest{FolderId: args[0]}))
+		_, err := client.RestoreFolder(cmd.Context(), connect.NewRequest(&healthv1.RestoreFolderRequest{FolderId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to restore folder: %w", err)
 		}
@@ -494,7 +493,7 @@ var artifactsPurgeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
-		_, err := client.PurgeArtifact(context.Background(), connect.NewRequest(&healthv1.PurgeArtifactRequest{ArtifactId: args[0]}))
+		_, err := client.PurgeArtifact(cmd.Context(), connect.NewRequest(&healthv1.PurgeArtifactRequest{ArtifactId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to purge artifact: %w", err)
 		}
@@ -524,7 +523,7 @@ var artifactsLinkTaskCmd = &cobra.Command{
 		}
 
 		client := backend.NewArtifactServiceClient()
-		res, err := client.LinkTaskArtifact(context.Background(), connect.NewRequest(&healthv1.LinkTaskArtifactRequest{
+		res, err := client.LinkTaskArtifact(cmd.Context(), connect.NewRequest(&healthv1.LinkTaskArtifactRequest{
 			TaskId:     taskID,
 			ArtifactId: artifactID,
 		}))
@@ -555,7 +554,7 @@ var artifactsUnlinkTaskCmd = &cobra.Command{
 		}
 
 		client := backend.NewArtifactServiceClient()
-		_, err := client.UnlinkTaskArtifact(context.Background(), connect.NewRequest(&healthv1.UnlinkTaskArtifactRequest{
+		_, err := client.UnlinkTaskArtifact(cmd.Context(), connect.NewRequest(&healthv1.UnlinkTaskArtifactRequest{
 			TaskId:     taskID,
 			ArtifactId: artifactID,
 		}))
@@ -580,7 +579,7 @@ var foldersPurgeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
-		_, err := client.PurgeFolder(context.Background(), connect.NewRequest(&healthv1.PurgeFolderRequest{FolderId: args[0]}))
+		_, err := client.PurgeFolder(cmd.Context(), connect.NewRequest(&healthv1.PurgeFolderRequest{FolderId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to purge folder: %w", err)
 		}

@@ -9,11 +9,23 @@ release-validation fixes (M44/M45/M51/M52, PR #1). Both GitHub workflows passed
 before its squash merge. Existing M46 capture/storage is present but runtime
 relay activation remains incomplete; do not describe durable delivery as live.
 
-This plan has 50 remaining tasks: 19 existing tasks, M46-T06, and 30 new tasks
+At the planning baseline this plan had 50 remaining tasks: 19 existing tasks, M46-T06, and 30 new tasks
 in M53–M58. The full ledger is 396 tasks across 52 milestones, 345 done and one
 dropped. Each linked milestone has stable task IDs, expected files, concrete
 verification, exit criteria and rollback risks. No unfinished task is implied
 complete by this planning document.
+
+### Execution updates
+
+M46 added T07 after actual CI exposed an obsolete unmanaged database fixture;
+the ledger is now 397 tasks. M46 is complete and published in PR #3 as
+`62a0c3f`, with all ten CI jobs passing. M48 started independently during that
+final browser run because it depends only on M44; it proceeds before M47 and is
+rebased onto the published M46 base. M48 is locally complete (four tasks and
+four exit criteria), with final-head PR #4 CI required before publication;
+M47 design can proceed during that wait. All other dependency and acceptance
+boundaries below remain in force. Current completion counts live in STATE.md,
+not the historical planning baseline above.
 
 ## Recommendation-to-task mapping
 

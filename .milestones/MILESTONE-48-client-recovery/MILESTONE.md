@@ -1,13 +1,13 @@
 ---
 id: M48
 title: Client Recovery
-status: todo
+status: done
 goal: Browsers reconcile missed changes and CLI calls terminate predictably when the server stalls.
 depends_on: [M44]
 surfaces: [backend, gui, cli, specs]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+exit_criteria_met: true
+started_at: 2026-11-09
+completed_at: 2026-11-09
 ---
 
 # M48 — Client Recovery
@@ -22,10 +22,10 @@ An apparently live screen can be stale after a brief outage, and an unbounded CL
 
 ## 3. Exit Criteria
 
-- [ ] Short disconnects cannot leave active views indefinitely stale.
-- [ ] Queue overflow explicitly triggers reconciliation.
-- [ ] Reconnect jitter stays within a documented bound and can be deterministic in tests.
-- [ ] Unary CLI calls support deadlines and cancellation without breaking long-lived MCP operation.
+- [x] Short disconnects cannot leave active views indefinitely stale.
+- [x] Queue overflow explicitly triggers reconciliation.
+- [x] Reconnect jitter stays within a documented bound and can be deterministic in tests.
+- [x] Unary CLI calls support deadlines and cancellation without breaking long-lived MCP operation.
 
 ## 4. Scope
 
@@ -35,19 +35,19 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 
 ## 5. Task Breakdown
 
-- [ ] **M48-T01** — Refresh active queries after reconnect and randomize bounded reconnect delays.
+- [x] **M48-T01** — Refresh active queries after reconnect and randomize bounded reconnect delays.
   - **Files**: apps/gui/src/hooks/useLiveEvents.ts; apps/gui/src/hooks/useLiveEvents.test.tsx.
   - **Verify**: Fake-timer tests miss a mutation during a one-drop outage then reconnect; active scoped data refetches; initial ready/heartbeat behavior and offline fallback remain correct.
 
-- [ ] **M48-T02** — Signal queue overflow and force browser reconciliation.
+- [x] **M48-T02** — Signal queue overflow and force browser reconciliation.
   - **Files**: apps/backend/src/modules/events/events.handler.ts; apps/gui/src/lib/eventQueryKeys.ts; apps/gui/src/hooks/useLiveEvents.ts.
   - **Verify**: A tiny queue drops an event for one entity while another survives; resync signal causes the dropped entity to refetch; no cross-tenant payload is exposed.
 
-- [ ] **M48-T03** — Use cancellable CLI command contexts and configurable unary deadlines.
+- [x] **M48-T03** — Use cancellable CLI command contexts and configurable unary deadlines.
   - **Files**: apps/cli/cmd/*.go; apps/cli/internal/backend/clients.go; apps/cli/cmd/root.go.
   - **Verify**: A server that accepts but never responds hits the configured deadline; command cancellation interrupts a call; MCP stdio and subscriptions retain appropriate long-lived semantics; generated docs match.
 
-- [ ] **M48-T04** — Verify reconnect, overflow and CLI timeout journeys.
+- [x] **M48-T04** — Verify reconnect, overflow and CLI timeout journeys.
   - **Files**: apps/gui/tests/e2e/; apps/cli/cmd/*_test.go; .milestones/MILESTONE-48-client-recovery/reviews/.
   - **Verify**: Full GUI and CLI suites, backend feed tests, browser reconnect journey, CLI reference generation and review.
 

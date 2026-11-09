@@ -3,13 +3,13 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
@@ -40,8 +40,7 @@ var mcpCmd = &cobra.Command{
 		if token == "" {
 			return connect.NewError(connect.CodeUnauthenticated, errors.New("not logged in - set TASKER_TOKEN to an agent token, or run `tasker auth login`"))
 		}
-		client := &http.Client{Timeout: 2 * time.Minute}
-		return relayMCP(cmd.InOrStdin(), cmd.OutOrStdout(), strings.TrimRight(backend.URL(), "/")+"/mcp", token, client)
+		return relayMCP(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), strings.TrimRight(backend.URL(), "/")+"/mcp", token, http.DefaultClient)
 	},
 }
 
@@ -49,10 +48,17 @@ var mcpCmd = &cobra.Command{
 // response to out as one line. A message the server cannot answer with
 // JSON-RPC (an unreachable server, a proxy's HTML page) still gets an error
 // response when it carried an id, so the client is never left waiting.
-func relayMCP(in io.Reader, out io.Writer, endpoint, token string, client *http.Client) error {
+func relayMCP(ctx context.Context, in io.Reader, out io.Writer, endpoint, token string, client *http.Client) error {
+	if closer, ok := in.(io.ReadCloser); ok {
+		stop := context.AfterFunc(ctx, func() { _ = closer.Close() })
+		defer stop()
+	}
 	scanner := bufio.NewScanner(in)
 	scanner.Buffer(make([]byte, 64*1024), maxMCPMessage)
 	for scanner.Scan() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		line := bytes.TrimSpace(scanner.Bytes())
 		if len(line) == 0 {
 			continue
@@ -63,7 +69,10 @@ func relayMCP(in io.Reader, out io.Writer, endpoint, token string, client *http.
 		_ = json.Unmarshal(line, &envelope)
 		hasID := len(envelope.ID) > 0 && string(envelope.ID) != "null"
 
-		reply, err := postMCP(client, endpoint, token, line)
+		reply, err := postMCP(ctx, client, endpoint, token, line)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		if err != nil {
 			if hasID {
 				reply = rpcErrorLine(envelope.ID, err.Error())
@@ -83,6 +92,9 @@ func relayMCP(in io.Reader, out io.Writer, endpoint, token string, client *http.
 			return err
 		}
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("failed to read MCP input: %w", err)
 	}
@@ -91,8 +103,10 @@ func relayMCP(in io.Reader, out io.Writer, endpoint, token string, client *http.
 
 // postMCP returns the compacted JSON-RPC reply, nil for 202 Accepted, or an
 // error when the response is not JSON-RPC at all.
-func postMCP(client *http.Client, endpoint, token string, body []byte) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
+func postMCP(ctx context.Context, client *http.Client, endpoint, token string, body []byte) ([]byte, error) {
+	ctx, cancel := backend.RequestContext(ctx)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +115,7 @@ func postMCP(client *http.Client, endpoint, token string, body []byte) ([]byte, 
 	req.Header.Set("Authorization", "Bearer "+token)
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("tasker backend unreachable: %v", err)
+		return nil, fmt.Errorf("tasker backend unreachable: %w", err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode == http.StatusAccepted {

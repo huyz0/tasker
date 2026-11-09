@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -74,7 +73,7 @@ var tasksPlanSetCmd = &cobra.Command{
 			}
 			steps = append(steps, s)
 		}
-		res, err := backend.NewTaskServiceClient().SetTaskPlan(context.Background(), connect.NewRequest(&healthv1.SetTaskPlanRequest{TaskId: args[0], Steps: steps}))
+		res, err := backend.NewTaskServiceClient().SetTaskPlan(cmd.Context(), connect.NewRequest(&healthv1.SetTaskPlanRequest{TaskId: args[0], Steps: steps}))
 		if err != nil {
 			return fmt.Errorf("failed to set the plan: %w", err)
 		}
@@ -95,7 +94,7 @@ var tasksPlanShowCmd = &cobra.Command{
 	Short: "Show a task's plan",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewTaskServiceClient().GetTask(context.Background(), connect.NewRequest(&healthv1.GetTaskRequest{TaskId: args[0]}))
+		res, err := backend.NewTaskServiceClient().GetTask(cmd.Context(), connect.NewRequest(&healthv1.GetTaskRequest{TaskId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get task: %w", err)
 		}
@@ -140,7 +139,7 @@ var tasksAskCmd = &cobra.Command{
 		if strings.TrimSpace(question) == "" {
 			return invalidArgf("--question is required")
 		}
-		res, err := backend.NewTaskServiceClient().RequestInput(context.Background(), connect.NewRequest(&healthv1.RequestInputRequest{TaskId: args[0], Question: question, Options: options}))
+		res, err := backend.NewTaskServiceClient().RequestInput(cmd.Context(), connect.NewRequest(&healthv1.RequestInputRequest{TaskId: args[0], Question: question, Options: options}))
 		if err != nil {
 			return fmt.Errorf("failed to ask: %w", err)
 		}
@@ -157,7 +156,7 @@ var tasksAnswerCmd = &cobra.Command{
 		if strings.TrimSpace(answer) == "" {
 			return invalidArgf("--answer is required")
 		}
-		res, err := backend.NewTaskServiceClient().AnswerInputRequest(context.Background(), connect.NewRequest(&healthv1.AnswerInputRequestRequest{Id: args[0], Answer: answer}))
+		res, err := backend.NewTaskServiceClient().AnswerInputRequest(cmd.Context(), connect.NewRequest(&healthv1.AnswerInputRequestRequest{Id: args[0], Answer: answer}))
 		if err != nil {
 			return fmt.Errorf("failed to answer: %w", err)
 		}
@@ -170,7 +169,7 @@ var tasksQuestionCmd = &cobra.Command{
 	Short: "Show one question and, once given, its answer",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewTaskServiceClient().GetInputRequest(context.Background(), connect.NewRequest(&healthv1.GetInputRequestRequest{Id: args[0]}))
+		res, err := backend.NewTaskServiceClient().GetInputRequest(cmd.Context(), connect.NewRequest(&healthv1.GetInputRequestRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get the question: %w", err)
 		}
@@ -183,7 +182,7 @@ var tasksCancelQuestionCmd = &cobra.Command{
 	Short: "Withdraw a question you asked (or, as an admin, close any)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewTaskServiceClient().CancelInputRequest(context.Background(), connect.NewRequest(&healthv1.CancelInputRequestRequest{Id: args[0]}))
+		res, err := backend.NewTaskServiceClient().CancelInputRequest(cmd.Context(), connect.NewRequest(&healthv1.CancelInputRequestRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to cancel the question: %w", err)
 		}
@@ -210,14 +209,14 @@ var tasksQuestionsCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, req.Msg, func() (proto.Message, error) {
-				r, err := client.ListInputRequests(context.Background(), req)
+				r, err := client.ListInputRequests(cmd.Context(), req)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListInputRequests(context.Background(), req)
+		res, err := client.ListInputRequests(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to list questions: %w", err)
 		}

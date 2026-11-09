@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -32,7 +31,7 @@ var labelsCreateCmd = &cobra.Command{
 		}
 
 		client := backend.NewLabelServiceClient()
-		res, err := client.CreateLabel(context.Background(), connect.NewRequest(&healthv1.CreateLabelRequest{
+		res, err := client.CreateLabel(cmd.Context(), connect.NewRequest(&healthv1.CreateLabelRequest{
 			OrgId: orgID,
 			Name:  name,
 			Color: color,
@@ -76,14 +75,14 @@ var labelsListCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListLabels(context.Background(), listReq)
+				r, err := client.ListLabels(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListLabels(context.Background(), listReq)
+		res, err := client.ListLabels(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list labels: %w", err)
 		}
@@ -116,7 +115,7 @@ var labelsAttachCmd = &cobra.Command{
 		}
 
 		client := backend.NewLabelServiceClient()
-		res, err := client.AttachLabel(context.Background(), connect.NewRequest(&healthv1.AttachLabelRequest{
+		res, err := client.AttachLabel(cmd.Context(), connect.NewRequest(&healthv1.AttachLabelRequest{
 			EntityId:   args[0],
 			EntityType: entityType,
 			LabelId:    labelID,
@@ -149,7 +148,7 @@ var labelsDetachCmd = &cobra.Command{
 		}
 
 		client := backend.NewLabelServiceClient()
-		res, err := client.DetachLabel(context.Background(), connect.NewRequest(&healthv1.DetachLabelRequest{
+		res, err := client.DetachLabel(cmd.Context(), connect.NewRequest(&healthv1.DetachLabelRequest{
 			EntityId:   args[0],
 			EntityType: entityType,
 			LabelId:    labelID,
@@ -181,7 +180,7 @@ var labelsOnCmd = &cobra.Command{
 		}
 
 		client := backend.NewLabelServiceClient()
-		res, err := client.ListEntityLabels(context.Background(), connect.NewRequest(&healthv1.ListEntityLabelsRequest{
+		res, err := client.ListEntityLabels(cmd.Context(), connect.NewRequest(&healthv1.ListEntityLabelsRequest{
 			EntityId:   args[0],
 			EntityType: entityType,
 		}))

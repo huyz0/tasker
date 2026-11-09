@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -41,7 +40,7 @@ var tasksClaimNextCmd = &cobra.Command{
 		if projectID == "" {
 			return fmt.Errorf("--project is required (or set TASKER_PROJECT_ID)")
 		}
-		res, err := backend.NewTaskServiceClient().ClaimNextTask(context.Background(), connect.NewRequest(&healthv1.ClaimNextTaskRequest{
+		res, err := backend.NewTaskServiceClient().ClaimNextTask(cmd.Context(), connect.NewRequest(&healthv1.ClaimNextTaskRequest{
 			ProjectId:      projectID,
 			TaskTypeId:     optionalString(cmd, "type"),
 			IdempotencyKey: optionalString(cmd, "idempotency-key"),
@@ -73,7 +72,7 @@ var tasksReleaseCmd = &cobra.Command{
 		"assigned to you cannot be released this way (exit 3); ask them to unassign it.",
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewTaskServiceClient().ReleaseTask(context.Background(), connect.NewRequest(&healthv1.ReleaseTaskRequest{
+		res, err := backend.NewTaskServiceClient().ReleaseTask(cmd.Context(), connect.NewRequest(&healthv1.ReleaseTaskRequest{
 			TaskId:      args[0],
 			HandoffNote: optionalString(cmd, "handoff"),
 		}))
@@ -111,14 +110,14 @@ var tasksMineCmd = &cobra.Command{
 		listReq := connect.NewRequest(req)
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListMyTasks(context.Background(), listReq)
+				r, err := client.ListMyTasks(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListMyTasks(context.Background(), listReq)
+		res, err := client.ListMyTasks(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list your tasks: %w", err)
 		}

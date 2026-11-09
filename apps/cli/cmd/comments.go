@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -35,7 +34,7 @@ var commentAddCmd = &cobra.Command{
 			Content:    content,
 		})
 
-		res, err := client.CreateComment(context.Background(), req)
+		res, err := client.CreateComment(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to add comment: %w", err)
 		}
@@ -65,14 +64,14 @@ var commentListCmd = &cobra.Command{
 		listReq := req
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListComments(context.Background(), listReq)
+				r, err := client.ListComments(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListComments(context.Background(), listReq)
+		res, err := client.ListComments(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list comments: %w", err)
 		}
@@ -109,7 +108,7 @@ var commentUpdateCmd = &cobra.Command{
 			Content:   content,
 		})
 
-		res, err := client.UpdateComment(context.Background(), req)
+		res, err := client.UpdateComment(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to update comment: %w", err)
 		}
@@ -133,7 +132,7 @@ var commentDeleteCmd = &cobra.Command{
 			CommentId: args[0],
 		})
 
-		res, err := client.DeleteComment(context.Background(), req)
+		res, err := client.DeleteComment(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to delete comment: %w", err)
 		}

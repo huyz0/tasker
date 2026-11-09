@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -43,14 +42,14 @@ var agentsListCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListAgents(context.Background(), listReq)
+				r, err := client.ListAgents(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListAgents(context.Background(), listReq)
+		res, err := client.ListAgents(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list agents: %w", err)
 		}
@@ -86,7 +85,7 @@ var agentsCreateCmd = &cobra.Command{
 		}
 
 		client := backend.NewAgentServiceClient()
-		res, err := client.CreateAgent(context.Background(), connect.NewRequest(&healthv1.CreateAgentRequest{
+		res, err := client.CreateAgent(cmd.Context(), connect.NewRequest(&healthv1.CreateAgentRequest{
 			OrgId:       orgID,
 			AgentRoleId: role,
 			Name:        name,
@@ -127,7 +126,7 @@ var agentsUpdateCmd = &cobra.Command{
 		}
 
 		client := backend.NewAgentServiceClient()
-		res, err := client.UpdateAgent(context.Background(), connect.NewRequest(req))
+		res, err := client.UpdateAgent(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to update agent: %w", err)
 		}
@@ -168,7 +167,7 @@ var agentsUpdateRoleCmd = &cobra.Command{
 		}
 
 		client := backend.NewAgentServiceClient()
-		res, err := client.UpdateAgentRole(context.Background(), connect.NewRequest(req))
+		res, err := client.UpdateAgentRole(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to update agent role: %w", err)
 		}
@@ -205,14 +204,14 @@ var agentsListRolesCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListAgentRoles(context.Background(), listReq)
+				r, err := client.ListAgentRoles(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListAgentRoles(context.Background(), listReq)
+		res, err := client.ListAgentRoles(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list agent roles: %w", err)
 		}
@@ -249,7 +248,7 @@ var agentsCreateRoleCmd = &cobra.Command{
 		}
 
 		client := backend.NewAgentServiceClient()
-		res, err := client.CreateAgentRole(context.Background(), connect.NewRequest(&healthv1.CreateAgentRoleRequest{
+		res, err := client.CreateAgentRole(cmd.Context(), connect.NewRequest(&healthv1.CreateAgentRoleRequest{
 			OrgId:        orgID,
 			Name:         name,
 			SystemPrompt: systemPrompt,
@@ -277,7 +276,7 @@ var agentsDeleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewAgentServiceClient()
-		_, err := client.ArchiveAgent(context.Background(), connect.NewRequest(&healthv1.ArchiveAgentRequest{AgentId: args[0]}))
+		_, err := client.ArchiveAgent(cmd.Context(), connect.NewRequest(&healthv1.ArchiveAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to delete agent: %w", err)
 		}
@@ -299,7 +298,7 @@ var agentsRestoreCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewAgentServiceClient()
-		_, err := client.RestoreAgent(context.Background(), connect.NewRequest(&healthv1.RestoreAgentRequest{AgentId: args[0]}))
+		_, err := client.RestoreAgent(cmd.Context(), connect.NewRequest(&healthv1.RestoreAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to restore agent: %w", err)
 		}
@@ -321,7 +320,7 @@ var agentsPurgeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewAgentServiceClient()
-		_, err := client.PurgeAgent(context.Background(), connect.NewRequest(&healthv1.PurgeAgentRequest{AgentId: args[0]}))
+		_, err := client.PurgeAgent(cmd.Context(), connect.NewRequest(&healthv1.PurgeAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to purge agent: %w", err)
 		}

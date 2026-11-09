@@ -392,7 +392,7 @@ func TestLoginWithPasswordExtractsTokenFromSetCookie(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	token, mustChange, err := loginWithPassword(srv.Client(), srv.URL, "alice", "a-strong-password-123")
+	token, mustChange, err := loginWithPassword(context.Background(), srv.Client(), srv.URL, "alice", "a-strong-password-123")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -412,7 +412,7 @@ func TestLoginWithPasswordSurfacesMustChangePassword(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, mustChange, err := loginWithPassword(srv.Client(), srv.URL, "alice", "pw")
+	_, mustChange, err := loginWithPassword(context.Background(), srv.Client(), srv.URL, "alice", "pw")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -432,7 +432,7 @@ func TestLoginWithPasswordReportsInvalidCredentials(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, _, err := loginWithPassword(srv.Client(), srv.URL, "alice", "wrong")
+	_, _, err := loginWithPassword(context.Background(), srv.Client(), srv.URL, "alice", "wrong")
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -452,7 +452,7 @@ func TestLoginWithPasswordReportsLockout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, _, err := loginWithPassword(srv.Client(), srv.URL, "alice", "wrong")
+	_, _, err := loginWithPassword(context.Background(), srv.Client(), srv.URL, "alice", "wrong")
 	if err == nil || !strings.Contains(err.Error(), "Try again in 30 seconds") {
 		t.Errorf("expected the lockout detail message, got: %v", err)
 	}
@@ -467,7 +467,7 @@ func TestLoginWithPasswordErrorsWhenNoCookieIsReturned(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, _, err := loginWithPassword(srv.Client(), srv.URL, "alice", "pw")
+	_, _, err := loginWithPassword(context.Background(), srv.Client(), srv.URL, "alice", "pw")
 	if err == nil {
 		t.Fatal("expected an error when no session cookie is returned")
 	}
@@ -481,7 +481,7 @@ func TestLoginWithPasswordFallsBackToRawBodyOnAnUnrecognizedErrorShape(t *testin
 	}))
 	defer srv.Close()
 
-	_, _, err := loginWithPassword(srv.Client(), srv.URL, "alice", "pw")
+	_, _, err := loginWithPassword(context.Background(), srv.Client(), srv.URL, "alice", "pw")
 	if err == nil || !strings.Contains(err.Error(), "upstream error") {
 		t.Errorf("expected the raw body in the error, got: %v", err)
 	}

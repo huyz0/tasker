@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -39,14 +38,14 @@ var repoListCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListRepositoryLinks(context.Background(), listReq)
+				r, err := client.ListRepositoryLinks(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListRepositoryLinks(context.Background(), listReq)
+		res, err := client.ListRepositoryLinks(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list repository links: %w", err)
 		}
@@ -91,7 +90,7 @@ var repoLinkCmd = &cobra.Command{
 		}
 
 		client := backend.NewRepositoryServiceClient()
-		res, err := client.AddRepositoryLink(context.Background(), connect.NewRequest(&healthv1.AddRepositoryLinkRequest{
+		res, err := client.AddRepositoryLink(cmd.Context(), connect.NewRequest(&healthv1.AddRepositoryLinkRequest{
 			ProjectId:  projectID,
 			Provider:   provider,
 			RemoteName: remote,
@@ -128,7 +127,7 @@ var repoSyncCmd = &cobra.Command{
 		}
 
 		client := backend.NewRepositoryServiceClient()
-		res, err := client.SyncPullRequests(context.Background(), connect.NewRequest(&healthv1.SyncPullRequestsRequest{ProjectId: projectID}))
+		res, err := client.SyncPullRequests(cmd.Context(), connect.NewRequest(&healthv1.SyncPullRequestsRequest{ProjectId: projectID}))
 		if err != nil {
 			return fmt.Errorf("failed to sync pull requests: %w", err)
 		}
@@ -160,7 +159,7 @@ var repoPrsCmd = &cobra.Command{
 		}
 
 		client := backend.NewRepositoryServiceClient()
-		res, err := client.ListPullRequests(context.Background(), connect.NewRequest(&healthv1.ListPullRequestsRequest{ProjectId: projectID}))
+		res, err := client.ListPullRequests(cmd.Context(), connect.NewRequest(&healthv1.ListPullRequestsRequest{ProjectId: projectID}))
 		if err != nil {
 			return fmt.Errorf("failed to list pull requests: %w", err)
 		}
@@ -195,14 +194,14 @@ var repoBuildsCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListBuilds(context.Background(), listReq)
+				r, err := client.ListBuilds(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListBuilds(context.Background(), listReq)
+		res, err := client.ListBuilds(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list builds: %w", err)
 		}
@@ -235,7 +234,7 @@ var repoDeploymentsCmd = &cobra.Command{
 		}
 
 		client := backend.NewRepositoryServiceClient()
-		res, err := client.ListDeployments(context.Background(), connect.NewRequest(&healthv1.ListDeploymentsRequest{
+		res, err := client.ListDeployments(cmd.Context(), connect.NewRequest(&healthv1.ListDeploymentsRequest{
 			BuildId:          args[0],
 			RepositoryLinkId: repositoryLinkID,
 			CommitSha:        commitSha,

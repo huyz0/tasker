@@ -671,3 +671,20 @@ After rotating a token, reconnect with the replacement credential. An existing
 feed continues to use the credential it opened with. A retry of a keyed task
 mutation also checks current permissions before returning its saved response;
 a prior successful request never grants permission to replay its result.
+
+## Event feed recovery
+
+The event feed is ephemeral. Use its domain events to refresh authorized source
+state, rather than treating it as a complete work log. `stream.ready` and
+`stream.heartbeat` indicate connection health. `stream.resync` means the bounded
+queue discarded events or the caller's authorized organization set changed:
+refetch current source state even if other domain events continue arriving.
+This control frame carries no tenant or dropped-event details. Foreign
+membership traffic is handled internally and cannot itself request a refetch.
+
+Also reconcile after a disconnect: an event may have happened while no feed was
+open. The GUI does both automatically, cancelling active reads before refetch so
+an older initial response cannot restore stale data. External subscribers need
+the same recovery behavior; reconnecting does not replay missed events. Durable
+audit and webhook delivery use the separate persisted event pipeline described
+in [webhook recovery](webhooks.md#recovery-and-operations).

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -177,14 +176,14 @@ var schedulesListCmd = &cobra.Command{
 		req := connect.NewRequest(&healthv1.ListSchedulesRequest{OrgId: org, ProjectId: project, Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor}})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, req.Msg, func() (proto.Message, error) {
-				r, err := client.ListSchedules(context.Background(), req)
+				r, err := client.ListSchedules(cmd.Context(), req)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListSchedules(context.Background(), req)
+		res, err := client.ListSchedules(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to list schedules: %w", err)
 		}
@@ -207,7 +206,7 @@ var schedulesGetCmd = &cobra.Command{
 	Short: "One schedule: what it creates, when, and how its last run went",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewScheduleServiceClient().GetSchedule(context.Background(), connect.NewRequest(&healthv1.GetScheduleRequest{Id: args[0]}))
+		res, err := backend.NewScheduleServiceClient().GetSchedule(cmd.Context(), connect.NewRequest(&healthv1.GetScheduleRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get the schedule: %w", err)
 		}
@@ -233,7 +232,7 @@ var schedulesCreateCmd = &cobra.Command{
 		if strings.TrimSpace(f.Name) == "" {
 			return invalidArgf("--name is required")
 		}
-		res, err := backend.NewScheduleServiceClient().CreateSchedule(context.Background(), connect.NewRequest(&healthv1.CreateScheduleRequest{
+		res, err := backend.NewScheduleServiceClient().CreateSchedule(cmd.Context(), connect.NewRequest(&healthv1.CreateScheduleRequest{
 			ProjectId: project, Name: f.Name, Cadence: f.Cadence, Weekdays: f.Weekdays, DayOfMonth: f.DayOfMonth, HourUtc: f.HourUtc,
 			TemplateId: f.TemplateId, TaskTitle: f.TaskTitle, TaskDescription: f.TaskDescription, TaskPriority: f.TaskPriority, SkipIfOpen: f.SkipIfOpen,
 		}))
@@ -250,7 +249,7 @@ var schedulesUpdateCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewScheduleServiceClient()
-		cur, err := client.GetSchedule(context.Background(), connect.NewRequest(&healthv1.GetScheduleRequest{Id: args[0]}))
+		cur, err := client.GetSchedule(cmd.Context(), connect.NewRequest(&healthv1.GetScheduleRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get the schedule: %w", err)
 		}
@@ -266,7 +265,7 @@ var schedulesUpdateCmd = &cobra.Command{
 		if pause || resume {
 			f.Active = &resume
 		}
-		res, err := client.UpdateSchedule(context.Background(), connect.NewRequest(f))
+		res, err := client.UpdateSchedule(cmd.Context(), connect.NewRequest(f))
 		if err != nil {
 			return fmt.Errorf("failed to update the schedule: %w", err)
 		}
@@ -279,7 +278,7 @@ var schedulesDeleteCmd = &cobra.Command{
 	Short: "Delete a schedule and its run history (tasks it created stay)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewScheduleServiceClient().DeleteSchedule(context.Background(), connect.NewRequest(&healthv1.DeleteScheduleRequest{Id: args[0]}))
+		res, err := backend.NewScheduleServiceClient().DeleteSchedule(cmd.Context(), connect.NewRequest(&healthv1.DeleteScheduleRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to delete the schedule: %w", err)
 		}
@@ -307,7 +306,7 @@ var schedulesRunCmd = &cobra.Command{
 	Short: "Fire a schedule now, as you; its regular next run is unchanged",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewScheduleServiceClient().RunSchedule(context.Background(), connect.NewRequest(&healthv1.RunScheduleRequest{Id: args[0]}))
+		res, err := backend.NewScheduleServiceClient().RunSchedule(cmd.Context(), connect.NewRequest(&healthv1.RunScheduleRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to run the schedule: %w", err)
 		}
@@ -330,14 +329,14 @@ var schedulesRunsCmd = &cobra.Command{
 		req := connect.NewRequest(&healthv1.ListScheduleRunsRequest{ScheduleId: args[0], Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor}})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, req.Msg, func() (proto.Message, error) {
-				r, err := client.ListScheduleRuns(context.Background(), req)
+				r, err := client.ListScheduleRuns(cmd.Context(), req)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListScheduleRuns(context.Background(), req)
+		res, err := client.ListScheduleRuns(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to list runs: %w", err)
 		}

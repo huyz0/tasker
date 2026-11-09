@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -35,7 +38,13 @@ import (
 func resetAllFlags(t *testing.T) {
 	t.Helper()
 	resetCommandTree(rootCmd)
-	t.Cleanup(func() { resetCommandTree(rootCmd) })
+	setCommandContexts(rootCmd, context.Background())
+	_ = backend.SetRequestTimeout(backend.DefaultRequestTimeout)
+	t.Cleanup(func() {
+		resetCommandTree(rootCmd)
+		setCommandContexts(rootCmd, context.Background())
+		_ = backend.SetRequestTimeout(backend.DefaultRequestTimeout)
+	})
 }
 
 // resetCommandTree walks `cmd` and every descendant, restoring both local and

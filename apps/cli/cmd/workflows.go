@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -151,14 +150,14 @@ var workflowsListCmd = &cobra.Command{
 		req := connect.NewRequest(&healthv1.ListWorkflowTemplatesRequest{OrgId: org, ProjectId: project, Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor}})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, req.Msg, func() (proto.Message, error) {
-				r, err := client.ListWorkflowTemplates(context.Background(), req)
+				r, err := client.ListWorkflowTemplates(cmd.Context(), req)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListWorkflowTemplates(context.Background(), req)
+		res, err := client.ListWorkflowTemplates(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to list workflow templates: %w", err)
 		}
@@ -181,7 +180,7 @@ var workflowsGetCmd = &cobra.Command{
 	Short: "A workflow template's steps and dependencies",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewWorkflowServiceClient().GetWorkflowTemplate(context.Background(), connect.NewRequest(&healthv1.GetWorkflowTemplateRequest{Id: args[0]}))
+		res, err := backend.NewWorkflowServiceClient().GetWorkflowTemplate(cmd.Context(), connect.NewRequest(&healthv1.GetWorkflowTemplateRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get the workflow template: %w", err)
 		}
@@ -222,7 +221,7 @@ var workflowsCreateCmd = &cobra.Command{
 		if desc == nil && sf.Description != "" {
 			desc = &sf.Description
 		}
-		res, err := backend.NewWorkflowServiceClient().CreateWorkflowTemplate(context.Background(), connect.NewRequest(&healthv1.CreateWorkflowTemplateRequest{
+		res, err := backend.NewWorkflowServiceClient().CreateWorkflowTemplate(cmd.Context(), connect.NewRequest(&healthv1.CreateWorkflowTemplateRequest{
 			OrgId: org, ProjectId: optionalString(cmd, "project"), Name: name, Description: desc, Steps: steps,
 		}))
 		if err != nil {
@@ -246,7 +245,7 @@ var workflowsUpdateCmd = &cobra.Command{
 			return err
 		}
 		client := backend.NewWorkflowServiceClient()
-		current, err := client.GetWorkflowTemplate(context.Background(), connect.NewRequest(&healthv1.GetWorkflowTemplateRequest{Id: args[0]}))
+		current, err := client.GetWorkflowTemplate(cmd.Context(), connect.NewRequest(&healthv1.GetWorkflowTemplateRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get the workflow template: %w", err)
 		}
@@ -267,7 +266,7 @@ var workflowsUpdateCmd = &cobra.Command{
 		if len(steps) == 0 {
 			steps = t.Steps
 		}
-		res, err := client.UpdateWorkflowTemplate(context.Background(), connect.NewRequest(&healthv1.UpdateWorkflowTemplateRequest{
+		res, err := client.UpdateWorkflowTemplate(cmd.Context(), connect.NewRequest(&healthv1.UpdateWorkflowTemplateRequest{
 			Id: args[0], Name: name, Description: &desc, Steps: steps,
 		}))
 		if err != nil {
@@ -286,7 +285,7 @@ var workflowsDeleteCmd = &cobra.Command{
 	Short: "Delete a workflow template (tasks it already created stay)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewWorkflowServiceClient().DeleteWorkflowTemplate(context.Background(), connect.NewRequest(&healthv1.DeleteWorkflowTemplateRequest{Id: args[0]}))
+		res, err := backend.NewWorkflowServiceClient().DeleteWorkflowTemplate(cmd.Context(), connect.NewRequest(&healthv1.DeleteWorkflowTemplateRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to delete the workflow template: %w", err)
 		}
@@ -310,7 +309,7 @@ var workflowsStartCmd = &cobra.Command{
 		if project == "" {
 			return invalidArgf("--project is required (or set TASKER_PROJECT_ID)")
 		}
-		res, err := backend.NewWorkflowServiceClient().InstantiateWorkflow(context.Background(), connect.NewRequest(&healthv1.InstantiateWorkflowRequest{
+		res, err := backend.NewWorkflowServiceClient().InstantiateWorkflow(cmd.Context(), connect.NewRequest(&healthv1.InstantiateWorkflowRequest{
 			TemplateId: args[0], ProjectId: project, Title: optionalString(cmd, "title"), IdempotencyKey: optionalString(cmd, "idempotency-key"),
 		}))
 		if err != nil {

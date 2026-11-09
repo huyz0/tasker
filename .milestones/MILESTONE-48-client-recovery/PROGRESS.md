@@ -1,0 +1,46 @@
+# M48 Progress
+
+## M48-T01 — Reconcile short disconnects and bound reconnect jitter
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Refetch active queries once on the first accepted frame after a dropped stream, mark inactive cache stale for later use, and randomize reconnect waits within half to all of the existing capped backoff.
+- **Verified**: Initial red reproduces stale active data after one drop and missing jitter. Independent v1 review found pending initial-fetch reuse; its real hook regression fails before explicit cancellation and passes afterward, including the late old response. All 25 focused tests pass; independent v2 approved. Removing cancellation fails one test; removing jitter fails two. Restored `moon check --all`: 35 completed (one cached), 96 GUI files pass with branch coverage 95.25%; backend 2122 pass / 43 gated skip / 0 fail. No browser journey is claimed by this hook task; T04 owns it.
+- **Notes**: Started independently during M46 PR #3's browser checks; M48 depends only on M44. M46 merged as 62a0c3f with all ten jobs green, and this branch is rebased onto it with ledger counts reconciled. M48 proceeds ahead of M47. No new ADR or visual UX: existing connection states/fallback remain; a focused test plan owns reconnect/overflow/CLI recovery acceptance. No component appearance changes, so no new story is needed for this hook.
+- **Next**: M48-T02 overflow reconciliation.
+
+## M48-T02 — Signal bounded feed overflow
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Add one coalesced stream.resync control indication outside the bounded domain queue, refresh subscriber membership before queued data resumes, and reuse active-query reconciliation in the GUI.
+- **Verified**: Initial red: two backend and two GUI cases fail. Independent v3 found foreign membership amplification; its new burst/discovery regressions fail before correction. A periodic authorization-set change regression also fails before explicit resync request. Current 42 backend tests (92 assertions) and 43 GUI tests pass; independent v4 approved. Actual socket/broker suite: 11 pass including logout. Full `moon check --all`: 35 completed (17 cached); all 96 GUI files pass, branch coverage 95.26%; backend has zero failures.
+- **Notes**: ADR-0045 and the existing TEST-PLAN-0048 define the additive control-frame boundary. No new wire fields or visual component; no UX artifact/story is needed. Old clients ignoring the new frame retain their previous behavior; updated clients reconcile. Standards: API/security. Keep current bounded credential refresh and do not include dropped event metadata in the control frame.
+- **Next**: M48-T03 CLI cancellation/deadlines.
+
+## M48-T03 — Bound individual CLI requests and propagate cancellation
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Add a positive --timeout per-request limit (default 30 seconds), propagate command/signal contexts through RPC and plain HTTP calls, and keep MCP stdio alive across bounded requests.
+- **Verified**: Initial accepted-request cancellation fails before replacing background contexts; timeout/invalid-duration tests fail before implementation. Parent, per-page, repeated-command, real event-stream and MCP request/session tests pass. Four deliberate faults (unary deadline, MCP request deadline, idle input cancellation, fresh contexts) fail. Independent v5 found ignored error-body reads; synchronized auth/debug timeout/cancel cases all fail when that bug is restored and pass after correction. Final CLI/backend race suites pass. Actual binary PTY first exits 130 with echo unrestored, then passes with explicit restoration; T04 commits native journey coverage. Windows amd64/macOS arm64 cross-builds and generated reference pass. Independent v6 approved; final `moon check --all`: 35 completed (26 cached), fresh CLI coverage gate 93.7% (floor 80%).
+- **Notes**: ADR-0046 chooses unary interception plus caller contexts instead of timing an entire interactive command or a streaming connection. Raw auth/debug HTTP and each MCP exchange use the same bounded request context. Tests cover cancellation, timeout classification, parent deadlines and long-lived relay behavior. Standards: coding/security. No new dependency or visual UX.
+- **Next**: M48-T04 actual browser/CLI journeys and closure.
+
+## M48-T04 — Browser and native CLI recovery journeys
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Drive missed-task recovery in a real browser with controlled Connect stream bytes and real source RPC/SQL; commit native CLI timeout/signal/MCP/terminal journeys, then run full gates and actual CI.
+- **Verified**: Four browser journeys pass against real source RPC/SQL with controlled stream bytes; each fails under its corresponding reconnect/resync/abort/polling fault, then all four pass restored. Four actual-binary journeys pass, including private PTY restoration; omitting restoration fails the committed terminal test. Independent v7 requested stronger source evidence, planned scope/polling cases and native child reaping; v8 approved corrected candidates. Final CLI/backend race suites pass (including native cases); `moon check --all`: 35 completed (24 cached), fresh CLI coverage gate 93.7%; GUI/source evidence remains 1350 tests / 95.26% branches and backend 2129 tests / zero failures. Generated reference passes. See reviews/RECOVERY-EVIDENCE.md. Final-head remote CI remains a publication gate.
+- **Notes**: Existing ADR-0045/0046 and TEST-PLAN-0048 own the boundaries; no new ADR or UX. Browser stream interception controls failure timing only; source mutations/reads remain real, and real broker/socket coverage is recorded separately. Use an isolated backend/database and frontend port locally to preserve existing dev services. Linux pseudo-terminal coverage uses existing Go/OS facilities, no new dependency. Standards: testing/UI testing.
+- **Next**: Close and merge M48 after final-head CI; then M47-T01.
+
+## Milestone closure — Client Recovery
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: All four task outcomes and all four exit criteria are demonstrated; mark M48 done and select M47-T01 next.
+- **Verified**: Final implementation `moon check --all`: 35 completed (24 cached), fresh CLI coverage gate 93.7%; CLI/backend race suites pass. Four browser and four native journeys pass; corresponding deliberate faults fail and restored source passes. Independent v8 approves. Final documentation gates pass (386 files, zero drift); post-closure `moon check --all` also passes all 35 tasks (32 cached). Final-head remote CI remains required before PR #4 merges; no remote success is inferred here.
+- **Notes**: Browser failure timing is controlled while source reads/mutations are real; T02 separately verifies actual broker/socket behavior. Cross-platform CLI builds pass, but private PTY runtime is Linux only. No capacity claim is made. M47 dependencies are already published; independent design may use the CI wait, then rebase onto published M48 and reconcile the ledger.
+- **Next**: Push final head, wait for complete CI/browser success, merge PR #4; deliver M47 recoverable schedules.

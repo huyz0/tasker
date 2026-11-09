@@ -83,6 +83,11 @@ export function isControlFrame(subject: string): boolean {
   return subject.startsWith('stream.');
 }
 
+/** The ephemeral feed discarded data; surviving subjects cannot narrow the gap. */
+export function isResyncFrame(subject: string): boolean {
+  return subject === 'stream.resync';
+}
+
 /**
  * The query-key prefixes this subject invalidates.
  *
@@ -95,6 +100,7 @@ export function isControlFrame(subject: string): boolean {
  * fixes, not a cache stampede on every event it emits.
  */
 export function queryKeysForSubject(subject: string): string[][] | null {
+  if (isResyncFrame(subject)) return null;
   if (isControlFrame(subject)) return [];
   if (INVALIDATE_EVERYTHING.has(subject)) return null;
 

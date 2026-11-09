@@ -3,7 +3,7 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { EventService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { transport } from '../lib/connectTransport';
-import { queryKeysForSubject, isControlFrame } from '../lib/eventQueryKeys';
+import { queryKeysForSubject, isControlFrame, isResyncFrame } from '../lib/eventQueryKeys';
 
 /**
  * The live event feed, as the GUI consumes it (M08-T08, M08-T09).
@@ -31,9 +31,9 @@ export type LiveStatus =
 /**
  * Backoff between reconnect attempts, in milliseconds.
  *
- * Starts at a second because the common case is a deploy — the server is back
- * in seconds and waiting longer just makes the app feel broken. Caps at 30s so
- * a browser tab left open against a downed backend does not hammer it.
+ * Each attempt waits randomly between half and all of its tier (500–1000ms
+ * initially, up to 15–30s). The upper cap stays 30s; jitter spreads reconnects
+ * after a deploy instead of synchronizing every browser on one timer.
  */
 const BACKOFF_MS = [1_000, 2_000, 5_000, 10_000, 30_000];
 
@@ -57,6 +57,7 @@ export interface UseLiveEventsOptions {
   enabled?: boolean;
   /** Test seams. Production never passes these. */
   backoffMs?: number[];
+  random?: () => number;
   pollIntervalMs?: number;
   client?: { subscribeEvents: (req: any, opts?: any) => AsyncIterable<any> };
 }
@@ -76,6 +77,7 @@ export function useLiveEvents(options: UseLiveEventsOptions = {}): { status: Liv
     projectId,
     enabled = true,
     backoffMs = BACKOFF_MS,
+    random = Math.random,
     pollIntervalMs = POLL_INTERVAL_MS,
     client,
   } = options;
@@ -96,17 +98,20 @@ export function useLiveEvents(options: UseLiveEventsOptions = {}): { status: Liv
     const controller = new AbortController();
     let stopped = false;
     let failures = 0;
+    let needsReconciliation = false;
 
     const eventClient = clientRef.current ?? createClient(EventService, transport);
 
     /** Resolves after `ms`, or immediately when the effect is torn down. */
     const wait = (ms: number) =>
       new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, ms);
-        controller.signal.addEventListener('abort', () => {
+        const finish = () => {
           clearTimeout(timer);
+          controller.signal.removeEventListener('abort', finish);
           resolve();
-        }, { once: true });
+        };
+        const timer = setTimeout(finish, ms);
+        controller.signal.addEventListener('abort', finish, { once: true });
       });
 
     (async () => {
@@ -124,7 +129,16 @@ export function useLiveEvents(options: UseLiveEventsOptions = {}): { status: Liv
             // nothing: a wedged server looks identical from here.
             failures = 0;
             setStatus('live');
-            if (!isControlFrame(event.subject)) invalidate(queryClient, event.subject);
+            if (needsReconciliation || isResyncFrame(event.subject)) {
+              needsReconciliation = false;
+              // invalidateQueries reuses a pending initial fetch with no data.
+              // Cancel it explicitly so its pre-outage snapshot cannot win.
+              await queryClient.cancelQueries({ type: 'active' });
+              if (stopped) return;
+              // The ephemeral feed cannot replay a missed change. Mark every
+              // cached source stale, but fetch only views currently in use.
+              void queryClient.invalidateQueries({ refetchType: 'active' });
+            } else if (!isControlFrame(event.subject)) invalidate(queryClient, event.subject);
           }
         } catch {
           // Every failure is the same failure from here: the stream is gone and
@@ -133,9 +147,11 @@ export function useLiveEvents(options: UseLiveEventsOptions = {}): { status: Liv
         }
 
         if (stopped) return;
+        needsReconciliation = true;
         failures += 1;
         setStatus(failures >= FAILURES_BEFORE_POLLING ? 'offline' : 'reconnecting');
-        await wait(backoffMs[Math.min(failures - 1, backoffMs.length - 1)]);
+        const tier = backoffMs[Math.min(failures - 1, backoffMs.length - 1)];
+        await wait(Math.ceil(tier * (0.5 + 0.5 * random())));
       }
     })();
 
@@ -143,7 +159,7 @@ export function useLiveEvents(options: UseLiveEventsOptions = {}): { status: Liv
       stopped = true;
       controller.abort();
     };
-  }, [enabled, orgId, projectId, queryClient, backoffMs, pollIntervalMs]);
+  }, [enabled, orgId, projectId, queryClient, backoffMs, pollIntervalMs, random]);
 
   // The fallback. Only runs while offline, and stops the moment the stream is
   // back — two refresh mechanisms running at once is the thing to avoid.

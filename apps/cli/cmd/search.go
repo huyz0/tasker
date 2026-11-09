@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -36,14 +35,14 @@ var searchCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.UniversalSearch(context.Background(), listReq)
+				r, err := client.UniversalSearch(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.UniversalSearch(context.Background(), listReq)
+		res, err := client.UniversalSearch(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to search: %w", err)
 		}

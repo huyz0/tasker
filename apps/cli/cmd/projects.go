@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -42,14 +41,14 @@ var projectsListCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListProjects(context.Background(), listReq)
+				r, err := client.ListProjects(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListProjects(context.Background(), listReq)
+		res, err := client.ListProjects(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list projects: %w", err)
 		}
@@ -77,7 +76,7 @@ var projectsGetCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewProjectServiceClient()
-		res, err := client.GetProject(context.Background(), connect.NewRequest(&healthv1.GetProjectRequest{Id: args[0]}))
+		res, err := client.GetProject(cmd.Context(), connect.NewRequest(&healthv1.GetProjectRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get project: %w", err)
 		}
@@ -125,7 +124,7 @@ var projectsCreateCmd = &cobra.Command{
 		if cmd.Flags().Changed("description") {
 			req.Description = &description
 		}
-		res, err := client.CreateProject(context.Background(), connect.NewRequest(req))
+		res, err := client.CreateProject(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to create project: %w", err)
 		}
@@ -169,7 +168,7 @@ var projectsUpdateCmd = &cobra.Command{
 		}
 
 		client := backend.NewProjectServiceClient()
-		res, err := client.UpdateProject(context.Background(), connect.NewRequest(req))
+		res, err := client.UpdateProject(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to update project: %w", err)
 		}
@@ -192,7 +191,7 @@ var projectsDeleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewProjectServiceClient()
-		res, err := client.ArchiveProject(context.Background(), connect.NewRequest(&healthv1.ArchiveProjectRequest{ProjectId: args[0]}))
+		res, err := client.ArchiveProject(cmd.Context(), connect.NewRequest(&healthv1.ArchiveProjectRequest{ProjectId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to delete project: %w", err)
 		}
@@ -214,7 +213,7 @@ var projectsRestoreCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewProjectServiceClient()
-		res, err := client.RestoreProject(context.Background(), connect.NewRequest(&healthv1.RestoreProjectRequest{ProjectId: args[0]}))
+		res, err := client.RestoreProject(cmd.Context(), connect.NewRequest(&healthv1.RestoreProjectRequest{ProjectId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to restore project: %w", err)
 		}
@@ -236,7 +235,7 @@ var projectsPurgeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewProjectServiceClient()
-		res, err := client.PurgeProject(context.Background(), connect.NewRequest(&healthv1.PurgeProjectRequest{ProjectId: args[0]}))
+		res, err := client.PurgeProject(cmd.Context(), connect.NewRequest(&healthv1.PurgeProjectRequest{ProjectId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to purge project: %w", err)
 		}

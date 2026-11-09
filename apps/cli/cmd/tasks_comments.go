@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -22,7 +21,7 @@ var tasksCommentAddCmd = &cobra.Command{
 		}
 
 		client := backend.NewCommentServiceClient()
-		res, err := client.CreateComment(context.Background(), connect.NewRequest(&healthv1.CreateCommentRequest{
+		res, err := client.CreateComment(cmd.Context(), connect.NewRequest(&healthv1.CreateCommentRequest{
 			EntityId:   args[0],
 			EntityType: "task",
 			Content:    content,
@@ -50,7 +49,7 @@ var tasksCommentsCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewCommentServiceClient()
-		res, err := client.ListComments(context.Background(), connect.NewRequest(&healthv1.ListCommentsRequest{
+		res, err := client.ListComments(cmd.Context(), connect.NewRequest(&healthv1.ListCommentsRequest{
 			EntityId:   args[0],
 			EntityType: "task",
 		}))

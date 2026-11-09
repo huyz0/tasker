@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -57,14 +56,14 @@ var tasksListCmd = &cobra.Command{
 		listReq := req
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListTasks(context.Background(), listReq)
+				r, err := client.ListTasks(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListTasks(context.Background(), listReq)
+		res, err := client.ListTasks(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list tasks: %w", err)
 		}
@@ -92,7 +91,7 @@ var tasksGetCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewTaskServiceClient()
-		res, err := client.GetTask(context.Background(), connect.NewRequest(&healthv1.GetTaskRequest{
+		res, err := client.GetTask(cmd.Context(), connect.NewRequest(&healthv1.GetTaskRequest{
 			TaskId: args[0],
 		}))
 		if err != nil {
@@ -171,7 +170,7 @@ var tasksUpdateCmd = &cobra.Command{
 		req.ParentTaskId = optionalString(cmd, "parent")
 
 		client := backend.NewTaskServiceClient()
-		res, err := client.UpdateTask(context.Background(), connect.NewRequest(req))
+		res, err := client.UpdateTask(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to update task: %w", err)
 		}
@@ -211,7 +210,7 @@ var tasksCreateCmd = &cobra.Command{
 		blockedBy, _ := cmd.Flags().GetStringSlice("blocked-by")
 
 		client := backend.NewTaskServiceClient()
-		res, err := client.CreateTask(context.Background(), connect.NewRequest(&healthv1.CreateTaskRequest{
+		res, err := client.CreateTask(cmd.Context(), connect.NewRequest(&healthv1.CreateTaskRequest{
 			ProjectId:            projectID,
 			Title:                title,
 			Status:               status,
@@ -251,7 +250,7 @@ var tasksClaimCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewTaskServiceClient()
-		res, err := client.ClaimTask(context.Background(), connect.NewRequest(&healthv1.ClaimTaskRequest{
+		res, err := client.ClaimTask(cmd.Context(), connect.NewRequest(&healthv1.ClaimTaskRequest{
 			TaskId:         args[0],
 			IdempotencyKey: idempotencyKey,
 		}))
@@ -299,7 +298,7 @@ var tasksAssignCmd = &cobra.Command{
 		if userID != "" {
 			req.UserId = &userID
 		}
-		res, err := client.AssignTask(context.Background(), connect.NewRequest(req))
+		res, err := client.AssignTask(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to assign task: %w", err)
 		}
@@ -328,7 +327,7 @@ var tasksUnassignCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskServiceClient()
-		res, err := client.UnassignTask(context.Background(), connect.NewRequest(&healthv1.UnassignTaskRequest{
+		res, err := client.UnassignTask(cmd.Context(), connect.NewRequest(&healthv1.UnassignTaskRequest{
 			TaskId:  args[0],
 			AgentId: agentID,
 			UserId:  userID,
@@ -360,7 +359,7 @@ var tasksReviewerAddCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskServiceClient()
-		res, err := client.AddTaskReviewer(context.Background(), connect.NewRequest(&healthv1.AddTaskReviewerRequest{
+		res, err := client.AddTaskReviewer(cmd.Context(), connect.NewRequest(&healthv1.AddTaskReviewerRequest{
 			TaskId: args[0],
 			UserId: userID,
 		}))
@@ -391,7 +390,7 @@ var tasksReviewerRemoveCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskServiceClient()
-		res, err := client.RemoveTaskReviewer(context.Background(), connect.NewRequest(&healthv1.RemoveTaskReviewerRequest{
+		res, err := client.RemoveTaskReviewer(cmd.Context(), connect.NewRequest(&healthv1.RemoveTaskReviewerRequest{
 			TaskId: args[0],
 			UserId: userID,
 		}))
@@ -418,7 +417,7 @@ var tasksReviewersCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewTaskServiceClient()
-		res, err := client.ListTaskReviewers(context.Background(), connect.NewRequest(&healthv1.ListTaskReviewersRequest{
+		res, err := client.ListTaskReviewers(cmd.Context(), connect.NewRequest(&healthv1.ListTaskReviewersRequest{
 			TaskId: args[0],
 		}))
 		if err != nil {
@@ -453,7 +452,7 @@ var tasksUpdateStatusCmd = &cobra.Command{
 			Status: status,
 		})
 
-		res, err := client.UpdateTaskStatus(context.Background(), req)
+		res, err := client.UpdateTaskStatus(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to update task status: %w", err)
 		}
@@ -487,7 +486,7 @@ var tasksDeleteCmd = &cobra.Command{
 			TaskId: args[0],
 		})
 
-		_, err := client.DeleteTask(context.Background(), req)
+		_, err := client.DeleteTask(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to delete task: %w", err)
 		}
@@ -516,7 +515,7 @@ var tasksRestoreCmd = &cobra.Command{
 			TaskId: args[0],
 		})
 
-		_, err := client.RestoreTask(context.Background(), req)
+		_, err := client.RestoreTask(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to restore task: %w", err)
 		}
@@ -545,7 +544,7 @@ var tasksPurgeCmd = &cobra.Command{
 			TaskId: args[0],
 		})
 
-		_, err := client.PurgeTask(context.Background(), req)
+		_, err := client.PurgeTask(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to purge task: %w", err)
 		}

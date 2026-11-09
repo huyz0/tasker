@@ -112,7 +112,7 @@ func AuthInterceptor() connect.Interceptor {
 
 // ClientOptions returns the connect.ClientOption set every CLI client should use.
 func ClientOptions() []connect.ClientOption {
-	return []connect.ClientOption{connect.WithInterceptors(RequestIDInterceptor(), AuthInterceptor())}
+	return []connect.ClientOption{connect.WithInterceptors(RequestIDInterceptor(), RequestDeadlineInterceptor(), AuthInterceptor())}
 }
 
 // DescribeRPCError renders an RPC failure for a human or an agent to act on.

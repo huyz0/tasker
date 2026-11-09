@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -34,7 +33,7 @@ var authTokenCreateCmd = &cobra.Command{
 		}
 
 		client := backend.NewAgentServiceClient()
-		res, err := client.CreateAgentToken(context.Background(), connect.NewRequest(&healthv1.CreateAgentTokenRequest{
+		res, err := client.CreateAgentToken(cmd.Context(), connect.NewRequest(&healthv1.CreateAgentTokenRequest{
 			AgentId:       args[0],
 			Name:          name,
 			Scopes:        scopes,
@@ -69,7 +68,7 @@ var authTokenListCmd = &cobra.Command{
 		isJSON, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewAgentServiceClient()
-		res, err := client.ListAgentTokens(context.Background(), connect.NewRequest(&healthv1.ListAgentTokensRequest{
+		res, err := client.ListAgentTokens(cmd.Context(), connect.NewRequest(&healthv1.ListAgentTokensRequest{
 			AgentId: args[0],
 		}))
 		if err != nil {
@@ -112,7 +111,7 @@ var authTokenRevokeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJSON, _ := cmd.Flags().GetBool("json")
 		client := backend.NewAgentServiceClient()
-		_, err := client.RevokeAgentToken(context.Background(), connect.NewRequest(&healthv1.RevokeAgentTokenRequest{
+		_, err := client.RevokeAgentToken(cmd.Context(), connect.NewRequest(&healthv1.RevokeAgentTokenRequest{
 			TokenId: args[0],
 		}))
 		if err != nil {

@@ -1,6 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { EventService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpcStream } from '../test/mockRpc';
 import { useLiveEvents } from './useLiveEvents';
@@ -17,6 +17,8 @@ import { useLiveEvents } from './useLiveEvents';
 // Module-scope so the hook's effect deps stay stable across renders. An inline
 // array would be a new identity every render and re-open the stream each time.
 const FAST_BACKOFF = [1, 1, 1, 1];
+const RECOVERY_BACKOFF = [1000];
+const MAX_JITTER = () => 1;
 
 /** A stream the test feeds by hand, and can end or fail on demand. */
 function fakeStream() {
@@ -133,6 +135,152 @@ describe('useLiveEvents', () => {
 
     act(() => second.push('stream.ready'));
     await waitFor(() => expect(result.current.status).toBe('live'));
+  });
+
+  it.each(['stream.ready', 'stream.heartbeat', 'domain.task.updated'])('refetches missed scoped data once after one drop on %s, without fetching inactive data', async subject => {
+    vi.useFakeTimers();
+    const first = fakeStream(), second = fakeStream();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } });
+    let serverValue = 'before outage';
+    const readActive = vi.fn(async () => serverValue);
+    const readInactive = vi.fn(async () => 'other project');
+    await queryClient.prefetchQuery({ queryKey: ['tasks', 'other-project'], queryFn: readInactive });
+    const streams = [first, second];
+    let opened = 0;
+    const client = { subscribeEvents: () => streams[Math.min(opened++, 1)] };
+    const view = renderHook(() => {
+      const live = useLiveEvents({ client, orgId: 'org-1', projectId: 'project-1', backoffMs: RECOVERY_BACKOFF, random: MAX_JITTER });
+      const task = useQuery({ queryKey: ['tasks', 'org-1', 'project-1'], queryFn: readActive });
+      return { status: live.status, title: task.data };
+    }, { wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider> });
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(view.result.current.title).toBe('before outage');
+    await act(async () => { first.push('stream.ready'); first.push('stream.heartbeat'); });
+    expect(readActive).toHaveBeenCalledTimes(1);
+    await act(async () => { first.fail(new Error('one drop')); });
+    serverValue = 'changed while disconnected';
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(opened).toBe(2);
+    await act(async () => { second.push(subject); await vi.advanceTimersByTimeAsync(0); });
+    expect(view.result.current.title).toBe('changed while disconnected');
+    expect(readActive).toHaveBeenCalledTimes(2);
+    expect(readInactive).toHaveBeenCalledTimes(1);
+    expect(queryClient.getQueryState(['tasks', 'other-project'])?.isInvalidated).toBe(true);
+    await act(async () => { second.push('stream.heartbeat'); second.push('stream.ready'); await vi.advanceTimersByTimeAsync(0); });
+    expect(readActive).toHaveBeenCalledTimes(2);
+    view.unmount(); queryClient.clear();
+  });
+
+  it.each([{ sample: 0, delay: 500 }, { sample: 1, delay: 1000 }])('bounds reconnect jitter at sample $sample', async ({ sample, delay }) => {
+    vi.useFakeTimers();
+    const first = fakeStream(), second = fakeStream();
+    const { client, unmount } = setup([first, second], { backoffMs: RECOVERY_BACKOFF, random: () => sample });
+    await act(async () => { first.fail(new Error('dropped')); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(delay - 1); });
+    expect(client.subscribeEvents).toHaveBeenCalledTimes(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(client.subscribeEvents).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
+  it.each(['reconnect', 'resync'])('replaces a still-pending initial snapshot on %s and ignores its late result', async recovery => {
+    vi.useFakeTimers();
+    const first = fakeStream(), second = fakeStream();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } });
+    let resolveOld!: (value: string) => void;
+    const initial = new Promise<string>(resolve => { resolveOld = resolve; });
+    const read = vi.fn(async () => 'current source').mockImplementationOnce(() => initial);
+    let opened = 0;
+    const client = { subscribeEvents: () => [first, second][Math.min(opened++, 1)] };
+    const view = renderHook(() => {
+      useLiveEvents({ client, backoffMs: RECOVERY_BACKOFF, random: MAX_JITTER });
+      return useQuery({ queryKey: ['tasks', 'project-1'], queryFn: read }).data;
+    }, { wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider> });
+    await act(async () => { first.push('stream.ready'); });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(view.result.current).toBeUndefined();
+    if (recovery === 'reconnect') {
+      await act(async () => { first.fail(new Error('dropped')); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); second.push('stream.ready'); await vi.advanceTimersByTimeAsync(0); });
+    } else {
+      await act(async () => { first.push('stream.resync'); await vi.advanceTimersByTimeAsync(0); });
+    }
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(view.result.current).toBe('current source');
+    await act(async () => { resolveOld('stale initial snapshot'); await vi.advanceTimersByTimeAsync(0); });
+    expect(view.result.current).toBe('current source');
+    view.unmount(); queryClient.clear();
+  });
+
+  it('refetches a dropped entity on resync while another entity survives on the same stream', async () => {
+    vi.useFakeTimers();
+    const stream = fakeStream();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } });
+    let taskValue = 'old task';
+    const read = vi.fn(async () => taskValue);
+    const client = { subscribeEvents: vi.fn(() => stream) };
+    const view = renderHook(() => {
+      const live = useLiveEvents({ client });
+      return { ...live, task: useQuery({ queryKey: ['tasks', 'project-1'], queryFn: read }).data };
+    }, { wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider> });
+    await act(async () => { stream.push('stream.ready'); await vi.advanceTimersByTimeAsync(0); });
+    expect(view.result.current.task).toBe('old task');
+    taskValue = 'task whose event was dropped';
+    await act(async () => { stream.push('stream.resync'); stream.push('domain.artifact.updated'); await vi.advanceTimersByTimeAsync(0); });
+    expect(view.result.current.task).toBe('task whose event was dropped');
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(view.result.current.status).toBe('live');
+    expect(client.subscribeEvents).toHaveBeenCalledTimes(1);
+    view.unmount(); queryClient.clear();
+  });
+
+  it.each([false, true])('ignores abandoned scope frames and retry waits (old stream dropped: %s)', async dropped => {
+    vi.useFakeTimers();
+    const old = fakeStream(), current = fakeStream();
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+    let opened = 0;
+    const client = { subscribeEvents: vi.fn((_req: { orgId?: string; projectId?: string }) => [old, current][Math.min(opened++, 1)]) };
+    const view = renderHook(({ orgId }) => useLiveEvents({ client, orgId, backoffMs: RECOVERY_BACKOFF, random: MAX_JITTER }), {
+      initialProps: { orgId: 'old-org' },
+      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+    });
+    await act(async () => { old.push('stream.ready'); });
+    if (dropped) await act(async () => { old.fail(new Error('old drop')); });
+    view.rerender({ orgId: 'current-org' });
+    await act(async () => { old.push('domain.task.updated'); await vi.advanceTimersByTimeAsync(1000); });
+    expect(client.subscribeEvents).toHaveBeenCalledTimes(2);
+    expect(client.subscribeEvents.mock.calls[1][0]).toEqual({ orgId: 'current-org', projectId: undefined });
+    expect(invalidate).not.toHaveBeenCalled();
+    await act(async () => { current.push('stream.ready'); });
+    if (dropped) await act(async () => { current.fail(new Error('new drop')); });
+    view.unmount();
+    await act(async () => { current.push('domain.task.updated'); await vi.advanceTimersByTimeAsync(30_000); });
+    expect(client.subscribeEvents).toHaveBeenCalledTimes(2);
+    expect(invalidate).not.toHaveBeenCalled();
+    queryClient.clear();
+  });
+
+  it('caps jittered retries at the final tier and resets after recovery', async () => {
+    vi.useFakeTimers();
+    const failing = { async *[Symbol.asyncIterator]() { throw new Error('down'); } };
+    const recovered = fakeStream();
+    const { client, unmount } = setup([failing, failing, failing, failing, failing, failing, recovered], { backoffMs: undefined, random: () => 0 });
+    await act(async () => {});
+    let opens = 1;
+    for (const delay of [500, 1000, 2500, 5000, 15000, 15000]) {
+      await act(async () => { await vi.advanceTimersByTimeAsync(delay - 1); });
+      expect(client.subscribeEvents).toHaveBeenCalledTimes(opens);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      expect(client.subscribeEvents).toHaveBeenCalledTimes(++opens);
+    }
+    await act(async () => { recovered.push('stream.ready'); });
+    await act(async () => { recovered.fail(new Error('dropped again')); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(499); });
+    expect(client.subscribeEvents).toHaveBeenCalledTimes(opens);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(client.subscribeEvents).toHaveBeenCalledTimes(opens + 1);
+    unmount();
   });
 
   it('does not declare an outage on the first drop, because that is usually a deploy', async () => {
