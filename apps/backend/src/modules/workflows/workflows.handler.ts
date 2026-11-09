@@ -186,6 +186,44 @@ export function createWorkflowOperations(db: any, nc: any = null) {
     };
   }
 
+  const FrozenWorkflowSchema = z.object({
+    templateId: z.string().min(1).max(256), orgId: z.string().min(1).max(256),
+    projectId: z.string().min(1).max(256), title: z.string().trim().min(1).max(512),
+    description: z.string().max(4096),
+    steps: z.array(StepSchema.extend({ status: z.string().min(1).max(256) })).min(1).max(MAX_STEPS),
+  });
+
+  async function createFrozenGraph(snapshot: z.infer<typeof FrozenWorkflowSchema>, ctx: { values: any }) {
+    const parent = (await tasks.createTask({ projectId: snapshot.projectId, title: snapshot.title,
+      status: "todo", description: snapshot.description }, ctx)).task;
+    const byKey = new Map<string, any>();
+    for (const step of orderSteps(snapshot.steps)) {
+      const task = (await tasks.createTask({ projectId: snapshot.projectId, title: step.title,
+        description: step.description, priority: step.priority, status: step.status,
+        ...(step.taskTypeId ? { taskTypeId: step.taskTypeId } : {}), parentTaskId: parent.id,
+        blockedBy: step.dependsOn.map(key => byKey.get(key).id),
+      }, ctx)).task;
+      byKey.set(step.key, task);
+    }
+    publishDomainEvent(nc, "domain.task.workflow_started", {
+      taskId: parent.id, projectId: snapshot.projectId, templateId: snapshot.templateId, steps: snapshot.steps.length,
+    });
+    return { parent, steps: snapshot.steps.map(step => byKey.get(step.key)) };
+  }
+
+  /** Trusted persisted input only; no public method accepts a workflow graph. */
+  const instantiateFrozenWorkflow = transactionalOperation(db, async (input: unknown, ctx: { values: any }, key: string) => {
+    const snapshot = FrozenWorkflowSchema.parse(input);
+    const principal = requirePrincipal(ctx.values);
+    const orgId = await getProjectOrgId(db, snapshot.projectId);
+    if (orgId !== snapshot.orgId) throw new ConnectError("workflow project not found", Code.NotFound);
+    await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
+    orderSteps(snapshot.steps);
+    await checkTypes(orgId, snapshot.steps);
+    return withIdempotency(db, isStandalone, principal, "instantiateScheduleWorkflow", key, snapshot,
+      () => createFrozenGraph(snapshot, ctx));
+  });
+
   const handlers = {
     async createWorkflowTemplate(req: unknown, { values }: { values: any }) {
       const userId = requireUser(values);
@@ -277,38 +315,12 @@ export function createWorkflowOperations(db: any, nc: any = null) {
       if (row.projectId && row.projectId !== parsed.projectId) {
         throw new ConnectError("this workflow template belongs to another project", Code.FailedPrecondition);
       }
-      const steps = orderSteps(StepsSchema.parse(JSON.parse(row.steps)));
-      const firstStatus = await checkTypes(row.orgId, steps);
-
-      return withIdempotency(db, isStandalone, principal, "instantiateWorkflow", parsed.idempotencyKey, parsed, async () => {
-        const parent = (await tasks.createTask({
-          projectId: parsed.projectId, title: parsed.title ?? row.name, status: "todo", description: row.description ?? "",
-        }, ctx)).task;
-        const idByKey = new Map<string, string>();
-        const byKey = new Map<string, any>();
-        for (const s of steps) {
-          const task = (await tasks.createTask({
-            projectId: parsed.projectId,
-            title: s.title,
-            description: s.description,
-            priority: s.priority,
-            ...(s.taskTypeId ? { taskTypeId: s.taskTypeId, status: s.status ?? firstStatus.get(s.taskTypeId) ?? "todo" } : { status: s.status ?? "todo" }),
-            parentTaskId: parent.id,
-            blockedBy: s.dependsOn.map((k) => idByKey.get(k)!),
-          }, ctx)).task;
-          idByKey.set(s.key, task.id);
-          byKey.set(s.key, task);
-        }
-        publishDomainEvent(nc, "domain.task.workflow_started", {
-          taskId: parent.id, projectId: parsed.projectId, templateId: row.id, steps: steps.length,
-        });
-        // Steps come back in the template's own order, not creation order.
-        const authorOrder = (JSON.parse(row.steps) as Step[]).map((s) => byKey.get(s.key));
-        return { parent, steps: authorOrder };
-      });
+      const snapshot = await freezeWorkflow(row.id, parsed.projectId, parsed.title ?? row.name);
+      return withIdempotency(db, isStandalone, principal, "instantiateWorkflow", parsed.idempotencyKey, parsed,
+        () => createFrozenGraph(snapshot, ctx));
     },
   };
-  return { freezeWorkflow, handlers: {
+  return { freezeWorkflow, instantiateFrozenWorkflow, handlers: {
     ...handlers,
     instantiateWorkflow: transactionalOperation(db, handlers.instantiateWorkflow),
   } };

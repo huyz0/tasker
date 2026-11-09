@@ -1,13 +1,14 @@
+import { createScheduleExecutor } from "./occurrenceExecution";
+import { transactionConflict } from "../../db/errors";
 import { withUnitOfWork } from '../../db/access';
-import { runWithRequestContext } from '../../lib/requestContext';
 /**
  * Recurring work (M43, ADR-0036): schedules that put a task or a workflow on
- * the queue on a cadence. The sweep fires each due schedule exactly once
- * across instances by compare-and-swap on `next_run_at`.
+ * the queue on a cadence. Durable admission and leased atomic work receipts
+ * preserve each original UTC slot across process failure (ADR-0041).
  */
 import { z } from "zod/v4";
-import { and, eq, isNull, lte, not, sql, inArray } from "drizzle-orm";
-import { ConnectError, Code, createContextValues } from "@connectrpc/connect";
+import { and, eq, isNull, lte, sql, inArray } from "drizzle-orm";
+import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { executePaginatedQuery } from "../../db/query-builder";
@@ -15,11 +16,9 @@ import { requirePrincipal, requireUser, getProjectOrgId, authorizePrincipal } fr
 import { assertCan } from "../../lib/policy";
 import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { logger } from "../../lib/logger";
-import { currentPrincipalKey, currentUserIdKey, type Principal } from "../auth/session";
-import { createTaskManagementHandler } from "../tasks/tasks.handler";
-import { terminalStatusSql } from "../tasks/taskActivity";
+import type { Principal } from "../auth/session";
 import { createWorkflowOperations } from "../workflows/workflows.handler";
-import { CADENCES, describeCadence, nextRunAfter, type CadenceSpec } from "./cadence";
+import { CADENCES, nextRunAfter, type CadenceSpec } from "./cadence";
 
 const blankToUndefined = (v: unknown) => (v === "" || v == null ? undefined : v);
 
@@ -111,24 +110,14 @@ const specOf = (row: any): CadenceSpec => ({
   hourUtc: Number(row.hourUtc ?? 0),
 });
 
-/** Request context acting as `principal` - the schedule's creator for the sweep. */
-function contextFor(principal: Principal) {
-  const values = createContextValues();
-  values.set(currentPrincipalKey, principal);
-  values.set(currentUserIdKey, principal.kind === "user" ? principal.userId : null);
-  return { values } as any;
-}
-
 function scheduleCore(db: any, nc: any, clock: () => Date) {
   const isStandalone = process.env.STANDALONE === "true";
   const S = isStandalone ? schemaSqlite : schemaMysql;
   const schedules = S.schedules as any;
   const runs = S.scheduleRuns as any;
-  const tasks = S.tasks as any;
   const templates = S.workflowTemplates as any;
-  const taskHandler = createTaskManagementHandler(db, nc);
   const workflowOperations = createWorkflowOperations(db, nc);
-  const workflowHandler = workflowOperations.handlers;
+  const executor = createScheduleExecutor(db, nc, clock);
 
   async function load(id: string, includeDeleted = false) {
     const [row] = await db.select().from(schedules).where(and(eq(schedules.id, id), includeDeleted ? undefined : isNull(schedules.deletedAt))).limit(1);
@@ -162,61 +151,6 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
     const [t] = await db.select({ orgId: templates.orgId, projectId: templates.projectId }).from(templates).where(eq(templates.id, templateId)).limit(1);
     if (!t || t.orgId !== orgId) throw new ConnectError("workflow template not found", Code.InvalidArgument);
     if (t.projectId && t.projectId !== projectId) throw new ConnectError("that workflow template belongs to another project", Code.InvalidArgument);
-  }
-
-  /** Why a run should be skipped, or null. */
-  async function openPrevious(row: any): Promise<string | null> {
-    if (!row.skipIfOpen || !row.lastTaskId) return null;
-    const [open] = await db.select({ displayId: tasks.displayId }).from(tasks).where(and(
-      eq(tasks.id, row.lastTaskId), eq(tasks.projectId, row.projectId), isNull(tasks.deletedAt),
-      not(terminalStatusSql(tasks, isStandalone)),
-    )).limit(1);
-    return open ? `the previous run's task ${open.displayId || row.lastTaskId} is still open` : null;
-  }
-
-  /**
-   * One firing: creation failures are recorded. Bookkeeping storage failure
-   * stays loud; durable occurrence/sweep recovery is owned by M47.
-   */
-  async function fire(row: any, principal: Principal, trigger: "schedule" | "manual", admitted?: any) {
-    return runWithRequestContext({
-      requestId: `schedule-${crypto.randomUUID()}`, orgId: row.orgId, projectId: row.projectId,
-      actor: principal.kind === 'agent' ? { kind: 'agent', agentId: principal.agentId } : { kind: 'user', userId: principal.userId },
-    }, async () => {
-      const now = clock();
-      const run: any = { id: admitted?.id ?? `srun-${crypto.randomUUID()}`, scheduleId: row.id, ranAt: admitted?.ranAt ?? now, trigger, taskId: null, detail: null };
-      try {
-        const skip = await openPrevious(row);
-        if (skip) {
-          run.outcome = "skipped";
-          run.detail = skip;
-        } else {
-          const ctx = contextFor(principal);
-          const title = `${row.taskTitle ?? row.name} — ${now.toISOString().slice(0, 10)}`;
-          const taskId = row.templateId
-            ? (await workflowHandler.instantiateWorkflow({ templateId: row.templateId, projectId: row.projectId, title }, ctx)).parent.id
-            : (await taskHandler.createTask({
-              projectId: row.projectId, title, status: "todo", description: row.taskDescription ?? "", priority: Number(row.taskPriority ?? 0),
-            }, ctx)).task.id;
-          await db.update(tasks).set({ scheduleId: row.id }).where(eq(tasks.id, taskId));
-          run.outcome = "created";
-          run.taskId = taskId;
-        }
-      } catch (e) {
-        run.outcome = "failed";
-        run.detail = String((e as any)?.message ?? e).slice(0, 1000);
-      }
-      await withUnitOfWork(db, async () => {
-        if (admitted) await db.update(runs).set(run).where(eq(runs.id, admitted.id));
-        else await db.insert(runs).values(run);
-        await db.update(schedules).set({
-          lastRunAt: now, lastOutcome: run.outcome, ...(run.taskId ? { lastTaskId: run.taskId } : {}),
-        }).where(eq(schedules.id, row.id));
-        publishDomainEvent(nc, "domain.schedule.ran", { scheduleId: row.id, projectId: row.projectId, outcome: run.outcome, taskId: run.taskId, trigger });
-      });
-      logger.info({ scheduleId: row.id, cadence: describeCadence(specOf(row)), outcome: run.outcome, trigger }, "schedule.ran");
-      return run;
-    });
   }
 
   /** Mutations write the fields and recompute the next slot from now. */
@@ -315,9 +249,14 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
     /** Fire now, as the caller, without moving the next slot. Paused schedules can still be run by hand. */
     async runSchedule(req: unknown, { values }: { values: any }) {
       const principal = requirePrincipal(values);
-      const row = await load(IdSchema.parse(req).id);
-      await authorizePrincipal(db, principal, row.orgId, { scope: "tasks:write", permission: "task:write" });
-      return { run: runToWire(await fire(row, principal, "manual")) };
+      const { id } = IdSchema.parse(req);
+      const run = await admitManualSchedule(id, principal);
+      if (run.outcome !== "queued") return { run: runToWire(run) };
+      const lease = await executor.claim(run.id);
+      if (lease) await executor.execute(lease);
+      const result = await executor.loadRun(run.id);
+      if (!result) throw new ConnectError("schedule run no longer exists", Code.NotFound);
+      return { run: runToWire(result) };
     },
 
     async listScheduleRuns(req: unknown, { values }: { values: any }) {
@@ -335,12 +274,75 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
     },
   };
 
+  /** Called only while the project and schedule locks belong to the admission. */
+  async function prepareOccurrence(row: any, principal: Principal, trigger: "schedule" | "manual", now: Date) {
+    const title = `${row.taskTitle ?? row.name} — ${now.toISOString().slice(0, 10)}`;
+    let frozenInputs: string | null = null;
+    let detail: string | null = null;
+    try {
+      if (await getProjectOrgId(db, row.projectId) !== row.orgId) throw new ConnectError("project unavailable", Code.NotFound);
+      await authorizePrincipal(db, principal, row.orgId, { scope: "tasks:write", permission: "task:write" });
+      const workflow = row.templateId ? await workflowOperations.freezeWorkflow(row.templateId, row.projectId, title) : undefined;
+      frozenInputs = JSON.stringify({ version: 1, projectId: row.projectId, orgId: row.orgId,
+        title, description: row.taskDescription ?? "", priority: Number(row.taskPriority ?? 0),
+        skipIfOpen: Boolean(row.skipIfOpen), ...(workflow ? { workflow } : {}) });
+      if (Buffer.byteLength(frozenInputs, "utf8") > 1_048_576) {
+        throw new ConnectError("schedule inputs exceed the size limit", Code.ResourceExhausted);
+      }
+    } catch (error) {
+      if (!(error instanceof ConnectError) || ![Code.NotFound, Code.InvalidArgument, Code.FailedPrecondition,
+        Code.PermissionDenied, Code.Unauthenticated, Code.ResourceExhausted].includes(error.code)) throw error;
+      frozenInputs = null;
+      detail = error.code === Code.PermissionDenied || error.code === Code.Unauthenticated
+        ? "The run author no longer has permission to create this work."
+        : "The scheduled target is unavailable or its inputs are invalid.";
+    }
+    const run: any = {
+      id: `srun-${crypto.randomUUID()}`, scheduleId: row.id, ranAt: now,
+      slotKey: trigger === "schedule" ? `scheduled:${new Date(row.nextRunAt).toISOString()}` : `manual:${crypto.randomUUID()}`,
+      dueAt: trigger === "schedule" ? row.nextRunAt : null,
+      outcome: detail ? "failed" : "queued", trigger, attempts: 0,
+      nextAttemptAt: detail ? null : now, completedAt: detail ? now : null, detail,
+      actorJson: JSON.stringify(principal.kind === "user" ? { kind: "user", userId: principal.userId }
+        : { kind: "agent", agentId: principal.agentId, orgId: principal.orgId, tokenId: principal.tokenId }),
+      targetKind: row.templateId ? "workflow" : "task", targetId: row.templateId ?? null,
+      frozenInputs,
+    };
+    return run;
+  }
+
+  async function admitManualSchedule(id: string, principal: Principal) {
+    return mutateSchedule(id, async row => {
+      const fresh = await executor.authorizeActor(principal, row.orgId);
+      const prepared = await prepareOccurrence(row, fresh, "manual", clock());
+      await db.insert(runs).values(prepared);
+      if (prepared.outcome === "failed") {
+        await db.update(schedules).set({ lastRunAt: prepared.completedAt, lastOutcome: "failed" }).where(eq(schedules.id, row.id));
+      }
+      admissionEvent(row, prepared);
+      return prepared;
+    });
+  }
+
+  function admissionEvent(row: any, run: any) {
+    publishDomainEvent(nc, run.outcome === "failed" ? "domain.schedule.ran" : "domain.schedule.queued", {
+      scheduleId: row.id, projectId: row.projectId, outcome: run.outcome, trigger: run.trigger,
+    });
+  }
+
   /** Both the claimed intent and advancement survive, or neither does. */
   async function admitDueSchedules(limit = 20) {
     const now = clock();
-    const due = await db.select().from(schedules)
+    let due: any[];
+    try {
+      due = await db.select().from(schedules)
       .where(and(eq(schedules.active, true), isNull(schedules.deletedAt), lte(schedules.nextRunAt, now)))
       .orderBy(schedules.nextRunAt).limit(limit);
+    } catch (error) {
+      if (!transactionConflict(error)) throw error;
+      logger.warn({ failure: "occurrence_admission_scan_conflict" }, "schedule.admission_deferred");
+      return [];
+    }
     const admitted: Array<{ row: any; run: any }> = [];
     for (const candidate of due) {
       try {
@@ -354,44 +356,12 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
           const [row] = await query.limit(1);
           if (!row || !row.active || row.deletedAt || row.revision !== candidate.revision
             || new Date(row.nextRunAt).getTime() !== new Date(candidate.nextRunAt).getTime()) return null;
-          const principal = { kind: "user", userId: row.createdBy } as Principal;
-          const title = `${row.taskTitle ?? row.name} — ${now.toISOString().slice(0, 10)}`;
-          let frozenInputs: string | null = null;
-          let detail: string | null = null;
-          try {
-            if (project.deletedAt) throw new ConnectError("project unavailable", Code.NotFound);
-            await authorizePrincipal(db, principal, row.orgId, { scope: "tasks:write", permission: "task:write" });
-            const workflow = row.templateId ? await workflowOperations.freezeWorkflow(row.templateId, row.projectId, title) : undefined;
-            frozenInputs = JSON.stringify({ version: 1, projectId: row.projectId, orgId: row.orgId,
-              title, description: row.taskDescription ?? "", priority: Number(row.taskPriority ?? 0),
-              skipIfOpen: Boolean(row.skipIfOpen), ...(workflow ? { workflow } : {}) });
-            if (Buffer.byteLength(frozenInputs, "utf8") > 1_048_576) {
-              throw new ConnectError("schedule inputs exceed the size limit", Code.ResourceExhausted);
-            }
-          } catch (error) {
-            if (!(error instanceof ConnectError) || ![Code.NotFound, Code.InvalidArgument, Code.FailedPrecondition,
-              Code.PermissionDenied, Code.Unauthenticated, Code.ResourceExhausted].includes(error.code)) throw error;
-            frozenInputs = null;
-            detail = error.code === Code.PermissionDenied || error.code === Code.Unauthenticated
-              ? "The run author no longer has permission to create this work."
-              : "The scheduled target is unavailable or its inputs are invalid.";
-          }
-          const run: any = {
-            id: `srun-${crypto.randomUUID()}`, scheduleId: row.id, ranAt: now,
-            slotKey: `scheduled:${new Date(row.nextRunAt).toISOString()}`, dueAt: row.nextRunAt,
-            outcome: detail ? "failed" : "queued", trigger: "schedule", attempts: 0,
-            nextAttemptAt: detail ? null : now, completedAt: detail ? now : null, detail,
-            actorJson: JSON.stringify({ kind: "user", userId: row.createdBy }),
-            targetKind: row.templateId ? "workflow" : "task", targetId: row.templateId ?? null,
-            frozenInputs,
-          };
+          const run = await prepareOccurrence(row, { kind: "user", userId: row.createdBy }, "schedule", now);
           await db.insert(runs).values(run);
           await db.update(schedules).set({ nextRunAt: nextRunAfter(specOf(row), now),
-            ...(detail ? { lastRunAt: now, lastOutcome: "failed" } : {}) })
+            ...(run.outcome === "failed" ? { lastRunAt: now, lastOutcome: "failed" } : {}) })
             .where(and(eq(schedules.id, row.id), eq(schedules.revision, row.revision), eq(schedules.active, true), isNull(schedules.deletedAt)));
-          publishDomainEvent(nc, detail ? "domain.schedule.ran" : "domain.schedule.queued", {
-            scheduleId: row.id, projectId: row.projectId, outcome: run.outcome, trigger: "schedule",
-          });
+          admissionEvent(row, run);
           return { row, run };
         });
         if (result) admitted.push(result);
@@ -404,14 +374,11 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
 
   async function runDueSchedules(limit = 20): Promise<number> {
     const admitted = await admitDueSchedules(limit);
-    for (const { row, run } of admitted) {
-      if (run.outcome !== "queued") continue;
-      await fire(row, { kind: "user", userId: row.createdBy } as Principal, "schedule", run);
-    }
+    await executor.runPending(limit);
     return admitted.length;
   }
 
-  return { handlers, runDueSchedules, admitDueSchedules };
+  return { handlers, runDueSchedules, admitDueSchedules, admitManualSchedule };
 }
 
 export function createSchedulesHandler(db: any, nc: any = null, clock: () => Date = () => new Date()) {
@@ -426,4 +393,9 @@ export function createScheduleSweep(db: any, nc: any = null, clock: () => Date =
 /** Internal admission boundary; leased execution is composed by the sweep. */
 export function createScheduleAdmission(db: any, nc: any = null, clock: () => Date = () => new Date()) {
   return scheduleCore(db, nc, clock).admitDueSchedules;
+}
+
+/** Internal admitted-intent boundary shared by manual RPC and recovery proofs. */
+export function createManualScheduleAdmission(db: any, nc: any = null, clock: () => Date = () => new Date()) {
+  return scheduleCore(db, nc, clock).admitManualSchedule;
 }

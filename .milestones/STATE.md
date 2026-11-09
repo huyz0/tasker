@@ -1,8 +1,8 @@
 ---
 active_milestone: M47
-active_task: null
+active_task: M47-T03
 last_updated: 2026-11-09
-last_commit: 6016b64
+last_commit: 86f97fa
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M47-T03 in progress.** Draft PR #5 is pushed at verified T01/T02 head 86f97fa. Replace the legacy split firing path with recoverable leases and atomic work/terminal receipts; current original token authority and frozen graph/status inputs must survive restart without weakening tenant boundaries. Forty overall tasks remain; no intermediate head is ready to merge.
 
 **2026-11-09 — M47-T02 verified.** Durable occurrence admission and advancement commit together; immutable workflow defaults/graph, current revision/state, cleanup locks, tombstones and admission events are covered. Archived cleanup and post-insert rollback review findings are fixed; removing the unit fails the stronger regression. Real independent-process contention and post-admission SIGKILL pass SQLite/MySQL (26 assertions); all 35 local checks pass, independent v2 approves. Leased recovery, frozen-input consumption and atomic work/terminal receipts remain T03. Populated MySQL upgrade remains T04. Overall 40 tasks remain.
 
