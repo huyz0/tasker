@@ -51,7 +51,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/consumers/auditProjector.ts; apps/backend/src/index.ts; apps/backend/src/lib/lifecycle.ts.
   - **Verify**: Repeated event delivery yields one audit row; shutdown stops new leases and awaits in-flight enqueue/relay work; restart resumes leases.
 
-- [ ] **M46-T05** — Verify crash boundaries and publish operating procedures.
+- [x] **M46-T05** — Verify crash boundaries and publish operating procedures.
   - **Files**: docs/webhooks.md; docs/standalone.md; .milestones/MILESTONE-46-durable-domain-events/reviews/.
   - **Verify**: Run real NATS outage/recovery and process-kill scenarios, both-dialect tests and full backend gates; document backlog inspection, retention and replay.
 

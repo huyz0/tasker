@@ -47,9 +47,9 @@
 
 ## M46-T05 — Process recovery evidence and operating closure
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Add isolated broker/two-process commit/ACK/webhook recovery tests on both dialects; exercise large SQL-backed reference projection and broker outage; document inspection, retention and rollout.
-- **Verified**: Current real process proof: two dialects pass, 56 assertions; socket/feed/broker suites: 12 pass. Standalone build/smoke pass. Native pinned Moon passes all 35 local gates. Consumer custom DB_PATH first failed and is corrected. Independent review found raw relay retry messages could retain SQL payloads: body-exclusion regression and raw-message fault check now pass; rerunning affected full gates and MySQL. Actual remote CI remains pending.
+- **Verified**: Current real process proof: two dialects pass, 56 assertions; socket/feed/broker suites: 12 pass. Standalone build/smoke pass. Final `moon check --all`: 35 completed (25 cached), backend 2122 pass / 43 gated skip / 0 fail. Isolated migration/capture/relay/webhook MySQL suite: five pass including SQLite upgrade. Consumer custom DB_PATH first failed and is corrected. Independent v6 review rejected raw relay retry messages retaining SQL payloads; body-exclusion regression and raw-message fault check pass; v7 approved. See reviews/RECOVERY-EVIDENCE.md. Remote run 42575396498 now passes bootstrap and has no failed jobs; actual complete remote CI is still required before closure/merge.
 - **Notes**: Remote setup failed repeatedly on upstream installer HTTP 504s. CI now selects repository-pinned Bun and the official native Moon platform package, bringing that narrow part of M49-T05 forward without claiming M49 complete. Bunx launching Moon altered the Node test interpreter and was rejected by local verification; native Moon preserves it. Operating procedures document retry/retention/replay and incompatible old workers. Existing ADR/test plan owns recovery semantics; no new public contract or UX.
 - **Next**: Close M46 only after real recovery and actual CI pass; M47 recoverable schedules follows.
