@@ -1,8 +1,8 @@
 ---
-active_milestone: M47
+active_milestone: M53
 active_task: null
 last_updated: 2026-11-09
-last_commit: a67a294
+last_commit: af98116
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M47 complete:4/4 tasks and4/4 exit criteria.** All35 local gates pass with unchanged coverage floors; both-dialect process/upgrade153 assertions and four actual browser journeys pass, including dark alert contrast. Durable occurrence/history and locked current-eligibility purge semantics are documented. PR #5 still requires complete final-head CI before merge. Next M53-T01 may start independently during that wait (M28/M51 published), with base/ledger reconciliation before publication. Overall38 tasks remain.
 
 **2026-11-09 — M47-T04 verified:4/4 tasks.** Final35 local checks pass: backend2175/zero failures, GUI1360/95.34% branches, CLI gate93.8%. Both-dialect process/upgrade153 assertions, restored deliberate purge-fault92 assertions, four actual browser journeys and rendered states pass. Independent reviewers approve; dark editor contrast and helper-export cleanup are corrected. Close M47, then require final-head remote CI before PR #5 merge. Overall38 tasks remain.
 
@@ -1886,7 +1888,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
-| M47 | Recoverable Schedules | in-progress | M45, M46 | 4 | 4 |
+| M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |

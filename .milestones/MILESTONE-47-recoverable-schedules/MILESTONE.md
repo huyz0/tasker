@@ -1,13 +1,13 @@
 ---
 id: M47
 title: Recoverable Schedules
-status: in-progress
+status: done
 goal: Every claimed scheduled occurrence can be inspected and safely resumed after a crash without duplicating its work.
 depends_on: [M45, M46]
 surfaces: [backend, gui, cli, contract, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-09
-completed_at: null
+completed_at: 2026-11-09
 ---
 
 # M47 — Recoverable Schedules
@@ -22,10 +22,10 @@ Advancing the next time is not evidence that the occurrence ran; scheduling need
 
 ## 3. Exit Criteria
 
-- [ ] Advancing a schedule cannot silently lose its claimed occurrence.
-- [ ] Restarting after work creation reuses the original task or workflow.
-- [ ] One failed occurrence cannot abort processing of other due schedules.
-- [ ] History distinguishes created, skipped, failed and interrupted work without changing the UTC cadence contract.
+- [x] Advancing a schedule cannot silently lose its claimed occurrence.
+- [x] Restarting after work creation reuses the original task or workflow.
+- [x] One failed occurrence cannot abort processing of other due schedules.
+- [x] History distinguishes created, skipped, failed and interrupted work without changing the UTC cadence contract.
 
 ## 4. Scope
 

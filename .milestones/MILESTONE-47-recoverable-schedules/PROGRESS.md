@@ -38,3 +38,15 @@
 - **Final candidate**: Both-dialect process/upgrade matrix passes3 tests/153 assertions. Omitted purge unit fails rollback and actual concurrent-admission proof; restored SQLite/rollback run passes6 tests/92 assertions. Four actual browser journeys pass, including source reads and dark editor contrast. All173 earlier stories pass axe/375px overflow; added alert story passes all four theme/viewport checks. Dark alert1.93:1 red is corrected with the existing semantic pair; independent UX v6 approves. Final full repository gates pass:35 checks (23 cached), backend2175 pass /46 gated skip /zero failures, functions95.80% /lines96.69%; GUI1360 pass /95.34% branches, CLI coverage gate93.8%.
 - **Final cleanup**: Knip finds a now-private task-type helper still exported after sharing project cleanup. Remove its export and the obsolete axe-core ignore (the new browser regression imports it directly). Static visibility/configuration correction needs no runtime TDD; restored full35 gates pass.
 - **Next**: Close the proven milestone, publish final PR #5 head, and require all remote jobs before merge. WIP checkpoints retain unchecked T04. First interim full run caught TypeSpec formatting; later one caught Go alignment, both corrected. No interrupted/failed run is counted as a pass.
+
+## Closure — 2026-11-09
+
+All4 tasks and4 exit criteria are observed. Durable admission cannot advance
+without an occurrence; real pre/post-commit crash and stale-owner tests retain
+one frozen graph/original task; receipt failure does not stop sibling schedules;
+compatible history distinguishes creation/recovery outcomes and preserves UTC.
+Final source checks pass35 tasks with unchanged coverage gates. Exact process,
+fault, browser and rendered proof is recorded in reviews/RECOVERY-EVIDENCE.md.
+PR #5 must pass final-head remote CI before merge. M53 design can proceed during
+that wait because M28/M51 are already published; reconcile its ledger/base with
+M47 before publication. Overall38 tasks remain; none is implied complete.
