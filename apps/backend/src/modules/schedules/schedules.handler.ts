@@ -6,7 +6,7 @@ import { runWithRequestContext } from '../../lib/requestContext';
  * across instances by compare-and-swap on `next_run_at`.
  */
 import { z } from "zod/v4";
-import { and, eq, isNull, lte, not } from "drizzle-orm";
+import { and, eq, isNull, lte, not, sql } from "drizzle-orm";
 import { ConnectError, Code, createContextValues } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -156,13 +156,13 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
    * One firing: creation failures are recorded. Bookkeeping storage failure
    * stays loud; durable occurrence/sweep recovery is owned by M47.
    */
-  async function fire(row: any, principal: Principal, trigger: "schedule" | "manual") {
+  async function fire(row: any, principal: Principal, trigger: "schedule" | "manual", admitted?: any) {
     return runWithRequestContext({
       requestId: `schedule-${crypto.randomUUID()}`, orgId: row.orgId, projectId: row.projectId,
       actor: principal.kind === 'agent' ? { kind: 'agent', agentId: principal.agentId } : { kind: 'user', userId: principal.userId },
     }, async () => {
       const now = clock();
-      const run: any = { id: `srun-${crypto.randomUUID()}`, scheduleId: row.id, ranAt: now, trigger, taskId: null, detail: null };
+      const run: any = { id: admitted?.id ?? `srun-${crypto.randomUUID()}`, scheduleId: row.id, ranAt: admitted?.ranAt ?? now, trigger, taskId: null, detail: null };
       try {
         const skip = await openPrevious(row);
         if (skip) {
@@ -185,7 +185,8 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
         run.detail = String((e as any)?.message ?? e).slice(0, 1000);
       }
       await withUnitOfWork(db, async () => {
-        await db.insert(runs).values(run);
+        if (admitted) await db.update(runs).set(run).where(eq(runs.id, admitted.id));
+        else await db.insert(runs).values(run);
         await db.update(schedules).set({
           lastRunAt: now, lastOutcome: run.outcome, ...(run.taskId ? { lastTaskId: run.taskId } : {}),
         }).where(eq(schedules.id, row.id));
@@ -230,7 +231,7 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
       await assertCan(db, { kind: "user", userId }, { type: "organization", id: row.orgId }, "tasktype:write");
       const spec = checkShape(parsed);
       await checkTemplate(parsed.templateId, row.orgId, row.projectId);
-      const changes = { ...rowValues(parsed, spec), ...(parsed.active !== undefined ? { active: parsed.active } : {}), createdBy: userId };
+      const changes = { revision: sql`${schedules.revision} + 1`, ...rowValues(parsed, spec), ...(parsed.active !== undefined ? { active: parsed.active } : {}), createdBy: userId };
       await db.update(schedules).set(changes).where(eq(schedules.id, row.id));
       publishDomainEvent(nc, "domain.schedule.updated", { id: row.id, projectId: row.projectId });
       return { schedule: toWire({ ...row, ...changes }) };
@@ -301,30 +302,57 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
     },
   };
 
-  /**
-   * The sweep: every due, active schedule fires once. Claiming is a
-   * compare-and-swap on `next_run_at` - moved past now - so a second
-   * instance reading the same row loses and skips it. Missed slots are not
-   * replayed. Returns how many this call fired.
-   */
-  async function runDueSchedules(limit = 20): Promise<number> {
+  /** Both the claimed intent and advancement survive, or neither does. */
+  async function admitDueSchedules(limit = 20) {
     const now = clock();
     const due = await db.select().from(schedules)
-      .where(and(eq(schedules.active, true), lte(schedules.nextRunAt, now)))
+      .where(and(eq(schedules.active, true), isNull(schedules.deletedAt), lte(schedules.nextRunAt, now)))
       .orderBy(schedules.nextRunAt).limit(limit);
-    let fired = 0;
-    for (const row of due) {
-      const res = await db.update(schedules).set({ nextRunAt: nextRunAfter(specOf(row), now) })
-        .where(and(eq(schedules.id, row.id), eq(schedules.nextRunAt, row.nextRunAt)));
-      const claimed = isStandalone ? Number(res.changes) > 0 : Number(res[0]?.affectedRows) > 0;
-      if (!claimed) continue;
-      await fire(row, { kind: "user", userId: row.createdBy } as Principal, "schedule");
-      fired++;
+    const admitted: Array<{ row: any; run: any }> = [];
+    for (const candidate of due) {
+      try {
+        const result = await withUnitOfWork(db, async () => {
+          let projectQuery = db.select().from(S.projects).where(eq(S.projects.id, candidate.projectId));
+          if (!isStandalone) projectQuery = projectQuery.for("update");
+          const [project] = await projectQuery.limit(1);
+          if (!project) return null;
+          let query = db.select().from(schedules).where(eq(schedules.id, candidate.id));
+          if (!isStandalone) query = query.for("update");
+          const [row] = await query.limit(1);
+          if (!row || !row.active || row.deletedAt || row.revision !== candidate.revision
+            || new Date(row.nextRunAt).getTime() !== new Date(candidate.nextRunAt).getTime()) return null;
+          const run = {
+            id: `srun-${crypto.randomUUID()}`, scheduleId: row.id, ranAt: now,
+            slotKey: `scheduled:${new Date(row.nextRunAt).toISOString()}`, dueAt: row.nextRunAt,
+            outcome: "queued", trigger: "schedule", attempts: 0, nextAttemptAt: now,
+            actorJson: JSON.stringify({ kind: "user", userId: row.createdBy }),
+            targetKind: row.templateId ? "workflow" : "task", targetId: row.templateId ?? null,
+            frozenInputs: JSON.stringify({ version: 1, projectId: row.projectId, orgId: row.orgId,
+              title: `${row.taskTitle ?? row.name} — ${now.toISOString().slice(0, 10)}`,
+              description: row.taskDescription ?? "", priority: Number(row.taskPriority ?? 0), skipIfOpen: row.skipIfOpen }),
+          };
+          await db.insert(runs).values(run);
+          await db.update(schedules).set({ nextRunAt: nextRunAfter(specOf(row), now) })
+            .where(and(eq(schedules.id, row.id), eq(schedules.revision, row.revision), eq(schedules.active, true), isNull(schedules.deletedAt)));
+          return { row, run };
+        });
+        if (result) admitted.push(result);
+      } catch {
+        logger.warn({ scheduleId: candidate.id, failure: "occurrence_admission_failed" }, "schedule.admission_failed");
+      }
     }
-    return fired;
+    return admitted;
   }
 
-  return { handlers, runDueSchedules };
+  async function runDueSchedules(limit = 20): Promise<number> {
+    const admitted = await admitDueSchedules(limit);
+    for (const { row, run } of admitted) {
+      await fire(row, { kind: "user", userId: row.createdBy } as Principal, "schedule", run);
+    }
+    return admitted.length;
+  }
+
+  return { handlers, runDueSchedules, admitDueSchedules };
 }
 
 export function createSchedulesHandler(db: any, nc: any = null, clock: () => Date = () => new Date()) {
@@ -334,4 +362,9 @@ export function createSchedulesHandler(db: any, nc: any = null, clock: () => Dat
 /** The sweep `index.ts` runs every minute (and tests drive with a fixed clock). */
 export function createScheduleSweep(db: any, nc: any = null, clock: () => Date = () => new Date()) {
   return scheduleCore(db, nc, clock).runDueSchedules;
+}
+
+/** Internal admission boundary; leased execution is composed by the sweep. */
+export function createScheduleAdmission(db: any, nc: any = null, clock: () => Date = () => new Date()) {
+  return scheduleCore(db, nc, clock).admitDueSchedules;
 }

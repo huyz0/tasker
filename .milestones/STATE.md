@@ -1,6 +1,6 @@
 ---
 active_milestone: M47
-active_task: null
+active_task: M47-T02
 last_updated: 2026-11-09
 last_commit: 3f55f55
 blocked: false
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M47-T02 in progress.** Durable admission/storage foundations precede leased sweep activation in T03. Regressions must cover original-slot identity, atomic advancement, frozen workflow defaults and stale edit/pause/delete candidates. No intermediate worker is published independently.
 
 **2026-11-09 — M47-T01 design approved.** ADR-0041, history UX and TC-001–011 define durable original-slot admission, frozen workflow/status inputs, fenced current-authority recovery and atomic work/receipt/events. Independent reliability and human-workflow re-review approve after concrete history/expiry/action/link corrections. All 35 local checks pass serially; the initial existing dashboard setup-hook timeout passes three isolated reruns. T02 admission is next. This branch still starts from M46; reconcile M48 publication and four task completions on rebase.
 

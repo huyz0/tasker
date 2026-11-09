@@ -442,6 +442,13 @@
       "when": 1794096000003,
       "tag": "0062_webhook_lease_token",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "6",
+      "when": 1794096000004,
+      "tag": "0063_schedule_occurrences",
+      "breakpoints": true
     }
   ]
 }

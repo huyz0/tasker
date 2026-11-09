@@ -1110,6 +1110,8 @@ export const schedules = sqliteTable("schedules", {
   taskPriority: integer("task_priority").notNull().default(0),
   skipIfOpen: integer("skip_if_open", { mode: "boolean" }).notNull().default(true),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
+  revision: integer("revision").notNull().default(1),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
   nextRunAt: integer("next_run_at", { mode: "timestamp" }).notNull(),
   lastRunAt: integer("last_run_at", { mode: "timestamp" }),
   lastTaskId: text("last_task_id"),
@@ -1130,9 +1132,24 @@ export const scheduleRuns = sqliteTable("schedule_runs", {
   outcome: text("outcome").notNull(),
   taskId: text("task_id"),
   detail: text("detail"),
+  slotKey: text("slot_key"),
+  dueAt: integer("due_at", { mode: "timestamp" }),
+  actorJson: text("actor_json"),
+  targetKind: text("target_kind"),
+  targetId: text("target_id"),
+  frozenInputs: text("frozen_inputs"),
+  leaseToken: text("lease_token"),
+  claimedUntil: integer("claimed_until", { mode: "timestamp" }),
+  attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: integer("next_attempt_at", { mode: "timestamp" }),
+  startedAt: integer("started_at", { mode: "timestamp" }),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
   trigger: text("trigger").notNull(),
 }, (table) => {
   return {
+    slotIdx: uniqueIndex("schedule_runs_slot_unique").on(table.scheduleId, table.slotKey),
+    recoveryIdx: index("schedule_runs_recovery_idx").on(table.outcome, table.nextAttemptAt),
+    leaseIdx: index("schedule_runs_lease_idx").on(table.outcome, table.claimedUntil),
     scheduleRanIdx: index("schedule_runs_schedule_id_ran_idx").on(table.scheduleId, table.ranAt),
   };
 });
