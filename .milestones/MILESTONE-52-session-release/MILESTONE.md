@@ -23,7 +23,7 @@ Publishing PR #1 exposed a shallow-checkout failure in both real integration job
 ## 3. Exit Criteria
 
 - [x] Integration jobs have the Git history Moon requires; the manual UI audit is a declared runnable entry with correct cache inputs.
-- [ ] The installed dependency graph has no unaccepted high/critical advisory and the repository gates pass.
+- [x] The installed dependency graph has no unaccepted high/critical advisory and the repository gates pass.
 - [ ] GitHub release checks pass for the publication candidate; the PR and validation outcomes are recorded.
 
 ## 4. Scope
