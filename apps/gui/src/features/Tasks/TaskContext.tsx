@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { PlanStep, TaskSummary, UsageTotals } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { TaskPlan } from './TaskPlan';
 import { TaskUsage } from './TaskUsage';
@@ -9,10 +10,11 @@ interface TaskContextProps {
   summary?: TaskSummary;
   plan?: PlanStep[];
   usage?: UsageTotals;
+  children?: ReactNode;
 }
 
 /** Empty optional context stays discoverable; native disclosures retain drafts when closed. */
-export function TaskContext({ taskId, summary, plan, usage }: TaskContextProps) {
+export function TaskContext({ taskId, summary, plan, usage, children }: TaskContextProps) {
   const draft = useSummaryDrafts(state => state.entries[taskId]);
   return (
     <>
@@ -20,6 +22,7 @@ export function TaskContext({ taskId, summary, plan, usage }: TaskContextProps) 
         <summary className="cursor-pointer rounded-sm py-2 focus-visible:ring-2 focus-visible:ring-primary/50"><h3 className="inline type-section-title">Summary</h3></summary>
         <div className="mt-2"><TaskSummaryPanel taskId={taskId} summary={summary} /></div>
       </details>
+      {children}
       <details open={!!plan?.length} className="mt-6">
         <summary className="cursor-pointer rounded-sm py-2 focus-visible:ring-2 focus-visible:ring-primary/50"><h3 className="inline type-section-title">Agent plan</h3></summary>
         <div className="mt-2"><TaskPlan steps={plan ?? []} /></div>

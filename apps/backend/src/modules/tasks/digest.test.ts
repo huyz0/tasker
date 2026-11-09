@@ -132,6 +132,9 @@ describe("task summaries and digests (M41)", () => {
       // The big task resolves names and refs the small one has none of, but in
       // batches - never a query per question or relation.
       expect(queries).toBeLessThanOrEqual(smallQueries + 4);
+      const withEvidence = (await handler.getTaskDigest({ taskId: big.id, includeArtifacts: true }, ctx)).digest;
+      expect(withEvidence.truncated).toBe(true);
+      expect(withEvidence.artifacts).toEqual([]);
     });
   });
 

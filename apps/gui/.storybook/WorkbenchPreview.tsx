@@ -22,7 +22,8 @@ export function WorkbenchPreview({ children, state = 'populated', drawerOpen = f
     q.setQueryData(['project', 'project-story'], { id: 'project-story', name: 'Release' });
     q.setQueryData(['notificationCount', 'org-story'], { count: 0n });
     q.setQueryData(['taskTypes', 'org-story'], []);
-    q.setQueryData(['pullRequests', 'project-story'], []);
+    q.setQueryData(['authSession'], { authenticated: true, userId: 'workbench-story-user', mustChangePassword: false });
+    q.setQueryData(['pullRequests', 'project-story', 'org-story', 'workbench-story-user'], []);
     const statuses = ['todo', 'in-progress', 'done'];
     const tasks = statuses.map((status, i) => create(TaskSchema, { id: `task-${i}`, displayId: `REL-${i + 1}`, title: ['Review release notes', 'Verify the build', 'Prepare the checklist'][i], status, projectId: 'project-story' }));
     for (const status of ['table', ...statuses]) {

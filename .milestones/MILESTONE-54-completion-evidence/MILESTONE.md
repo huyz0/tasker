@@ -1,13 +1,13 @@
 ---
 id: M54
 title: Completion Evidence
-status: todo
+status: done
 goal: External workers can discover, attach and read bounded task evidence through MCP, and people can inspect that evidence with accurate provenance.
 depends_on: [M46, M53]
 surfaces: [backend, gui, contract, specs]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+exit_criteria_met: true
+started_at: 2026-11-09
+completed_at: 2026-11-09
 ---
 
 # M54 — Completion Evidence
@@ -22,10 +22,10 @@ Task summaries describe work; existing artifact records supply reviewable output
 
 ## 3. Exit Criteria
 
-- [ ] MCP workers can discover folders/artifacts, create/link evidence and explicitly read bounded stored content using existing permissions.
-- [ ] Opt-in digest evidence stays bounded and ordinary digest clients need no new scope.
-- [ ] People can inspect evidence with source/time/provenance and honest unavailable states.
-- [ ] Both dialects, generated clients, wire compatibility and real worker-to-human journeys pass.
+- [x] MCP workers can discover folders/artifacts, create/link evidence and explicitly read bounded stored content using existing permissions.
+- [x] Opt-in digest evidence stays bounded and ordinary digest clients need no new scope.
+- [x] People can inspect evidence with source/time/provenance and honest unavailable states.
+- [x] Both dialects, generated clients, wire compatibility and real worker-to-human journeys pass.
 
 ## 4. Scope
 
@@ -35,23 +35,23 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
 
 ## 5. Task Breakdown
 
-- [ ] **M54-T01** — Define compatible evidence bounds, provenance and permissions before extending contracts.
+- [x] **M54-T01** — Define compatible evidence bounds, provenance and permissions before extending contracts.
   - **Files**: .specs/adr/ADR-0042-completion-evidence.md; .milestones/MILESTONE-54-completion-evidence/design/UX-DESIGN.md; packages/shared-contract/main.tsp.
   - **Verify**: Specify fresh optional field numbers, stored-representation prefixes, server-side limits, metadata-only digest opt-in and retry semantics; ordinary tasks:read digests remain valid without artifacts:read; no implicit completion enforcement.
 
-- [ ] **M54-T02** — Add thin MCP artifact discovery/create/link/read tools backed by bounded existing RPCs.
+- [x] **M54-T02** — Add thin MCP artifact discovery/create/link/read tools backed by bounded existing RPCs.
   - **Files**: apps/backend/src/modules/mcp/tools.ts; apps/backend/src/modules/artifacts/artifacts.handler.ts; packages/shared-contract/; apps/cli/gen/.
   - **Verify**: Exactly one RPC per tool; folder discovery is possible; link list pagination precedes name lookups; body prefix is bounded in SQL, truncated is explicit, create input is bounded; wrong org/missing scope denied; unlink remains human-only.
 
-- [ ] **M54-T03** — Expose opt-in bounded artifact metadata in task digests without reading bodies.
+- [x] **M54-T03** — Expose opt-in bounded artifact metadata in task digests without reading bodies.
   - **Files**: apps/backend/src/modules/tasks/digest.ts; apps/backend/src/modules/artifacts/; packages/shared-contract/; apps/backend/src/modules/mcp/.
   - **Verify**: Existing digest contract remains compatible; includeArtifacts requires artifacts:read; cap links before metadata lookup and propagate truncation; assert body columns are not selected; fresh generated TS/Go and wire checks pass.
 
-- [ ] **M54-T04** — Present task completion evidence beside summaries and existing repository/build signals.
+- [x] **M54-T04** — Present task completion evidence beside summaries and existing repository/build signals.
   - **Files**: apps/gui/src/features/Tasks/; apps/gui/src/components/; apps/gui/tests/e2e/.
   - **Verify**: Review surface identifies author/time/source and accessible artifact links; distinguishes worker-reported evidence from provider-observed signals; handles no evidence, removed/inaccessible artifacts, loading/error and large content; responsive/keyboard stories pass.
 
-- [ ] **M54-T05** — Verify worker-to-human evidence handoff and publish precise integration examples.
+- [x] **M54-T05** — Verify worker-to-human evidence handoff and publish precise integration examples.
   - **Files**: docs/mcp.md; docs/agent-integration.md; .milestones/MILESTONE-54-completion-evidence/reviews/; apps/backend/src/test/wire/.
   - **Verify**: MCP discover/create/link/digest/explicit body read journey with oversized literal and encoded representations; cross-tenant/task denial, legacy digest and retry behavior; full gates, browser checks and standalone packaging pass.
 

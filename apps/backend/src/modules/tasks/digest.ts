@@ -4,7 +4,7 @@
  * live tables - never stored, so never stale, and nothing is deleted.
  */
 import { z } from "zod/v4";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql, asc } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -12,17 +12,19 @@ import { requirePrincipal, getTaskOrgId, getProjectOrgId, authorizePrincipal } f
 import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { listLinks } from "./taskGraph";
 import { terminalStatusSql } from "./taskActivity";
+import { evidenceMetadata } from "../artifacts/evidence";
 
 const SUMMARY_MAX = 4000;
 /** Digest caps (ADR-0034). */
 const ANSWERED_QUESTIONS_CAP = 20;
 const RELATIONS_CAP = 50;
+const ARTIFACTS_CAP = 20;
 
 const SetSummarySchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   text: z.preprocess((v) => (v == null ? "" : v), z.string().trim().max(SUMMARY_MAX, `text is at most ${SUMMARY_MAX} characters`)),
 });
-const DigestSchema = z.object({ taskId: z.string().min(1, "taskId is required") });
+const DigestSchema = z.object({ taskId: z.string().min(1, "taskId is required"), includeArtifacts: z.boolean().optional() });
 const CandidatesSchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
   olderThanDays: z.preprocess((v) => (v == null ? 30 : v), z.number().int().min(0, "olderThanDays must be from 0 to 3650").max(3650, "olderThanDays must be from 0 to 3650")),
@@ -69,6 +71,16 @@ export function createDigestHandlers(db: any, nc: any, isStandalone: boolean, de
     return rawTime(row?.at, isStandalone);
   }
 
+  async function readArtifactEvidence(taskId: string, principal: ReturnType<typeof requirePrincipal>) {
+    const orgId = await getTaskOrgId(db, taskId);
+    await authorizePrincipal(db, principal, orgId, { scope: "artifacts:read", permission: "artifact:read" });
+    const artifactLinks = S.taskArtifactLinks;
+    const rows = await db.select().from(artifactLinks).where(eq(artifactLinks.taskId, taskId))
+      .orderBy(asc(artifactLinks.id)).limit(ARTIFACTS_CAP + 1);
+    const metadata = await evidenceMetadata(db, isStandalone, orgId, rows.slice(0, ARTIFACTS_CAP));
+    return { artifacts: metadata.evidence, truncated: rows.length > ARTIFACTS_CAP };
+  }
+
   return {
     async setTaskSummary(req: unknown, { values }: { values: any }) {
       const principal = requirePrincipal(values);
@@ -95,15 +107,16 @@ export function createDigestHandlers(db: any, nc: any, isStandalone: boolean, de
      * answered questions, the capped relation lists and one activity lookup.
      */
     async getTaskDigest(req: unknown, ctx: { values: any }) {
-      requirePrincipal(ctx.values);
+      const principal = requirePrincipal(ctx.values);
       const parsed = DigestSchema.parse(req);
       const got = await deps.getTask({ taskId: parsed.taskId }, ctx);
+      const evidence = parsed.includeArtifacts ? await readArtifactEvidence(parsed.taskId, principal) : undefined;
       const [questions, links, finished] = await Promise.all([
         deps.listInputRequests({ taskId: parsed.taskId, status: "answered", page: { limit: ANSWERED_QUESTIONS_CAP } }, ctx),
         listLinks(db, isStandalone, parsed.taskId, RELATIONS_CAP + 1),
         finishedAt(parsed.taskId),
       ]);
-      let truncated = (questions.page?.totalCount ?? 0) > ANSWERED_QUESTIONS_CAP;
+      let truncated = (questions.page?.totalCount ?? 0) > ANSWERED_QUESTIONS_CAP || Boolean(evidence?.truncated);
       const capped = (list: any[]) => {
         if (list.length > RELATIONS_CAP) truncated = true;
         return list.slice(0, RELATIONS_CAP);
@@ -121,6 +134,7 @@ export function createDigestHandlers(db: any, nc: any, isStandalone: boolean, de
           ...(got.latestHandoffNote ? { latestHandoffNote: got.latestHandoffNote } : {}),
           answeredQuestions: questions.inputRequests,
           relations,
+          ...(evidence ? { artifacts: evidence.artifacts } : {}),
           ...(finished ? { finishedAt: finished.toISOString() } : {}),
           truncated,
         },
@@ -171,4 +185,4 @@ export function createDigestHandlers(db: any, nc: any, isStandalone: boolean, de
 }
 
 // Exported for tests that pin the caps.
-export const DIGEST_CAPS = { answeredQuestions: ANSWERED_QUESTIONS_CAP, relations: RELATIONS_CAP, summary: SUMMARY_MAX };
+export const DIGEST_CAPS = { answeredQuestions: ANSWERED_QUESTIONS_CAP, relations: RELATIONS_CAP, summary: SUMMARY_MAX, artifacts: ARTIFACTS_CAP };

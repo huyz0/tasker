@@ -1,8 +1,8 @@
 ---
-active_milestone: M54
+active_milestone: M55
 active_task: null
 last_updated: 2026-11-09
-last_commit: fe028d0
+last_commit: b1892d6
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,30 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54 complete locally:5/5 tasks,4/4 exit criteria.** T05 is committed asb1892d6 after all35 source and closure checks. Bounded artifacts/MCP/digest, one current Evidence surface, real SQLite/MySQL/socket/upgrade proof, old-client compatibility, reviewed captures and live worker-to-human automatic refresh are verified. Draft PR #7 still requires all applicable actual final-head CI before main merge. M55-T01 is next eligible, with M54 base reconciliation before its publication. Overall26 tasks remain; original worktree/services and private credentials remain preserved.
+
+**2026-11-09 — M54-T05 verified:5/5 tasks.** Real MCP socket coverage passes on SQLite/MySQL (7cases/134assertions each), final content/capability/upgrade proof totals216 assertions, all3 Evidence browser journeys and18 old-client decodes pass. CODE-v5 approves coverage/docs;61 focused MCP cases and four restored end-to-end faults pass. All35 source gates pass (GUI1498/95.13%, backend2282/zero failures), including standalone. Close M54 next; draft PR #7 still requires actual final-head CI before main publication. Overall26 tasks remain.
+
+**2026-11-09 — M54-T05 in progress.** T04 committed/pushed asf702e2a after all35 source/closure checks, approved UI/source review,234-story matrices and isolated browser repeats. Commit real HTTP MCP handoff/ambiguous-response/refusal coverage and precise bounded-content/permissions/retry documentation. Existing ADR0042/TC001–010 apply; no new product boundary or dependency. API/security standards plus TDD selected.115-assertion owned-runtime probe passes with revoked memory-only credentials.27 tasks remain; PR #7 stays draft until closure and applicable final-head CI.
+
+**2026-11-09 — M54-T04 verified:4/5 tasks.** One Evidence surface after Summary, current policy controls, paged/fresh metadata, protected query/mutation intent and separate recorded PR signals pass all35 final checks. GUI1498/95.13% branches; backend2275/zero failures.37 focused UI cases,70 MySQL assertions,9 behavioral faults,18 old-client decodes,9 browser journeys plus4 repeat cases and234-story936/468 rendered matrices pass; independent source/UX review approves after denial/cancellation corrections. Checkpoint90a3965 passes all8 CI jobs. T05 next commits live handoff coverage/docs and gates milestone publication/final-head CI. Overall27 tasks remain.
+
+**2026-11-09 — M54-T04 in progress.** T03 committed/pushed as1fa68a7 after all35 gates. Build one Evidence section after Summary (outside its disclosure), removing the task-side sidebar duplicate while preserving reverse Tasks. Preflight requires truthful permissions; add reviewed optional paged-response capability flags rather than client RBAC guesses. Current read-only access/lifetime, page extent, current-query linker, mutable-reference labels and summary protection require observed regressions and rendered/browser proof.3/5 M54 tasks complete;28 tasks remain.
+
+**2026-11-09 — M54-T03 verified:3/5 tasks.** Optional digest metadata preserves ordinary task-only/no-artifact-query behavior, checks current artifact authority, caps source21→metadata20 and combines truncation.64 focused cases, real MySQL62assertions, seven faults and eighteen old-client decodes pass; CODE-v3 approves. All35 gates pass (GUI1475/95.43%, backend2270/zero failures). T04 next implements one Evidence surface after Summary, current-reference provenance, paging/freshness and protected intent; final T04/T05/head CI still gate draft PR #7. Overall28 tasks remain.
+
+**2026-11-09 — M54-T03 in progress.** T02 is committed/pushed as6ef19d7 with all35 gates and reviewed bounded adapters/provenance. Drive optional digest evidence through task-only/no-artifact-query, denied opt-in and SQL-cap regressions before implementation. Reuse authorized metadata and combine truncation; no bodies/new authority. PR #7 stays draft;2/5 M54 tasks complete and29 tasks remain.
+
+**2026-11-09 — M54-T02 verified:2/5 tasks.** Bounded artifact MCP adapters, SQL prefixes, paged metadata and forward link provenance pass138 focused cases, three real SQLite/MySQL upgrade/content cases (68assertions), six restored faults and old-client checks preserving442 messages/1241 fields. All35 local gates pass (GUI1475/95.43%, backend2255/zero failures); CODE-v2 approves and checkpointfb0b578 passes all eight CI jobs. T03 next adds opt-in metadata without widening ordinary digest scope; PR #7 stays draft until T03–T05/final-head CI. Overall29 tasks remain.
+
+**2026-11-09 — M54-T02 in progress.** T01 is committed/pushed as6a62b3b after approved amended design and all35 checks, rebased onto published M53main53b47d6. Reproduce bounded body/link/tool/provenance failures before contract-first implementation and additive migrations. Draft PR #7 remains unready;1/5 M54 tasks complete and30 tasks remain.
+
+**2026-11-09 — M54-T01 verified:1/5 tasks.** Accepted ADR0042/UX/TC001–009 and amended ARCH-v2/UX-v2 define bounded stored representations, metadata on every page, opt-in permissions, forward link provenance and mutable-reference/open-view freshness. All35 fresh-worktree checks pass (GUI1475/95.43%, backend2207/zero failures, CLI93.8%). T02 next implements observed-red tools/SQL bounds/paging/provenance; no M54 runtime behavior is delivered yet. M53 is published as53b47d6 after ten final-head jobs. Overall30 tasks remain.
+
+**2026-11-09 — M53 published.** PR #6 merged as53b47d6 after all ten final-head jobs passed (CI42687804647, integration42687805322), including the strengthened217-story gates and full browser suite. M54-T01's amended ADR/UX/TC001–009 receive ARCH-v2/UX-v2 approval; final local checks and branch reconciliation remain pending. No M54 runtime change is implemented;31 tasks remain.
+
+**2026-11-09 — M54-T01 in progress.** Define bounded artifact MCP handoff and metadata-only opt-in evidence before implementation, using an isolated branch based on locally verified M53c82fada. M53 PR #6 final-head CI remains in progress and gates main publication. API/security standards and static design TDD exception apply. No new feature is implemented or implied complete;31 tasks remain.
 
 **2026-11-09 — M53 complete locally:7/7 tasks,5/5 exit criteria.** T07 is committed asfe028d0 after all35 checks,42 actual browser journeys and217-story dual-theme matrices. PR #6 still requires actual final-head remote CI before merge; main remains published through M47. M54-T01 is the next eligible design task (M46/M53 locally complete), with no implementation implied done. Preserve optional field numbers, tasks-only digest access, bounded stored representations and explicit provenance. Overall31 tasks remain.
 
@@ -1927,13 +1951,13 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
-| M54 | Completion Evidence | todo | M46, M53 | 5 | 0 |
+| M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 365 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 370 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

@@ -68,7 +68,9 @@ describe('current search results and visible keyboard order', () => {
       { id: 'p2', type: 'project', title: 'Project match', snippet: '' },
     ] });
     renderSearch(); const input = type('match');
-    await screen.findByRole('option', { name: /Memory match/ });
+    // Real debounce + transport + coverage can exceed the default one-second
+    // DOM wait on a busy runner. Keep a finite readiness wait before assertions.
+    await screen.findByRole('option', { name: /Memory match/ }, { timeout: 3000 });
     const titles = ['Task match', 'Artifact match', 'Project match', 'Agent match', 'Comment match', 'Memory match'];
     expect(screen.getAllByRole('option').map(option => option.textContent)).toEqual(titles);
     for (const title of titles) {

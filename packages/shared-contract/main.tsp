@@ -931,9 +931,13 @@ model TaskDigest {
   @field(4) relations: ListTaskLinksResponse;
   @field(5) finishedAt?: string;
   @field(6) truncated: boolean;
+
+  // Opt-in current artifact metadata only; omitted requests need no artifact scope.
+  @field(7) artifacts: TaskArtifactEvidence[];
 }
 model GetTaskDigestRequest {
   @field(1) taskId: string;
+  @field(2) includeArtifacts?: boolean;
 }
 model GetTaskDigestResponse {
   @field(1) digest: TaskDigest;
@@ -1583,12 +1587,20 @@ model GetArtifactResponse {
 
 model GetArtifactContentRequest {
   @field(1) artifactId: string;
+
+  // Explicit stored-representation prefix, 1-16000 Unicode code points.
+  // Omitted preserves the existing full-content read.
+  @field(2) maxCharacters?: int32;
 }
 
 model GetArtifactContentResponse {
   @field(1) content: string;
   @field(2) contentType: string;
   @field(3) sizeBytes: int64;
+  @field(4) truncated?: boolean;
+
+  // Exact stored UTF-8 bytes for explicit bounded reads, never decoded size.
+  @field(5) storedBytes?: int64;
 }
 
 model TaskArtifactLink {
@@ -1603,6 +1615,26 @@ model TaskArtifactLink {
   @field(4) artifactName: string;
 
   @field(5) taskTitle: string;
+
+  // Present only when recorded; historical links retain unknown provenance.
+  @field(6) linkedAt?: string;
+
+  @field(7) linkedBy?: EvidenceActor;
+}
+
+model EvidenceActor {
+  @field(1) kind: string;
+  @field(2) id: string;
+  @field(3) name: string;
+}
+
+// Current metadata for a mutable artifact reference, without stored content.
+model TaskArtifactEvidence {
+  @field(1) link: TaskArtifactLink;
+  @field(2) availability: string;
+  @field(3) contentType?: string;
+  @field(4) storedBytes?: int64;
+  @field(5) artifactCreatedAt?: string;
 }
 
 model CreateFolderRequest {
@@ -1664,9 +1696,20 @@ model UnlinkTaskArtifactResponse {
 model ListTaskArtifactLinksRequest {
   @field(1) taskId?: string;
   @field(2) artifactId?: string;
+  @field(3) page?: PageRequest;
 }
 model ListTaskArtifactLinksResponse {
   @field(1) links: TaskArtifactLink[];
+  @field(2) page?: PageResponse;
+
+  // Only paged reads hydrate bounded current evidence metadata.
+  @field(3) evidence: TaskArtifactEvidence[];
+
+  // Advisory current controls on paged reads. Writes independently authorize.
+  // Omitted means unknown; false is a verified current denial.
+  @field(4) canLink?: boolean;
+
+  @field(5) canUnlink?: boolean;
 }
 
 model ListArtifactsRequest {

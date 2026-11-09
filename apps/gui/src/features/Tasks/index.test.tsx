@@ -92,6 +92,7 @@ describe('TasksWorkbench', () => {
   beforeEach(() => {
     useSummaryDrafts.getState().endSession();
     useSummaryDrafts.getState().setAccount('workbench-fixture-user');
+    server.use(http.get(`${BACKEND_URL}/api/auth/session`, () => HttpResponse.json({ authenticated: true, userId: 'workbench-fixture-user', mustChangePassword: false })));
     mockActiveProjectId = 'proj-1';
     mockActiveOrgId = 'org-1';
     // Board columns for custom statuses come from the project's task types now,

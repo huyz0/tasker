@@ -390,6 +390,10 @@ export const taskArtifactLinks = mysqlTable("task_artifact_links", {
   id: varchar("id", { length: 256 }).primaryKey(),
   taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
   artifactId: varchar("artifact_id", { length: 256 }).notNull().references(() => artifacts.id),
+  linkedAt: timestamp("linked_at"),
+  linkedByKind: varchar("linked_by_kind", { length: 16 }),
+  linkedById: varchar("linked_by_id", { length: 256 }),
+  linkedByName: varchar("linked_by_name", { length: 256 }),
 }, (table) => {
   return {
     taskIdIdx: index("task_artifact_links_task_id_idx").on(table.taskId),

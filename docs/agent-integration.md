@@ -659,6 +659,47 @@ tasker schedules runs "$S"            # creation receipts and recovery details
 - **Agents** list and run schedules (`tasks:read` / `tasks:write`; MCP
   `list_schedules`, `run_schedule`); only people define them.
 
+## 19. Handing off inspectable artifact evidence
+
+Artifacts use the existing store and the token's organization. A worker with
+`tasks:read artifacts:read artifacts:write` can discover project folders, list
+artifact metadata, create a bounded stored output and link it to a task through
+[MCP's artifact tools](mcp.md#handing-off-artifact-evidence). This is an external
+worker integration; Tasker does not run the worker process or enforce completion
+when evidence is attached.
+
+Use a unique run-specific artifact name and choose its folder deliberately.
+After an ambiguous create result, discover that name across the folder's pages
+and verify its stored content before another create. Do not interpret a lost
+response as proof that nothing was written. Sequential repeated linking returns
+the existing link/provenance; no exactly-once or immutable-version guarantee is
+implied. Keep a claim handoff note and summary for narrative context as needed.
+
+An ordinary `get_task_digest` remains a tasks-only read. Set
+`include_artifacts: true` only when artifact metadata is needed and your token
+has `artifacts:read`. The digest caps evidence at 20; use
+`list_task_artifact_links` with `page.nextCursor` to inspect later pages, rather
+than treating the digest as the complete relationship set. MCP lists use
+`limit` / `cursor` arguments and default to 20, at most 100 per call. No body is
+fetched by the digest or link metadata read.
+
+Call `get_artifact_content` explicitly. MCP defaults to 4,000 Unicode code points,
+with a 1–16,000-point bound. Check `truncated` and exact `storedBytes`; an absent
+false protobuf boolean means false. MIME describes the stored representation,
+which is not automatically decoded, decompressed or fetched as a URL. Creation
+is limited to16,000 UTF-16 code units, so multi-byte text can have a larger byte
+size. Encoded output remains encoded. A larger explicit prefix is still capped;
+there is no offset/continuation content API. Older unbounded RPC clients retain
+their behavior when they omit the new limit.
+
+A person reviews the task's Evidence section beside Summary. It distinguishes
+historical **linking** actor/time from artifact creation time and shows current
+content metadata. Link provenance is not authorship or an immutable completion
+snapshot; legacy authors/times stay unknown. Recorded pull requests are separate
+provider signals that can be incomplete/outdated; a merged PR does not verify
+task completion. Current permissions govern reads and writes independently.
+An artifact-write agent may create/link, but unlinking remains human-only.
+
 ## See also
 
 - [Connecting an MCP client](mcp.md) — the same loop as MCP tools, for any
