@@ -35,7 +35,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 
 ## 5. Task Breakdown
 
-- [ ] **M48-T01** — Refresh active queries after reconnect and randomize bounded reconnect delays.
+- [x] **M48-T01** — Refresh active queries after reconnect and randomize bounded reconnect delays.
   - **Files**: apps/gui/src/hooks/useLiveEvents.ts; apps/gui/src/hooks/useLiveEvents.test.tsx.
   - **Verify**: Fake-timer tests miss a mutation during a one-drop outage then reconnect; active scoped data refetches; initial ready/heartbeat behavior and offline fallback remain correct.
 

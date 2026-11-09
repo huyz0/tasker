@@ -7,6 +7,10 @@
   then the first accepted frame on reconnect refetches active queries once,
   including active scoped data; inactive data becomes stale without a network
   request until it is needed. Later heartbeats do not refetch again.
+- Given a pre-outage initial read that has not returned, then reconciliation
+  cancels its query retryer and starts a fresh source read. Its eventual old
+  response cannot replace the fresh result. Cancellation does not wait for the
+  underlying network request to finish.
 - Given deterministic random samples at either bound, then reconnect waits
   between half and all of its backoff tier, capped at the existing 30 seconds.
   Given repeated failures, then the tier increases and polling starts after the

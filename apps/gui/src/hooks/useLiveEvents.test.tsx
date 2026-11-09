@@ -183,6 +183,58 @@ describe('useLiveEvents', () => {
     unmount();
   });
 
+  it('replaces a still-pending initial snapshot on reconnect and ignores its late result', async () => {
+    vi.useFakeTimers();
+    const first = fakeStream(), second = fakeStream();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } });
+    let resolveOld!: (value: string) => void;
+    const initial = new Promise<string>(resolve => { resolveOld = resolve; });
+    const read = vi.fn(async () => 'current source').mockImplementationOnce(() => initial);
+    let opened = 0;
+    const client = { subscribeEvents: () => [first, second][Math.min(opened++, 1)] };
+    const view = renderHook(() => {
+      useLiveEvents({ client, backoffMs: RECOVERY_BACKOFF, random: MAX_JITTER });
+      return useQuery({ queryKey: ['tasks', 'project-1'], queryFn: read }).data;
+    }, { wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider> });
+    await act(async () => { first.push('stream.ready'); });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(view.result.current).toBeUndefined();
+    await act(async () => { first.fail(new Error('dropped')); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); second.push('stream.ready'); await vi.advanceTimersByTimeAsync(0); });
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(view.result.current).toBe('current source');
+    await act(async () => { resolveOld('stale initial snapshot'); await vi.advanceTimersByTimeAsync(0); });
+    expect(view.result.current).toBe('current source');
+    view.unmount(); queryClient.clear();
+  });
+
+  it.each([false, true])('ignores abandoned scope frames and retry waits (old stream dropped: %s)', async dropped => {
+    vi.useFakeTimers();
+    const old = fakeStream(), current = fakeStream();
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+    let opened = 0;
+    const client = { subscribeEvents: vi.fn((_req: { orgId?: string; projectId?: string }) => [old, current][Math.min(opened++, 1)]) };
+    const view = renderHook(({ orgId }) => useLiveEvents({ client, orgId, backoffMs: RECOVERY_BACKOFF, random: MAX_JITTER }), {
+      initialProps: { orgId: 'old-org' },
+      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+    });
+    await act(async () => { old.push('stream.ready'); });
+    if (dropped) await act(async () => { old.fail(new Error('old drop')); });
+    view.rerender({ orgId: 'current-org' });
+    await act(async () => { old.push('domain.task.updated'); await vi.advanceTimersByTimeAsync(1000); });
+    expect(client.subscribeEvents).toHaveBeenCalledTimes(2);
+    expect(client.subscribeEvents.mock.calls[1][0]).toEqual({ orgId: 'current-org', projectId: undefined });
+    expect(invalidate).not.toHaveBeenCalled();
+    await act(async () => { current.push('stream.ready'); });
+    if (dropped) await act(async () => { current.fail(new Error('new drop')); });
+    view.unmount();
+    await act(async () => { current.push('domain.task.updated'); await vi.advanceTimersByTimeAsync(30_000); });
+    expect(client.subscribeEvents).toHaveBeenCalledTimes(2);
+    expect(invalidate).not.toHaveBeenCalled();
+    queryClient.clear();
+  });
+
   it('caps jittered retries at the final tier and resets after recovery', async () => {
     vi.useFakeTimers();
     const failing = { async *[Symbol.asyncIterator]() { throw new Error('down'); } };

@@ -131,6 +131,10 @@ export function useLiveEvents(options: UseLiveEventsOptions = {}): { status: Liv
             setStatus('live');
             if (needsReconciliation) {
               needsReconciliation = false;
+              // invalidateQueries reuses a pending initial fetch with no data.
+              // Cancel it explicitly so its pre-outage snapshot cannot win.
+              await queryClient.cancelQueries({ type: 'active' });
+              if (stopped) return;
               // The ephemeral feed cannot replay a missed change. Mark every
               // cached source stale, but fetch only views currently in use.
               void queryClient.invalidateQueries({ refetchType: 'active' });
