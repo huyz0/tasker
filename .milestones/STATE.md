@@ -1,8 +1,8 @@
 ---
-active_milestone: M53
+active_milestone: M54
 active_task: null
 last_updated: 2026-11-09
-last_commit: d12ba96
+last_commit: fe028d0
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M53 complete locally:7/7 tasks,5/5 exit criteria.** T07 is committed asfe028d0 after all35 checks,42 actual browser journeys and217-story dual-theme matrices. PR #6 still requires actual final-head remote CI before merge; main remains published through M47. M54-T01 is the next eligible design task (M46/M53 locally complete), with no implementation implied done. Preserve optional field numbers, tasks-only digest access, bounded stored representations and explicit provenance. Overall31 tasks remain.
 
 **2026-11-09 — M53-T07 verified:7/7 tasks.** Final35 source checks pass (GUI1475/95.43% branches, backend2207/zero failures), all217 previews pass868 accessibility/434 overflow scans, and final keyboard/editor/capture checks agree. Forty-two actual browser journeys cover core/notifications, M53, editor/addressable and layout/recovery. CODE-v12/UX-v8 approve after corrected semantic ink, headings and truthful preview lifecycle. Close M53 next; PR #6 remains unpublished until actual final-head remote CI. Overall31 tasks remain.
 
@@ -1924,7 +1926,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
-| M53 | Workflow Correctness | in-progress | M28, M51 | 7 | 7 |
+| M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
 | M54 | Completion Evidence | todo | M46, M53 | 5 | 0 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |

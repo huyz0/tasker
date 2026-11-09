@@ -1,13 +1,13 @@
 ---
 id: M53
 title: Workflow Correctness
-status: in-progress
+status: done
 goal: Every existing question, approval, search result and task edit keeps the correct scope, exposes all pending work and preserves user intent.
 depends_on: [M28, M51]
 surfaces: [backend, gui, cli, contract, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-09
-completed_at: null
+completed_at: 2026-11-09
 ---
 
 # M53 — Workflow Correctness
@@ -22,11 +22,11 @@ Confirmed route, pagination, error-state and draft defects are foundations for t
 
 ## 3. Exit Criteria
 
-- [ ] Project A cannot be presented as the owner of an authorized project B entity; Back/reload retain correct context.
-- [ ] Every supported search type appears and failed reads offer retry instead of an empty-success state.
-- [ ] All open task and organization questions/approvals remain reachable regardless of history volume.
-- [ ] Every summary dismissal protects a dirty draft and MCP can explicitly clear a summary.
-- [ ] Real browser regressions and affected full suites pass; workflow docs match current claim semantics.
+- [x] Project A cannot be presented as the owner of an authorized project B entity; Back/reload retain correct context.
+- [x] Every supported search type appears and failed reads offer retry instead of an empty-success state.
+- [x] All open task and organization questions/approvals remain reachable regardless of history volume.
+- [x] Every summary dismissal protects a dirty draft and MCP can explicitly clear a summary.
+- [x] Real browser regressions and affected full suites pass; workflow docs match current claim semantics.
 
 ## 4. Scope
 

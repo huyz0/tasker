@@ -545,3 +545,12 @@ Milestone closure and actual final-head remote CI still gate publication.
 
 T07 closure checks pass35/33cached after formatting one review link; runtime
 source and rendered evidence remain unchanged.
+
+## M53 closure — Workflow Correctness
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Verify all5 exit criteria and record7/7 completed tasks; activate M54 design next.
+- **Verified**: Canonical ownership/Back/reload, six-type search/current-query errors, task/org pending/history paging and stale closure, all-exit drafts/explicit MCP clearing, workflow prose and actual browser/source suites have the earlier executable evidence. Final217-story lifecycle matrices,42 browser journeys and35 source/closure checks pass.
+- **Notes**: Candidate closure is local; PR #6 still requires all final-head remote jobs before main publication. Original services/worktree WIP remain preserved. M54 must retain optional field/wire compatibility and bounded evidence reads; no unfinished feature is implied delivered.
+- **Next**: Observe final-head CI, squash-merge PR #6, then M54-T01.
