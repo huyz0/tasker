@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -24,7 +23,7 @@ var tasksNoteAddCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskNoteServiceClient()
-		res, err := client.CreateTaskNote(context.Background(), connect.NewRequest(&healthv1.CreateTaskNoteRequest{
+		res, err := client.CreateTaskNote(cmd.Context(), connect.NewRequest(&healthv1.CreateTaskNoteRequest{
 			TaskId:   args[0],
 			Content:  content,
 			NoteType: noteType,
@@ -52,7 +51,7 @@ var tasksNotesCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewTaskNoteServiceClient()
-		res, err := client.ListTaskNotes(context.Background(), connect.NewRequest(&healthv1.ListTaskNotesRequest{
+		res, err := client.ListTaskNotes(cmd.Context(), connect.NewRequest(&healthv1.ListTaskNotesRequest{
 			TaskId: args[0],
 		}))
 		if err != nil {
@@ -95,7 +94,7 @@ var tasksNoteUpdateCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskNoteServiceClient()
-		res, err := client.UpdateTaskNote(context.Background(), connect.NewRequest(&healthv1.UpdateTaskNoteRequest{
+		res, err := client.UpdateTaskNote(cmd.Context(), connect.NewRequest(&healthv1.UpdateTaskNoteRequest{
 			TaskNoteId: args[0],
 			Content:    content,
 		}))
@@ -122,7 +121,7 @@ var tasksNoteDeleteCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewTaskNoteServiceClient()
-		_, err := client.DeleteTaskNote(context.Background(), connect.NewRequest(&healthv1.DeleteTaskNoteRequest{
+		_, err := client.DeleteTaskNote(cmd.Context(), connect.NewRequest(&healthv1.DeleteTaskNoteRequest{
 			TaskNoteId: args[0],
 		}))
 		if err != nil {
@@ -166,14 +165,14 @@ var tasksHandoffsCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListHandoffNotes(context.Background(), listReq)
+				r, err := client.ListHandoffNotes(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListHandoffNotes(context.Background(), listReq)
+		res, err := client.ListHandoffNotes(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list handoffs: %w", err)
 		}

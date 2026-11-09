@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -82,7 +81,7 @@ var memorySearchCmd = &cobra.Command{
 		}
 
 		client := backend.NewMemoryServiceClient()
-		res, err := client.SearchBeliefs(context.Background(), connect.NewRequest(req))
+		res, err := client.SearchBeliefs(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to search beliefs: %w", err)
 		}
@@ -145,7 +144,7 @@ var memoryRecordCmd = &cobra.Command{
 		}
 
 		client := backend.NewMemoryServiceClient()
-		res, err := client.RecordBelief(context.Background(), connect.NewRequest(req))
+		res, err := client.RecordBelief(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to record belief: %w", err)
 		}
@@ -169,7 +168,7 @@ var memoryGetCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewMemoryServiceClient()
-		res, err := client.GetBelief(context.Background(), connect.NewRequest(&healthv1.GetBeliefRequest{Id: args[0]}))
+		res, err := client.GetBelief(cmd.Context(), connect.NewRequest(&healthv1.GetBeliefRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get belief: %w", err)
 		}
@@ -214,14 +213,14 @@ var memoryListCmd = &cobra.Command{
 		listReq := connect.NewRequest(req)
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListBeliefs(context.Background(), listReq)
+				r, err := client.ListBeliefs(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListBeliefs(context.Background(), listReq)
+		res, err := client.ListBeliefs(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list beliefs: %w", err)
 		}
@@ -273,7 +272,7 @@ var memoryUpdateCmd = &cobra.Command{
 		}
 
 		client := backend.NewMemoryServiceClient()
-		res, err := client.UpdateBelief(context.Background(), connect.NewRequest(req))
+		res, err := client.UpdateBelief(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to update belief: %w", err)
 		}
@@ -319,7 +318,7 @@ var memorySupersedeCmd = &cobra.Command{
 		}
 
 		client := backend.NewMemoryServiceClient()
-		res, err := client.SupersedeBelief(context.Background(), connect.NewRequest(req))
+		res, err := client.SupersedeBelief(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to supersede belief: %w", err)
 		}
@@ -359,7 +358,7 @@ var memoryPromoteCmd = &cobra.Command{
 		}
 
 		client := backend.NewMemoryServiceClient()
-		res, err := client.PromoteBelief(context.Background(), connect.NewRequest(req))
+		res, err := client.PromoteBelief(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to promote belief: %w", err)
 		}
@@ -385,7 +384,7 @@ var memoryRelateCmd = &cobra.Command{
 		relationType, _ := cmd.Flags().GetString("type")
 
 		client := backend.NewMemoryServiceClient()
-		res, err := client.RelateBeliefs(context.Background(), connect.NewRequest(&healthv1.RelateBeliefsRequest{
+		res, err := client.RelateBeliefs(cmd.Context(), connect.NewRequest(&healthv1.RelateBeliefsRequest{
 			BeliefAId: args[0], BeliefBId: args[1], RelationType: relationType,
 		}))
 		if err != nil {
@@ -409,7 +408,7 @@ var memoryUnrelateCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewMemoryServiceClient()
-		res, err := client.UnrelateBeliefs(context.Background(), connect.NewRequest(&healthv1.UnrelateBeliefsRequest{RelationId: args[0]}))
+		res, err := client.UnrelateBeliefs(cmd.Context(), connect.NewRequest(&healthv1.UnrelateBeliefsRequest{RelationId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to unrelate beliefs: %w", err)
 		}
@@ -429,7 +428,7 @@ var memoryListRelationsCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewMemoryServiceClient()
-		res, err := client.ListBeliefRelations(context.Background(), connect.NewRequest(&healthv1.ListBeliefRelationsRequest{BeliefId: args[0]}))
+		res, err := client.ListBeliefRelations(cmd.Context(), connect.NewRequest(&healthv1.ListBeliefRelationsRequest{BeliefId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to list belief relations: %w", err)
 		}
@@ -459,7 +458,7 @@ var memoryListPromotionsCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewMemoryServiceClient()
-		res, err := client.ListBeliefPromotions(context.Background(), connect.NewRequest(&healthv1.ListBeliefPromotionsRequest{BeliefId: args[0]}))
+		res, err := client.ListBeliefPromotions(cmd.Context(), connect.NewRequest(&healthv1.ListBeliefPromotionsRequest{BeliefId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to list belief promotions: %w", err)
 		}
@@ -488,7 +487,7 @@ var memoryArchiveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewMemoryServiceClient()
-		res, err := client.ArchiveBelief(context.Background(), connect.NewRequest(&healthv1.ArchiveBeliefRequest{Id: args[0]}))
+		res, err := client.ArchiveBelief(cmd.Context(), connect.NewRequest(&healthv1.ArchiveBeliefRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to archive belief: %w", err)
 		}
@@ -506,7 +505,7 @@ var memoryRestoreCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewMemoryServiceClient()
-		res, err := client.RestoreBelief(context.Background(), connect.NewRequest(&healthv1.RestoreBeliefRequest{Id: args[0]}))
+		res, err := client.RestoreBelief(cmd.Context(), connect.NewRequest(&healthv1.RestoreBeliefRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to restore belief: %w", err)
 		}
@@ -524,7 +523,7 @@ var memoryPurgeCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewMemoryServiceClient()
-		res, err := client.PurgeBelief(context.Background(), connect.NewRequest(&healthv1.PurgeBeliefRequest{Id: args[0]}))
+		res, err := client.PurgeBelief(cmd.Context(), connect.NewRequest(&healthv1.PurgeBeliefRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to purge belief: %w", err)
 		}

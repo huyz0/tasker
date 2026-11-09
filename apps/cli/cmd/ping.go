@@ -25,11 +25,11 @@ var defaultPingClientFactory PingClientFactory = func(httpClient *http.Client, s
 
 // runPing is the extracted, testable command logic. It writes output to w so
 // tests can capture it without relying on os.Stdout.
-func runPing(w io.Writer, factory PingClientFactory, httpClient *http.Client, serverURL string, asJSON bool) error {
+func runPing(ctx context.Context, w io.Writer, factory PingClientFactory, httpClient *http.Client, serverURL string, asJSON bool) error {
 	client := factory(httpClient, serverURL)
 
 	res, err := client.Ping(
-		context.Background(),
+		ctx,
 		connect.NewRequest(&healthv1.PingRequest{}),
 	)
 	if err != nil {
@@ -53,7 +53,7 @@ var pingCmd = &cobra.Command{
 	Use:   "ping",
 	Short: "Ping the backend health service",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runPing(cmd.OutOrStdout(), defaultPingClientFactory, http.DefaultClient, backend.URL(), wantsJSON(cmd))
+		return runPing(cmd.Context(), cmd.OutOrStdout(), defaultPingClientFactory, http.DefaultClient, backend.URL(), wantsJSON(cmd))
 	},
 }
 

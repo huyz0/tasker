@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -38,7 +39,7 @@ func TestRelayForwardsEachMessageAndWritesOneLinePerReply(t *testing.T) {
 	srv, seen := fakeMCP(t)
 	in := strings.NewReader(`{"jsonrpc":"2.0","id":7,"method":"ping"}` + "\n\n" + `{"jsonrpc":"2.0","method":"notifications/initialized"}` + "\n")
 	var out bytes.Buffer
-	if err := relayMCP(in, &out, srv.URL+"/mcp", "tk_good", srv.Client()); err != nil {
+	if err := relayMCP(context.Background(), in, &out, srv.URL+"/mcp", "tk_good", srv.Client()); err != nil {
 		t.Fatal(err)
 	}
 	if out.String() != `{"jsonrpc":"2.0","id":7,"result":{}}`+"\n" {
@@ -52,7 +53,7 @@ func TestRelayForwardsEachMessageAndWritesOneLinePerReply(t *testing.T) {
 func TestRelayGivesARefusalTheRequestsOwnID(t *testing.T) {
 	srv, _ := fakeMCP(t)
 	var out bytes.Buffer
-	relayMCP(strings.NewReader(`{"jsonrpc":"2.0","id":"abc","method":"ping"}`+"\n"), &out, srv.URL+"/mcp", "tk_bad", srv.Client())
+	relayMCP(context.Background(), strings.NewReader(`{"jsonrpc":"2.0","id":"abc","method":"ping"}`+"\n"), &out, srv.URL+"/mcp", "tk_bad", srv.Client())
 	if !strings.Contains(out.String(), `"id":"abc"`) || !strings.Contains(out.String(), "Bearer token is required") {
 		t.Errorf("unexpected reply %q", out.String())
 	}
@@ -62,14 +63,14 @@ func TestRelayAnswersAMessageTheServerCouldNot(t *testing.T) {
 	srv, _ := fakeMCP(t)
 	var out bytes.Buffer
 	in := `{"jsonrpc":"2.0","id":3,"method":"boom"}` + "\n" + `{"jsonrpc":"2.0","method":"boom"}` + "\n"
-	relayMCP(strings.NewReader(in), &out, srv.URL+"/mcp", "tk_good", srv.Client())
+	relayMCP(context.Background(), strings.NewReader(in), &out, srv.URL+"/mcp", "tk_good", srv.Client())
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 	if len(lines) != 1 || !strings.Contains(lines[0], `"id":3`) || !strings.Contains(lines[0], "HTTP 502 without a JSON-RPC body") {
 		t.Errorf("expected one synthesized error for the request and none for the notification, got %q", out.String())
 	}
 
 	out.Reset()
-	relayMCP(strings.NewReader(`{"jsonrpc":"2.0","id":4,"method":"ping"}`+"\n"), &out, "http://127.0.0.1:1/mcp", "tk_good", http.DefaultClient)
+	relayMCP(context.Background(), strings.NewReader(`{"jsonrpc":"2.0","id":4,"method":"ping"}`+"\n"), &out, "http://127.0.0.1:1/mcp", "tk_good", http.DefaultClient)
 	if !strings.Contains(out.String(), `"id":4`) || !strings.Contains(out.String(), "unreachable") {
 		t.Errorf("expected an unreachable error, got %q", out.String())
 	}

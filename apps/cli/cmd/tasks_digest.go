@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -72,7 +71,7 @@ var tasksSummaryClearCmd = &cobra.Command{
 }
 
 func setSummary(cmd *cobra.Command, taskID, text string) error {
-	res, err := backend.NewTaskServiceClient().SetTaskSummary(context.Background(), connect.NewRequest(&healthv1.SetTaskSummaryRequest{TaskId: taskID, Text: text}))
+	res, err := backend.NewTaskServiceClient().SetTaskSummary(cmd.Context(), connect.NewRequest(&healthv1.SetTaskSummaryRequest{TaskId: taskID, Text: text}))
 	if err != nil {
 		return fmt.Errorf("failed to set the summary: %w", err)
 	}
@@ -92,7 +91,7 @@ var tasksDigestCmd = &cobra.Command{
 	Short: "One bounded read of a task: summary, plan, usage, latest handoff, answered questions, relations",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewTaskServiceClient().GetTaskDigest(context.Background(), connect.NewRequest(&healthv1.GetTaskDigestRequest{TaskId: args[0]}))
+		res, err := backend.NewTaskServiceClient().GetTaskDigest(cmd.Context(), connect.NewRequest(&healthv1.GetTaskDigestRequest{TaskId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get the digest: %w", err)
 		}
@@ -149,7 +148,7 @@ var tasksCompactionCandidatesCmd = &cobra.Command{
 		}
 		days, _ := cmd.Flags().GetInt32("older-than-days")
 		limit, _ := cmd.Flags().GetInt32("limit")
-		res, err := backend.NewTaskServiceClient().ListCompactionCandidates(context.Background(), connect.NewRequest(&healthv1.ListCompactionCandidatesRequest{
+		res, err := backend.NewTaskServiceClient().ListCompactionCandidates(cmd.Context(), connect.NewRequest(&healthv1.ListCompactionCandidatesRequest{
 			ProjectId: project, OlderThanDays: &days, Limit: &limit,
 		}))
 		if err != nil {

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -91,7 +92,7 @@ func TestRunDebugSessionValidToken(t *testing.T) {
 
 	token := makeFakeToken("user-42", 9999999999999, "jti-abc")
 	var buf bytes.Buffer
-	err := runDebugSession(&buf, srv.Client(), srv.URL, token)
+	err := runDebugSession(context.Background(), &buf, srv.Client(), srv.URL, token)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -115,7 +116,7 @@ func TestRunDebugSessionRevokedOrExpiredToken(t *testing.T) {
 	var buf bytes.Buffer
 	// The report is still printed in full; the error is what makes the exit
 	// code non-zero (M31-T05).
-	err := runDebugSession(&buf, srv.Client(), srv.URL, token)
+	err := runDebugSession(context.Background(), &buf, srv.Client(), srv.URL, token)
 	if exitCodeFor(err) != exitAuth {
 		t.Fatalf("expected an auth failure for an invalid session, got: %v", err)
 	}
@@ -131,7 +132,7 @@ func TestRunDebugSessionRevokedOrExpiredToken(t *testing.T) {
 func TestRunDebugSessionNoToken(t *testing.T) {
 	resetAllFlags(t)
 	var buf bytes.Buffer
-	err := runDebugSession(&buf, http.DefaultClient, "http://localhost:8080", "")
+	err := runDebugSession(context.Background(), &buf, http.DefaultClient, "http://localhost:8080", "")
 	if err == nil {
 		t.Error("expected an error when no token is provided, got nil")
 	}
@@ -146,7 +147,7 @@ func TestRunDebugSessionUndecodableToken(t *testing.T) {
 
 	var buf bytes.Buffer
 	// Decode failure is non-fatal - the server check still runs and decides.
-	err := runDebugSession(&buf, srv.Client(), srv.URL, "not-a-real-token")
+	err := runDebugSession(context.Background(), &buf, srv.Client(), srv.URL, "not-a-real-token")
 	if exitCodeFor(err) != exitAuth {
 		t.Fatalf("expected the server's INVALID to fail the check, got: %v", err)
 	}
@@ -166,7 +167,7 @@ func TestRunDebugSessionServerUnreachable(t *testing.T) {
 	// take tens of seconds to give up dialing a port nothing listens on.
 	client := &http.Client{Timeout: 200 * time.Millisecond}
 	var buf bytes.Buffer
-	err := runDebugSession(&buf, client, "http://127.0.0.1:1", token)
+	err := runDebugSession(context.Background(), &buf, client, "http://127.0.0.1:1", token)
 	if err == nil {
 		t.Error("expected an error when the backend is unreachable, got nil")
 	}
@@ -185,7 +186,7 @@ func TestRunDebugSessionNon200ResponseWithJSONBody(t *testing.T) {
 
 	token := makeFakeToken("user-42", 9999999999999, "jti-abc")
 	var buf bytes.Buffer
-	err := runDebugSession(&buf, srv.Client(), srv.URL, token)
+	err := runDebugSession(context.Background(), &buf, srv.Client(), srv.URL, token)
 	if err == nil {
 		t.Fatal("expected an error for a non-200 response, got nil")
 	}
@@ -208,7 +209,7 @@ func TestRunDebugSessionMalformedServerResponse(t *testing.T) {
 
 	token := makeFakeToken("user-42", 9999999999999, "jti-abc")
 	var buf bytes.Buffer
-	err := runDebugSession(&buf, srv.Client(), srv.URL, token)
+	err := runDebugSession(context.Background(), &buf, srv.Client(), srv.URL, token)
 	if err == nil {
 		t.Fatal("expected an error for a non-JSON server response, got nil")
 	}

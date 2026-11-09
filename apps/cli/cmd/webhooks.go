@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -64,7 +63,7 @@ var webhooksCreateCmd = &cobra.Command{
 		if url == "" || len(events) == 0 {
 			return invalidArgf("--url and at least one --event are required")
 		}
-		res, err := backend.NewWebhookServiceClient().CreateWebhook(context.Background(), connect.NewRequest(&healthv1.CreateWebhookRequest{
+		res, err := backend.NewWebhookServiceClient().CreateWebhook(cmd.Context(), connect.NewRequest(&healthv1.CreateWebhookRequest{
 			OrgId: org, Url: url, Events: events, ProjectId: optionalString(cmd, "project"), Description: optionalString(cmd, "description"),
 		}))
 		if err != nil {
@@ -87,7 +86,7 @@ var webhooksListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		res, err := backend.NewWebhookServiceClient().ListWebhooks(context.Background(), connect.NewRequest(&healthv1.ListWebhooksRequest{OrgId: org}))
+		res, err := backend.NewWebhookServiceClient().ListWebhooks(cmd.Context(), connect.NewRequest(&healthv1.ListWebhooksRequest{OrgId: org}))
 		if err != nil {
 			return fmt.Errorf("failed to list webhooks: %w", err)
 		}
@@ -121,7 +120,7 @@ var webhooksUpdateCmd = &cobra.Command{
 		if enable || disable {
 			req.Active = proto.Bool(enable)
 		}
-		res, err := backend.NewWebhookServiceClient().UpdateWebhook(context.Background(), connect.NewRequest(req))
+		res, err := backend.NewWebhookServiceClient().UpdateWebhook(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to update webhook: %w", err)
 		}
@@ -138,7 +137,7 @@ var webhooksDeleteCmd = &cobra.Command{
 	Short: "Delete a webhook and its delivery history",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewWebhookServiceClient().DeleteWebhook(context.Background(), connect.NewRequest(&healthv1.DeleteWebhookRequest{Id: args[0]}))
+		res, err := backend.NewWebhookServiceClient().DeleteWebhook(cmd.Context(), connect.NewRequest(&healthv1.DeleteWebhookRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to delete webhook: %w", err)
 		}
@@ -155,7 +154,7 @@ var webhooksRotateCmd = &cobra.Command{
 	Short: "Replace a webhook's signing secret; prints the new one once",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewWebhookServiceClient().RotateWebhookSecret(context.Background(), connect.NewRequest(&healthv1.RotateWebhookSecretRequest{Id: args[0]}))
+		res, err := backend.NewWebhookServiceClient().RotateWebhookSecret(cmd.Context(), connect.NewRequest(&healthv1.RotateWebhookSecretRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to rotate the webhook secret: %w", err)
 		}
@@ -183,7 +182,7 @@ var webhooksPingCmd = &cobra.Command{
 	Short: "Queue a \"ping\" delivery to check the receiver end to end",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewWebhookServiceClient().PingWebhook(context.Background(), connect.NewRequest(&healthv1.PingWebhookRequest{Id: args[0]}))
+		res, err := backend.NewWebhookServiceClient().PingWebhook(cmd.Context(), connect.NewRequest(&healthv1.PingWebhookRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to ping webhook: %w", err)
 		}
@@ -206,14 +205,14 @@ var webhooksDeliveriesCmd = &cobra.Command{
 		req := connect.NewRequest(&healthv1.ListWebhookDeliveriesRequest{WebhookId: args[0], Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor}})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, req.Msg, func() (proto.Message, error) {
-				r, err := client.ListWebhookDeliveries(context.Background(), req)
+				r, err := client.ListWebhookDeliveries(cmd.Context(), req)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListWebhookDeliveries(context.Background(), req)
+		res, err := client.ListWebhookDeliveries(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to list deliveries: %w", err)
 		}

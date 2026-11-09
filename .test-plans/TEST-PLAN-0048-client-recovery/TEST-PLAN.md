@@ -52,6 +52,13 @@ full GUI coverage/type/lint gates.
 - Given MCP stdio or an event subscription, then the process remains long-lived;
   individual unary requests have bounded lifetimes and cancellation propagates.
   Generated CLI reference matches flags/defaults.
+- Given successive pages whose combined time exceeds one request's budget,
+  then each page gets a fresh budget and the command completes. Given a prior
+  cancelled in-process invocation, then the next command has fresh contexts.
+- Given a real binary waiting at a masked password prompt, then termination
+  exits promptly with 130 and restores the pseudo-terminal's original echo
+  state. Given a stalled response body, then the request deadline also ends
+  body decoding. Unary deadlines must not terminate an event subscription.
 
 ## Journeys (T04)
 

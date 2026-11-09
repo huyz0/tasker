@@ -85,13 +85,15 @@ type problemDetailsBody struct {
 // params rather than package globals, mirroring runDebugSession's shape
 // (debug.go) - this is what makes it testable against an httptest server
 // without touching global backend.URL()/http.DefaultClient state.
-func loginWithPassword(httpClient *http.Client, serverURL, username, password string) (token string, mustChangePassword bool, err error) {
+func loginWithPassword(ctx context.Context, httpClient *http.Client, serverURL, username, password string) (token string, mustChangePassword bool, err error) {
+	ctx, cancel := backend.RequestContext(ctx)
+	defer cancel()
 	payload, err := json.Marshal(map[string]string{"username": username, "password": password})
 	if err != nil {
 		return "", false, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, serverURL+"/api/auth/password/login", bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, serverURL+"/api/auth/password/login", bytes.NewReader(payload))
 	if err != nil {
 		return "", false, err
 	}
@@ -174,7 +176,7 @@ func runPasswordLogin(cmd *cobra.Command, username, password string) error {
 		return errors.New("password is required")
 	}
 
-	token, mustChangePassword, err := loginWithPassword(http.DefaultClient, backend.URL(), username, password)
+	token, mustChangePassword, err := loginWithPassword(cmd.Context(), http.DefaultClient, backend.URL(), username, password)
 	if err != nil {
 		return fmt.Errorf("login failed: %w", err)
 	}
@@ -244,6 +246,8 @@ var loginCmd = &cobra.Command{
 			cmd.Printf("Success! Logged in. Credentials saved to %s\n", path)
 		case err := <-listenErrCh:
 			return fmt.Errorf("failed to start local callback listener on localhost:%d: %w", cliCallbackPort, err)
+		case <-cmd.Context().Done():
+			return cmd.Context().Err()
 		case <-time.After(5 * time.Minute):
 			return errors.New("timeout waiting for authentication")
 		}
@@ -275,7 +279,7 @@ var setPasswordCmd = &cobra.Command{
 		}
 
 		client := backend.NewAuthServiceClient()
-		res, err := client.SetPassword(context.Background(), connect.NewRequest(&healthv1.SetPasswordRequest{
+		res, err := client.SetPassword(cmd.Context(), connect.NewRequest(&healthv1.SetPasswordRequest{
 			CurrentPassword: currentPassword,
 			NewPassword:     newPassword,
 		}))
@@ -327,7 +331,7 @@ var whoamiCmd = &cobra.Command{
 		}
 
 		client := backend.NewAuthServiceClient()
-		res, err := client.GetIdentity(context.Background(), connect.NewRequest(&healthv1.GetIdentityRequest{}))
+		res, err := client.GetIdentity(cmd.Context(), connect.NewRequest(&healthv1.GetIdentityRequest{}))
 		if err != nil {
 			return fmt.Errorf("failed to fetch identity: %w", err)
 		}

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -94,7 +93,7 @@ var tasksUsageReportCmd = &cobra.Command{
 		if in+out+micros == 0 {
 			return invalidArgf("a report must carry tokens or cost - set --input-tokens, --output-tokens or --cost-usd")
 		}
-		res, err := backend.NewTaskServiceClient().ReportUsage(context.Background(), connect.NewRequest(&healthv1.ReportUsageRequest{
+		res, err := backend.NewTaskServiceClient().ReportUsage(cmd.Context(), connect.NewRequest(&healthv1.ReportUsageRequest{
 			TaskId: args[0], ModelName: optionalString(cmd, "model"), InputTokens: in, OutputTokens: out, CostMicros: micros,
 			IdempotencyKey: optionalString(cmd, "idempotency-key"),
 		}))
@@ -125,14 +124,14 @@ var tasksUsageShowCmd = &cobra.Command{
 		req := connect.NewRequest(&healthv1.ListUsageRecordsRequest{TaskId: args[0], Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor}})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, req.Msg, func() (proto.Message, error) {
-				r, err := client.ListUsageRecords(context.Background(), req)
+				r, err := client.ListUsageRecords(cmd.Context(), req)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListUsageRecords(context.Background(), req)
+		res, err := client.ListUsageRecords(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to list usage: %w", err)
 		}
@@ -171,7 +170,7 @@ var reportsUsageCmd = &cobra.Command{
 				org = &d
 			}
 		}
-		res, err := backend.NewReportServiceClient().GetUsageReport(context.Background(), connect.NewRequest(&healthv1.GetUsageReportRequest{
+		res, err := backend.NewReportServiceClient().GetUsageReport(cmd.Context(), connect.NewRequest(&healthv1.GetUsageReportRequest{
 			OrgId: org, ProjectId: project, Days: &days,
 		}))
 		if err != nil {

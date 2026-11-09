@@ -43,8 +43,8 @@ Written for scripts first (M31):
   strings. It is the same shape the backend speaks on the wire. The
   human-readable output is for reading and is not a stable interface.
 - **A failure** prints exactly one `Error: …` line to stderr — ending in
-  `(request <id>)` when the server was reached, the id the backend logged it
-  under — prints nothing to stdout, and exits with a code that says what kind
+  `(request <id>)` when the failing RPC supplies one for backend correlation —
+  and exits with a code that says what kind
   of failure it was:
 
 | Exit | Meaning | What a script usually does |
@@ -56,6 +56,28 @@ Written for scripts first (M31):
 | 5 | Conflict or failed precondition — e.g. a claim another agent won | Pick other work |
 | 6 | Invalid argument | Fix the request; retrying will not help |
 | 7 | Unavailable, rate limited or timed out | Back off and retry |
+| 130 | Command cancelled | Stop; inspect any mutation before retrying |
+
+## Request lifetimes
+
+`--timeout` sets a positive duration for **each backend request**, defaulting to
+`30s`. For example, `tasker tasks list --timeout 10s` stops a stalled RPC after
+ten seconds. Zero and negative durations are rejected. The limit covers unary
+RPCs, password-login/session-check HTTP and individual MCP HTTP exchanges.
+
+Each page gets a fresh budget with `--page-all`. Interactive input and the
+whole MCP stdio session have no request deadline: a timed-out MCP message gets
+its own JSON-RPC error, and a later message can still succeed. Ctrl-C or
+termination cancels the command and active requests with exit 130; an idle MCP
+input cannot hold the process open. Timeout failures use exit 7.
+
+A timeout or cancellation does not undo a server commit. Use the operation's
+existing retry key where available, and inspect the result before repeating a
+mutation whose response was lost.
+
+A failed request produces no response result. Earlier pages from `--page-all`
+may already be on stdout, and diagnostic commands may have printed their local
+checks before a network failure; always check the exit code as well as output.
 
 ## Pagination
 

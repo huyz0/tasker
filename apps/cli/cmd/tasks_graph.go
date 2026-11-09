@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -102,7 +101,7 @@ var tasksLinkAddCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		res, err := backend.NewTaskServiceClient().AddTaskLink(context.Background(), connect.NewRequest(&healthv1.AddTaskLinkRequest{
+		res, err := backend.NewTaskServiceClient().AddTaskLink(cmd.Context(), connect.NewRequest(&healthv1.AddTaskLinkRequest{
 			TaskId: args[0], LinkedTaskId: args[1], Kind: kind,
 		}))
 		if err != nil {
@@ -125,7 +124,7 @@ var tasksLinkRemoveCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		res, err := backend.NewTaskServiceClient().RemoveTaskLink(context.Background(), connect.NewRequest(&healthv1.RemoveTaskLinkRequest{
+		res, err := backend.NewTaskServiceClient().RemoveTaskLink(cmd.Context(), connect.NewRequest(&healthv1.RemoveTaskLinkRequest{
 			TaskId: args[0], LinkedTaskId: args[1], Kind: kind,
 		}))
 		if err != nil {
@@ -175,7 +174,7 @@ var tasksLinkListCmd = &cobra.Command{
 	Short: "Show a task's blockers, dependents, parent, subtasks and origin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		res, err := backend.NewTaskServiceClient().ListTaskLinks(context.Background(), connect.NewRequest(&healthv1.ListTaskLinksRequest{TaskId: args[0]}))
+		res, err := backend.NewTaskServiceClient().ListTaskLinks(cmd.Context(), connect.NewRequest(&healthv1.ListTaskLinksRequest{TaskId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to list task links: %w", err)
 		}

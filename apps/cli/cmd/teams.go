@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -35,14 +34,14 @@ var teamsListCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListTeams(context.Background(), listReq)
+				r, err := client.ListTeams(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListTeams(context.Background(), listReq)
+		res, err := client.ListTeams(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list teams: %w", err)
 		}
@@ -78,7 +77,7 @@ var teamsCreateCmd = &cobra.Command{
 		}
 
 		client := backend.NewTeamServiceClient()
-		res, err := client.CreateTeam(context.Background(), connect.NewRequest(&healthv1.CreateTeamRequest{
+		res, err := client.CreateTeam(cmd.Context(), connect.NewRequest(&healthv1.CreateTeamRequest{
 			OrgId: args[0],
 			Name:  name,
 		}))
@@ -108,7 +107,7 @@ var teamsRenameCmd = &cobra.Command{
 		}
 
 		client := backend.NewTeamServiceClient()
-		res, err := client.UpdateTeam(context.Background(), connect.NewRequest(&healthv1.UpdateTeamRequest{
+		res, err := client.UpdateTeam(cmd.Context(), connect.NewRequest(&healthv1.UpdateTeamRequest{
 			TeamId: args[0],
 			Name:   name,
 		}))
@@ -129,7 +128,7 @@ var teamsDeleteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewTeamServiceClient()
-		res, err := client.ArchiveTeam(context.Background(), connect.NewRequest(&healthv1.ArchiveTeamRequest{TeamId: args[0]}))
+		res, err := client.ArchiveTeam(cmd.Context(), connect.NewRequest(&healthv1.ArchiveTeamRequest{TeamId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to delete team: %w", err)
 		}
@@ -147,7 +146,7 @@ var teamsRestoreCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewTeamServiceClient()
-		res, err := client.RestoreTeam(context.Background(), connect.NewRequest(&healthv1.RestoreTeamRequest{TeamId: args[0]}))
+		res, err := client.RestoreTeam(cmd.Context(), connect.NewRequest(&healthv1.RestoreTeamRequest{TeamId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to restore team: %w", err)
 		}
@@ -165,7 +164,7 @@ var teamsAddMemberCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewTeamServiceClient()
-		res, err := client.AddTeamMember(context.Background(), connect.NewRequest(&healthv1.AddTeamMemberRequest{
+		res, err := client.AddTeamMember(cmd.Context(), connect.NewRequest(&healthv1.AddTeamMemberRequest{
 			TeamId: args[0],
 			UserId: args[1],
 		}))
@@ -186,7 +185,7 @@ var teamsRemoveMemberCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewTeamServiceClient()
-		res, err := client.RemoveTeamMember(context.Background(), connect.NewRequest(&healthv1.RemoveTeamMemberRequest{
+		res, err := client.RemoveTeamMember(cmd.Context(), connect.NewRequest(&healthv1.RemoveTeamMemberRequest{
 			TeamId: args[0],
 			UserId: args[1],
 		}))
@@ -217,14 +216,14 @@ var teamsListMembersCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListTeamMembers(context.Background(), listReq)
+				r, err := client.ListTeamMembers(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListTeamMembers(context.Background(), listReq)
+		res, err := client.ListTeamMembers(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list team members: %w", err)
 		}

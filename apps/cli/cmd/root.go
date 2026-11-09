@@ -1,16 +1,21 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -32,6 +37,16 @@ TASKER_PROJECT_ID from the environment as defaults.`,
 	// so nothing reaches the terminal twice (M31-T01).
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		timeout, err := cmd.Flags().GetDuration("timeout")
+		if err != nil {
+			return err
+		}
+		if err := backend.SetRequestTimeout(timeout); err != nil {
+			return connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		return nil
+	},
 }
 
 // SetVersion records the build stamp `main` was compiled with, so
@@ -50,7 +65,31 @@ func SetVersion(version, commit, date string) {
 // Execute runs the CLI against the process's own streams and exits with the
 // code runCLI chose. Called once, by main.main().
 func Execute() {
-	os.Exit(runCLI(os.Args[1:], os.Stdout, os.Stderr))
+	terminalFD := int(os.Stdin.Fd())
+	var terminalState *term.State
+	if term.IsTerminal(terminalFD) {
+		terminalState, _ = term.GetState(terminalFD)
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	finished := make(chan error, 1)
+	go func() { finished <- executeCLI(ctx, os.Args[1:], os.Stdout, os.Stderr) }()
+	var err error
+	select {
+	case err = <-finished:
+	case <-ctx.Done():
+		// Let cooperative network calls retain their request-id diagnostic.
+		// A blocked terminal read must not prevent process cancellation.
+		select {
+		case err = <-finished:
+		case <-time.After(100 * time.Millisecond):
+			err = ctx.Err()
+		}
+	}
+	stop()
+	if terminalState != nil {
+		_ = term.Restore(terminalFD, terminalState)
+	}
+	os.Exit(reportCLIResult(err, os.Stderr))
 }
 
 // Exit codes (M31-T01). A script driving the CLI needs to know what kind of
@@ -64,6 +103,7 @@ const (
 	exitConflict    = 5 // FailedPrecondition, AlreadyExists, Aborted - e.g. a claim lost
 	exitInvalid     = 6 // InvalidArgument, OutOfRange
 	exitUnavailable = 7 // Unavailable, ResourceExhausted, DeadlineExceeded - retry later
+	exitCanceled    = 130
 )
 
 // runCLI is Execute without the exit, so tests can hand it real streams.
@@ -73,10 +113,29 @@ const (
 // result, --json included, went to stderr, and `$(tasker … --json)` captured
 // nothing. Setting the writers here, on the root, fixes all of them at once.
 func runCLI(args []string, stdout, stderr io.Writer) int {
+	return runCLIContext(context.Background(), args, stdout, stderr)
+}
+
+func runCLIContext(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	return reportCLIResult(executeCLI(ctx, args, stdout, stderr), stderr)
+}
+
+func executeCLI(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+	setCommandContexts(rootCmd, ctx)
 	rootCmd.SetOut(stdout)
 	rootCmd.SetErr(stderr)
 	rootCmd.SetArgs(args)
-	err := rootCmd.Execute()
+	return rootCmd.ExecuteContext(ctx)
+}
+
+func setCommandContexts(command *cobra.Command, ctx context.Context) {
+	command.SetContext(ctx)
+	for _, child := range command.Commands() {
+		setCommandContexts(child, ctx)
+	}
+}
+
+func reportCLIResult(err error, stderr io.Writer) int {
 	if err == nil {
 		return exitOK
 	}
@@ -97,11 +156,19 @@ func describeError(err error) string {
 }
 
 func exitCodeFor(err error) int {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return exitUnavailable
+	}
+	if errors.Is(err, context.Canceled) {
+		return exitCanceled
+	}
 	var connectErr *connect.Error
 	if !errors.As(err, &connectErr) {
 		return exitFailure
 	}
 	switch connectErr.Code() {
+	case connect.CodeCanceled:
+		return exitCanceled
 	case connect.CodeUnauthenticated, connect.CodePermissionDenied:
 		return exitAuth
 	case connect.CodeNotFound:
@@ -120,6 +187,7 @@ func exitCodeFor(err error) int {
 func init() {
 	rootCmd.PersistentFlags().Bool("json", false, "Output in JSON format")
 	rootCmd.PersistentFlags().String("token", "", "Agent token to authenticate with (overrides TASKER_TOKEN and any saved session)")
+	rootCmd.PersistentFlags().Duration("timeout", backend.DefaultRequestTimeout, "Maximum time for each backend request (positive duration; does not limit the whole command or MCP session)")
 
 	// Read once, before any command runs, rather than in each RunE: every
 	// command authenticates, and a flag only some of them consulted would be a

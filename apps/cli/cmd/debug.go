@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -62,8 +63,10 @@ type sessionStatusResponse struct {
 // verification requires JWT_SECRET (which the CLI never has), and even a
 // well-signed, unexpired token may have been revoked since issuance (see
 // OBS-14's revokedSessions table).
-func checkSessionWithServer(httpClient *http.Client, serverURL string, token string) (*sessionStatusResponse, error) {
-	req, err := http.NewRequest(http.MethodGet, serverURL+"/api/auth/session", nil)
+func checkSessionWithServer(ctx context.Context, httpClient *http.Client, serverURL string, token string) (*sessionStatusResponse, error) {
+	ctx, cancel := backend.RequestContext(ctx)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, serverURL+"/api/auth/session", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +91,7 @@ func checkSessionWithServer(httpClient *http.Client, serverURL string, token str
 }
 
 // runDebugSession is the extracted, testable command logic.
-func runDebugSession(w io.Writer, httpClient *http.Client, serverURL string, token string) error {
+func runDebugSession(ctx context.Context, w io.Writer, httpClient *http.Client, serverURL string, token string) error {
 	if token == "" {
 		return fmt.Errorf("no token provided and no saved credentials found - pass a token or run `tasker auth login` first")
 	}
@@ -108,7 +111,7 @@ func runDebugSession(w io.Writer, httpClient *http.Client, serverURL string, tok
 		fmt.Fprintf(w, "  exp:    %s (%s)\n", expiresAt.Format(time.RFC3339), expiryNote)
 	}
 
-	status, err := checkSessionWithServer(httpClient, serverURL, token)
+	status, err := checkSessionWithServer(ctx, httpClient, serverURL, token)
 	if err != nil {
 		return err
 	}
@@ -147,7 +150,7 @@ var debugSessionCmd = &cobra.Command{
 			}
 			token = resolved
 		}
-		return runDebugSession(cmd.OutOrStdout(), http.DefaultClient, backend.URL(), token)
+		return runDebugSession(cmd.Context(), cmd.OutOrStdout(), http.DefaultClient, backend.URL(), token)
 	},
 }
 

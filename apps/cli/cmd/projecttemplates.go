@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -42,7 +41,7 @@ var projectTemplatesCreateCmd = &cobra.Command{
 		if rootTaskTypeID != "" {
 			req.RootTaskTypeId = &rootTaskTypeID
 		}
-		res, err := client.CreateTemplate(context.Background(), connect.NewRequest(req))
+		res, err := client.CreateTemplate(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to create project template: %w", err)
 		}
@@ -66,7 +65,7 @@ var projectTemplatesGetCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewProjectTemplateServiceClient()
-		res, err := client.GetTemplate(context.Background(), connect.NewRequest(&healthv1.GetProjectTemplateRequest{Id: args[0]}))
+		res, err := client.GetTemplate(cmd.Context(), connect.NewRequest(&healthv1.GetProjectTemplateRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get project template: %w", err)
 		}
@@ -112,7 +111,7 @@ var projectTemplatesUpdateCmd = &cobra.Command{
 		}
 
 		client := backend.NewProjectTemplateServiceClient()
-		res, err := client.UpdateTemplate(context.Background(), connect.NewRequest(req))
+		res, err := client.UpdateTemplate(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to update project template: %w", err)
 		}
@@ -152,14 +151,14 @@ var projectTemplatesListCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListTemplates(context.Background(), listReq)
+				r, err := client.ListTemplates(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListTemplates(context.Background(), listReq)
+		res, err := client.ListTemplates(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list project templates: %w", err)
 		}

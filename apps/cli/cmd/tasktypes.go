@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -37,7 +36,7 @@ var taskTypesCreateCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskTypeServiceClient()
-		res, err := client.CreateTaskType(context.Background(), connect.NewRequest(&healthv1.CreateTaskTypeRequest{
+		res, err := client.CreateTaskType(cmd.Context(), connect.NewRequest(&healthv1.CreateTaskTypeRequest{
 			OrgId:     orgID,
 			ProjectId: projectID,
 			Name:      name,
@@ -82,14 +81,14 @@ var taskTypesListCmd = &cobra.Command{
 		})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
-				r, err := client.ListTaskTypes(context.Background(), listReq)
+				r, err := client.ListTaskTypes(cmd.Context(), listReq)
 				if err != nil {
 					return nil, err
 				}
 				return r.Msg, nil
 			})
 		}
-		res, err := client.ListTaskTypes(context.Background(), listReq)
+		res, err := client.ListTaskTypes(cmd.Context(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list task types: %w", err)
 		}
@@ -116,7 +115,7 @@ var taskTypesGetCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewTaskTypeServiceClient()
-		res, err := client.GetTaskType(context.Background(), connect.NewRequest(&healthv1.GetTaskTypeRequest{Id: args[0]}))
+		res, err := client.GetTaskType(cmd.Context(), connect.NewRequest(&healthv1.GetTaskTypeRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to get task type: %w", err)
 		}
@@ -159,7 +158,7 @@ var taskTypesCreateStatusCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskTypeServiceClient()
-		res, err := client.CreateTaskStatus(context.Background(), connect.NewRequest(&healthv1.CreateTaskStatusRequest{
+		res, err := client.CreateTaskStatus(cmd.Context(), connect.NewRequest(&healthv1.CreateTaskStatusRequest{
 			TaskTypeId: args[0],
 			Name:       name,
 		}))
@@ -191,7 +190,7 @@ var taskTypesCreateTransitionCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskTypeServiceClient()
-		res, err := client.CreateTaskStatusTransition(context.Background(), connect.NewRequest(&healthv1.CreateTaskStatusTransitionRequest{
+		res, err := client.CreateTaskStatusTransition(cmd.Context(), connect.NewRequest(&healthv1.CreateTaskStatusTransitionRequest{
 			TaskTypeId:   args[0],
 			FromStatusId: fromStatusID,
 			ToStatusId:   toStatusID,
@@ -217,7 +216,7 @@ var taskTypesGateTransitionCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		off, _ := cmd.Flags().GetBool("off")
-		res, err := backend.NewTaskTypeServiceClient().SetTransitionApproval(context.Background(), connect.NewRequest(&healthv1.SetTransitionApprovalRequest{
+		res, err := backend.NewTaskTypeServiceClient().SetTransitionApproval(cmd.Context(), connect.NewRequest(&healthv1.SetTransitionApprovalRequest{
 			TaskTypeId: args[0], TransitionId: args[1], RequiresApproval: !off,
 		}))
 		if err != nil {
