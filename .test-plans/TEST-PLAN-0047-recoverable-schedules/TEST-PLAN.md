@@ -115,6 +115,10 @@ moon check --all and actual final-head CI must pass before merge.
   authorized retained-history reads. Paging selects metadata only, including
   safe failure details; terminal snapshots are cleared. Project purge deliberately
   removes all schedule/occurrence rows and cannot leave a worker creating work.
+  Manual, retention and organization cascades share a locked atomic project
+  unit. Receipt-delete failure rolls back earlier task cleanup; current parent
+  restoration wins over a stale retention scan. Actual independent admission
+  and execution workers cannot create work through an owning purge.
 
 ### TC-010: Visible recovery states and event refresh (T04, exit 4)
 

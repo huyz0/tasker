@@ -6,8 +6,13 @@ test.beforeEach(async ({ page, context }) => {
   const privateBackend = process.env.TASKER_E2E_BACKEND_URL;
   if (privateBackend) await context.route('http://localhost:8080/**', async route => {
     const url = new URL(route.request().url());
-    const response = await route.fetch({ url: new URL(url.pathname + url.search, privateBackend).href });
-    await route.fulfill({ response });
+    try {
+      const response = await route.fetch({ url: new URL(url.pathname + url.search, privateBackend).href });
+      await route.fulfill({ response });
+    } catch (error) {
+      // Context shutdown can dispose an in-flight background response.
+      if (!route.request().frame().page().isClosed()) throw error;
+    }
   });
   // Keep one healthy, project-narrowed stream. No schedule event is injected;
   // source reads must reconcile work outside that feed's scope on their own.
@@ -48,6 +53,7 @@ for (const initial of ['empty', 'terminal'] as const) {
       ? await page.getByRole('list', { name: 'Runs' }).locator('li').count() : 0;
     await page.clock.install();
     const other = await page.context().newPage();
+    await controlLiveFeed(other);
     await other.goto(page.url());
     await other.getByRole('button', { name: 'Run now', exact: true }).click();
     await expect(other.getByRole('main').getByRole('status')).toContainText(initial === 'empty' ? 'Work created' : 'Skipped');
@@ -65,7 +71,7 @@ for (const initial of ['empty', 'terminal'] as const) {
       expect(new URL(page.url()).searchParams.get('project')).toBe(projectA);
       await page.setViewportSize({ width: 375, height: 900 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await page.screenshot({ path: info.outputPath(`history-${initial}-375.png`), fullPage: true });
+      await page.screenshot({ path: info.outputPath(`history-${initial}-375.png`), fullPage: true, animations: 'disabled' });
       const link = runs.getByRole('link', { name: 'Open created task' }).first();
       expect(new URL((await link.getAttribute('href'))!, page.url()).searchParams.get('project')).toBe(projectB);
       await link.click();
@@ -88,15 +94,18 @@ test('a failed off-feed refresh keeps the unsaved editor through retry and recov
   // Ordinary query retries remain enabled. Let the actual interval and bounded
   // retry timers run; the editor must survive the final error and its recovery.
   await page.clock.install();
-  const firstFailure = page.waitForResponse(r => r.url().endsWith('/tasker.health.v1.ScheduleService/GetSchedule') && r.status() === 503);
-  await page.clock.fastForward(15_000);
-  await (await firstFailure).finished();
-  await page.clock.runFor(8_000);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const failedRead = page.waitForResponse(r => r.url().endsWith('/tasker.health.v1.ScheduleService/GetSchedule') && r.status() === 503);
+    await page.clock.fastForward(attempt === 0 ? 15_000 : 8_000);
+    await (await failedRead).finished();
+    // Allow the real rejected fetch to settle before advancing its next retry.
+    await page.clock.runFor(250);
+  }
   await expect(page.getByRole('alert')).toContainText('Your draft is kept');
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue(draft);
   await page.setViewportSize({ width: 375, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: info.outputPath('draft-refresh-error-375.png'), fullPage: true });
+  await page.screenshot({ path: info.outputPath('draft-refresh-error-375.png'), fullPage: true, animations: 'disabled' });
   unavailable = false;
   await page.getByRole('button', { name: 'Try again', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);

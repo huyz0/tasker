@@ -1,4 +1,5 @@
 import { eq, and, or, inArray } from "drizzle-orm";
+import { withUnitOfWork } from "../db/access";
 import * as schemaMysql from "../db/schema.mysql";
 import * as schemaSqlite from "../db/schema.sqlite";
 
@@ -121,107 +122,122 @@ export async function purgeAgentCascade(db: any, agentId: string): Promise<void>
   await db.delete(schema.agents).where(eq(schema.agents.id, agentId));
 }
 
-export async function purgeProjectCascade(db: any, projectId: string): Promise<void> {
-  const schema = getSchema();
-  const existing = await db.select().from(schema.projects).where(eq(schema.projects.id, projectId)).limit(1);
-  if (!existing || existing.length === 0) return;
+/** All project cleanup paths serialize with schedule admission/execution. */
+export async function purgeProjectCascade(db: any, projectId: string,
+  mayPurge?: (project: any) => Promise<boolean> | boolean,
+): Promise<boolean> {
+  return withUnitOfWork(db, async () => {
+    const schema = getSchema();
+    // Current reads are necessary even when an outer org transaction already
+    // established a MySQL snapshot before waiting for the project owner.
+    const currentRows = (query: any) => process.env.STANDALONE === "true" ? query : query.for("update");
+    const [project] = await currentRows(db.select().from(schema.projects).where(eq(schema.projects.id, projectId))).limit(1);
+    if (!project || (mayPurge && !await mayPurge(project))) return false;
 
-  const taskRows = await db.select({ id: schema.tasks.id }).from(schema.tasks).where(eq(schema.tasks.projectId, projectId));
-  const taskIds = taskRows.map((t: any) => t.id);
-  if (taskIds.length > 0) {
-    // M24-T04 (ADR-0020): activity has no FK cascade either - same bulk
-    // inArray idiom as the other per-task child tables below.
-    await db.delete(schema.taskActivity).where(inArray(schema.taskActivity.taskId, taskIds));
-    // M25-T02 (ADR-0022 Decision 3): neither does the stalled-claim alert
-    // dedup ledger.
-    await db.delete(schema.stalledClaimAlerts).where(inArray(schema.stalledClaimAlerts.taskId, taskIds));
-    await db.delete(schema.taskAssignments).where(inArray(schema.taskAssignments.taskId, taskIds));
-    await db.delete(schema.taskReviewers).where(inArray(schema.taskReviewers.taskId, taskIds));
-    await db.delete(schema.taskArtifactLinks).where(inArray(schema.taskArtifactLinks.taskId, taskIds));
-    await db.delete(schema.taskNotes).where(inArray(schema.taskNotes.taskId, taskIds));
-    await db.delete(schema.comments).where(and(inArray(schema.comments.entityId, taskIds), eq(schema.comments.entityType, "task")));
-    await db.delete(schema.entityLabels).where(and(inArray(schema.entityLabels.entityId, taskIds), eq(schema.entityLabels.entityType, "task")));
-    await db.update(schema.remotePullRequests).set({ taskId: null }).where(inArray(schema.remotePullRequests.taskId, taskIds));
-    // M35 (ADR-0028): links may cross projects, so both directions go.
-    await db.delete(schema.taskLinks).where(or(inArray(schema.taskLinks.taskId, taskIds), inArray(schema.taskLinks.linkedTaskId, taskIds)));
-    await db.delete(schema.inputRequests).where(inArray(schema.inputRequests.taskId, taskIds));
-    await db.delete(schema.transitionApprovals).where(inArray(schema.transitionApprovals.taskId, taskIds));
-    await db.delete(schema.usageRecords).where(inArray(schema.usageRecords.taskId, taskIds));
-    await db.delete(schema.tasks).where(inArray(schema.tasks.id, taskIds));
-  }
+    const taskRows = await currentRows(db.select({ id: schema.tasks.id }).from(schema.tasks).where(eq(schema.tasks.projectId, projectId)));
+    const taskIds = taskRows.map((t: any) => t.id);
+    if (taskIds.length > 0) {
+      // M24-T04 (ADR-0020): activity has no FK cascade either - same bulk
+      // inArray idiom as the other per-task child tables below.
+      await db.delete(schema.taskActivity).where(inArray(schema.taskActivity.taskId, taskIds));
+      // M25-T02 (ADR-0022 Decision 3): neither does the stalled-claim alert
+      // dedup ledger.
+      await db.delete(schema.stalledClaimAlerts).where(inArray(schema.stalledClaimAlerts.taskId, taskIds));
+      await db.delete(schema.taskAssignments).where(inArray(schema.taskAssignments.taskId, taskIds));
+      await db.delete(schema.taskReviewers).where(inArray(schema.taskReviewers.taskId, taskIds));
+      await db.delete(schema.taskArtifactLinks).where(inArray(schema.taskArtifactLinks.taskId, taskIds));
+      await db.delete(schema.taskNotes).where(inArray(schema.taskNotes.taskId, taskIds));
+      await db.delete(schema.comments).where(and(inArray(schema.comments.entityId, taskIds), eq(schema.comments.entityType, "task")));
+      await db.delete(schema.entityLabels).where(and(inArray(schema.entityLabels.entityId, taskIds), eq(schema.entityLabels.entityType, "task")));
+      await db.update(schema.remotePullRequests).set({ taskId: null }).where(inArray(schema.remotePullRequests.taskId, taskIds));
+      // M35 (ADR-0028): links may cross projects, so both directions go.
+      await db.delete(schema.taskLinks).where(or(inArray(schema.taskLinks.taskId, taskIds), inArray(schema.taskLinks.linkedTaskId, taskIds)));
+      await db.delete(schema.inputRequests).where(inArray(schema.inputRequests.taskId, taskIds));
+      await db.delete(schema.transitionApprovals).where(inArray(schema.transitionApprovals.taskId, taskIds));
+      await db.delete(schema.usageRecords).where(inArray(schema.usageRecords.taskId, taskIds));
+      await db.delete(schema.tasks).where(inArray(schema.tasks.id, taskIds));
+    }
 
-  // Every folder already carries projectId directly, so the whole tree can
-  // be collected in one query instead of walking parentId links folder by
-  // folder (the old root-then-remaining-folders pass was a defensive
-  // catch-all for exactly this set, done the expensive way).
-  const folderRows = await db.select({ id: schema.folders.id }).from(schema.folders).where(eq(schema.folders.projectId, projectId));
-  const folderIds = folderRows.map((f: any) => f.id);
-  if (folderIds.length > 0) {
-    const artifactRows = await db.select({ id: schema.artifacts.id }).from(schema.artifacts).where(inArray(schema.artifacts.folderId, folderIds));
-    await bulkPurgeArtifacts(db, schema, artifactRows.map((a: any) => a.id));
-    await db.delete(schema.folders).where(inArray(schema.folders.id, folderIds));
-  }
+    // Every folder already carries projectId directly, so the whole tree can
+    // be collected in one query instead of walking parentId links folder by
+    // folder (the old root-then-remaining-folders pass was a defensive
+    // catch-all for exactly this set, done the expensive way).
+    const folderRows = await currentRows(db.select({ id: schema.folders.id }).from(schema.folders).where(eq(schema.folders.projectId, projectId)));
+    const folderIds = folderRows.map((f: any) => f.id);
+    if (folderIds.length > 0) {
+      const artifactRows = await currentRows(db.select({ id: schema.artifacts.id }).from(schema.artifacts).where(inArray(schema.artifacts.folderId, folderIds)));
+      await bulkPurgeArtifacts(db, schema, artifactRows.map((a: any) => a.id));
+      await db.delete(schema.folders).where(inArray(schema.folders.id, folderIds));
+    }
 
-  const repoLinkRows = await db.select({ id: schema.repositoryLinks.id }).from(schema.repositoryLinks).where(eq(schema.repositoryLinks.projectId, projectId));
-  const repoLinkIds = repoLinkRows.map((r: any) => r.id);
-  if (repoLinkIds.length > 0) {
-    await db.delete(schema.remotePullRequests).where(inArray(schema.remotePullRequests.repositoryLinkId, repoLinkIds));
-    await db.delete(schema.repositoryLinks).where(inArray(schema.repositoryLinks.id, repoLinkIds));
-  }
+    const repoLinkRows = await currentRows(db.select({ id: schema.repositoryLinks.id }).from(schema.repositoryLinks).where(eq(schema.repositoryLinks.projectId, projectId)));
+    const repoLinkIds = repoLinkRows.map((r: any) => r.id);
+    if (repoLinkIds.length > 0) {
+      await db.delete(schema.remotePullRequests).where(inArray(schema.remotePullRequests.repositoryLinkId, repoLinkIds));
+      await db.delete(schema.repositoryLinks).where(inArray(schema.repositoryLinks.id, repoLinkIds));
+    }
 
-  const taskTypeRows = await db.select({ id: schema.taskTypes.id }).from(schema.taskTypes).where(eq(schema.taskTypes.projectId, projectId));
-  await bulkPurgeTaskTypes(db, schema, taskTypeRows.map((t: any) => t.id));
+    const taskTypeRows = await currentRows(db.select({ id: schema.taskTypes.id }).from(schema.taskTypes).where(eq(schema.taskTypes.projectId, projectId)));
+    await bulkPurgeTaskTypes(db, schema, taskTypeRows.map((t: any) => t.id));
 
-  // M42/M43: a project's own workflow templates and its schedules - a
-  // schedule left behind would keep firing into a project that is gone.
-  await db.delete(schema.workflowTemplates).where(eq(schema.workflowTemplates.projectId, projectId));
-  const scheduleRows = await db.select({ id: schema.schedules.id }).from(schema.schedules).where(eq(schema.schedules.projectId, projectId));
-  if (scheduleRows.length > 0) {
-    await db.delete(schema.scheduleRuns).where(inArray(schema.scheduleRuns.scheduleId, scheduleRows.map((r: any) => r.id)));
-    await db.delete(schema.schedules).where(eq(schema.schedules.projectId, projectId));
-  }
+    // M42/M43: a project's own workflow templates and its schedules - a
+    // schedule left behind would keep firing into a project that is gone.
+    await db.delete(schema.workflowTemplates).where(eq(schema.workflowTemplates.projectId, projectId));
+    const scheduleRows = await currentRows(db.select({ id: schema.schedules.id }).from(schema.schedules).where(eq(schema.schedules.projectId, projectId)));
+    if (scheduleRows.length > 0) {
+      await db.delete(schema.scheduleRuns).where(inArray(schema.scheduleRuns.scheduleId, scheduleRows.map((r: any) => r.id)));
+      await db.delete(schema.schedules).where(eq(schema.schedules.projectId, projectId));
+    }
 
-  await db.delete(schema.projects).where(eq(schema.projects.id, projectId));
+    await db.delete(schema.grants).where(and(eq(schema.grants.scopeType, "project"), eq(schema.grants.scopeId, projectId)));
+    await db.delete(schema.projects).where(eq(schema.projects.id, projectId));
+    return true;
+  });
 }
+export async function purgeOrgCascade(db: any, orgId: string,
+  mayPurge?: (organization: any) => Promise<boolean> | boolean,
+): Promise<boolean> {
+  return withUnitOfWork(db, async () => {
+    const schema = getSchema();
+    const currentRows = (query: any) => process.env.STANDALONE === "true" ? query : query.for("update");
+    const [organization] = await currentRows(db.select().from(schema.organizations).where(eq(schema.organizations.id, orgId))).limit(1);
+    if (!organization || (mayPurge && !await mayPurge(organization))) return false;
 
-export async function purgeOrgCascade(db: any, orgId: string): Promise<void> {
-  const schema = getSchema();
-  const existing = await db.select().from(schema.organizations).where(eq(schema.organizations.id, orgId)).limit(1);
-  if (!existing || existing.length === 0) return;
+    const childOrgs = await currentRows(db.select().from(schema.organizations).where(eq(schema.organizations.parentOrgId, orgId)));
+    for (const childOrg of childOrgs) {
+      await purgeOrgCascade(db, childOrg.id);
+    }
 
-  const childOrgs = await db.select().from(schema.organizations).where(eq(schema.organizations.parentOrgId, orgId));
-  for (const childOrg of childOrgs) {
-    await purgeOrgCascade(db, childOrg.id);
-  }
+    // Each project's own cascade (above) is now a fixed number of bulk
+    // statements regardless of how many tasks/folders/task types it
+    // contains, so looping per-project here no longer means looping
+    // per-descendant-row - it's O(projects), not O(everything under them).
+    const orgProjects = await currentRows(db.select().from(schema.projects).where(eq(schema.projects.orgId, orgId)));
+    for (const project of orgProjects) {
+      await purgeProjectCascade(db, project.id);
+    }
 
-  // Each project's own cascade (above) is now a fixed number of bulk
-  // statements regardless of how many tasks/folders/task types it
-  // contains, so looping per-project here no longer means looping
-  // per-descendant-row - it's O(projects), not O(everything under them).
-  const orgProjects = await db.select().from(schema.projects).where(eq(schema.projects.orgId, orgId));
-  for (const project of orgProjects) {
-    await purgeProjectCascade(db, project.id);
-  }
+    const agentRows = await db.select({ id: schema.agents.id }).from(schema.agents).where(eq(schema.agents.orgId, orgId));
+    const agentIds = agentRows.map((a: any) => a.id);
+    if (agentIds.length > 0) {
+      await db.delete(schema.taskAssignments).where(inArray(schema.taskAssignments.agentId, agentIds));
+      await db.delete(schema.taskNotes).where(inArray(schema.taskNotes.agentId, agentIds));
+      await db.update(schema.comments).set({ agentId: null }).where(inArray(schema.comments.agentId, agentIds));
+      await db.delete(schema.agents).where(inArray(schema.agents.id, agentIds));
+    }
 
-  const agentRows = await db.select({ id: schema.agents.id }).from(schema.agents).where(eq(schema.agents.orgId, orgId));
-  const agentIds = agentRows.map((a: any) => a.id);
-  if (agentIds.length > 0) {
-    await db.delete(schema.taskAssignments).where(inArray(schema.taskAssignments.agentId, agentIds));
-    await db.delete(schema.taskNotes).where(inArray(schema.taskNotes.agentId, agentIds));
-    await db.update(schema.comments).set({ agentId: null }).where(inArray(schema.comments.agentId, agentIds));
-    await db.delete(schema.agents).where(inArray(schema.agents.id, agentIds));
-  }
+    // projectTemplates.rootTaskTypeId references taskTypes, so it must be
+    // cleared before the taskTypes rows it points to are deleted below.
+    await db.delete(schema.projectTemplates).where(eq(schema.projectTemplates.orgId, orgId));
+    await db.delete(schema.workflowTemplates).where(eq(schema.workflowTemplates.orgId, orgId));
+    await db.delete(schema.labels).where(eq(schema.labels.orgId, orgId));
 
-  // projectTemplates.rootTaskTypeId references taskTypes, so it must be
-  // cleared before the taskTypes rows it points to are deleted below.
-  await db.delete(schema.projectTemplates).where(eq(schema.projectTemplates.orgId, orgId));
-  await db.delete(schema.workflowTemplates).where(eq(schema.workflowTemplates.orgId, orgId));
-  await db.delete(schema.labels).where(eq(schema.labels.orgId, orgId));
+    const orgTaskTypeRows = await db.select({ id: schema.taskTypes.id }).from(schema.taskTypes).where(eq(schema.taskTypes.orgId, orgId));
+    await bulkPurgeTaskTypes(db, schema, orgTaskTypeRows.map((t: any) => t.id));
 
-  const orgTaskTypeRows = await db.select({ id: schema.taskTypes.id }).from(schema.taskTypes).where(eq(schema.taskTypes.orgId, orgId));
-  await bulkPurgeTaskTypes(db, schema, orgTaskTypeRows.map((t: any) => t.id));
-
-  await db.delete(schema.organizationMembers).where(eq(schema.organizationMembers.orgId, orgId));
-  await db.delete(schema.invitations).where(eq(schema.invitations.orgId, orgId));
-  await db.delete(schema.organizations).where(eq(schema.organizations.id, orgId));
+    await db.delete(schema.organizationMembers).where(eq(schema.organizationMembers.orgId, orgId));
+    await db.delete(schema.invitations).where(eq(schema.invitations.orgId, orgId));
+    await db.delete(schema.organizations).where(eq(schema.organizations.id, orgId));
+    return true;
+  });
 }

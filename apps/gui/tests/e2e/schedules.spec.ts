@@ -1,13 +1,20 @@
 import { test, expect } from '@playwright/test';
 import { selectSeededOrg } from './selectSeededOrg';
+import { controlLiveFeed } from './controlledLiveFeed';
 
-test.beforeEach(async ({ context }) => {
+test.beforeEach(async ({ page, context }) => {
   const privateBackend = process.env.TASKER_E2E_BACKEND_URL;
   if (privateBackend) await context.route('http://localhost:8080/**', async route => {
     const url = new URL(route.request().url());
-    const response = await route.fetch({ url: new URL(url.pathname + url.search, privateBackend).href });
-    await route.fulfill({ response });
+    try {
+      const response = await route.fetch({ url: new URL(url.pathname + url.search, privateBackend).href });
+      await route.fulfill({ response });
+    } catch (error) {
+      // Context shutdown can dispose an in-flight background response.
+      if (!route.request().frame().page().isClosed()) throw error;
+    }
   });
+  await controlLiveFeed(page);
 });
 
 /**

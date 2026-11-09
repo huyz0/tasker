@@ -106,8 +106,9 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
   for (const org of deletedOrgs) {
     try {
       if (isExpired(org.deletedAt, org.binRetentionDays ?? DEFAULT_RETENTION_DAYS) && await stillExpired(db, schema.organizations, org.id)) {
-        await purgeOrgCascade(db, org.id);
-        purged.organizations++;
+        if (await purgeOrgCascade(db, org.id, current => isExpired(current.deletedAt, current.binRetentionDays ?? DEFAULT_RETENTION_DAYS))) {
+          purged.organizations++;
+        }
       }
     } catch (err) {
       // One org's cascade failing (e.g. an unexpected FK conflict) must not
@@ -124,8 +125,10 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
     try {
       const retentionDays = await lookups.retentionDays(project.orgId);
       if (isExpired(project.deletedAt, retentionDays) && await stillExpired(db, schema.projects, project.id)) {
-        await purgeProjectCascade(db, project.id);
-        purged.projects++;
+        // Recheck the locked current row: a restore may have won since scanning.
+        if (await purgeProjectCascade(db, project.id, current => isExpired(current.deletedAt, retentionDays))) {
+          purged.projects++;
+        }
       }
     } catch (err) {
       logger.error({ err, projectId: project.id }, "retention_sweep.project_failed");

@@ -109,8 +109,9 @@ recording; preserve its UTC cadence, creator attribution and ordinary-task model
 - Pending snapshots are immutable. Clear frozen execution bodies on terminal
   completion/cancellation, retaining actor identity, target metadata and receipt
   task ID. Existing task/artifact retention rules govern created work. Terminal
-  run metadata and tombstones remain until explicit project purge; that purge
-  deliberately removes schedules and all their occurrences in its unit.
+  run metadata and tombstones remain until project or organization purge,
+  including automatic retention purge of archived parents. Those paths
+  deliberately remove schedules and all their occurrences in a locked unit.
 - Active schedule lists exclude tombstones; normal GetSchedule keeps NotFound
   after delete. ListScheduleRuns by a known deleted ID remains authorized by
   current organization task-read permission and can inspect retained history.

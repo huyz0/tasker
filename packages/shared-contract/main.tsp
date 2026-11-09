@@ -3451,7 +3451,9 @@ model DeleteScheduleResponse {
   @field(1) success: boolean;
 }
 
-// Fires the schedule now, as the caller, without moving its next run.
+// Accepts a new creation intent as the caller without moving its next run.
+// Creation may queue/recover. Every call is a separate intent; inspect history
+// instead of repeating an accepted call to poll or retry it.
 model RunScheduleRequest {
   @field(1) id: string;
 }

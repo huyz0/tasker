@@ -24,7 +24,17 @@ try {
   const { captureDomainEvent } = await import(c.sourceRoot + '/lib/domainEventOutbox.ts');
   setDurableDomainEventCapture((tx, standalone, event) => captureDomainEvent(tx, standalone, event, { brokerRequired: false }));
   let result;
-  if (c.mode && c.mode !== 'admit') {
+  if (c.started) await Bun.write(c.started, 'ready');
+  if (c.gate) while (!await Bun.file(c.gate).exists()) await Bun.sleep(20);
+  if (c.mode === 'purge') {
+    const { purgeProjectCascade } = await import(c.sourceRoot + '/lib/cascadePurge.ts');
+    const purged = await purgeProjectCascade(db, c.projectId, async () => {
+      await Bun.write(c.checkpoint, JSON.stringify({ locked: true }));
+      while (!await Bun.file(c.release).exists()) await Bun.sleep(20);
+      return true;
+    });
+    result = { purged };
+  } else if (c.mode && c.mode !== 'admit') {
     const S = await import(c.sourceRoot + '/db/schema.' + c.driver + '.ts');
     const { createScheduleExecutor } = await import(c.sourceRoot + '/modules/schedules/occurrenceExecution.ts');
     if (c.mode === 'before-receipt') db = new Proxy(real, { get(target, key) {
@@ -38,20 +48,27 @@ try {
       return Reflect.get(target, key);
     } });
     const executor = createScheduleExecutor(db, null, () => new Date(c.now));
-    const lease = await executor.claim(c.runId);
+    let lease, deferred = false;
+    try {
+    lease = await executor.claim(c.runId);
     if (c.mode === 'claim-wait') {
       if (!lease) throw new Error('expected a recoverable lease');
       await Bun.write(c.checkpoint, JSON.stringify({ lease }));
       while (!await Bun.file(c.release).exists()) await Bun.sleep(20);
     }
     if (lease) await executor.execute(lease);
+    } catch (error) {
+      const { transactionConflict } = await import(c.sourceRoot + '/db/errors.ts');
+      if (!c.allowConflict || !transactionConflict(error)) throw error;
+      deferred = true;
+    }
     const receipt = await executor.loadRun(c.runId);
-    result = { id: receipt?.id, outcome: receipt?.outcome, taskId: receipt?.taskId };
+    result = deferred ? { deferred: true } : { id: receipt?.id, outcome: receipt?.outcome, taskId: receipt?.taskId };
   } else {
     const admitted = await createScheduleAdmission(db, null, () => new Date(c.now))();
     result = { count: admitted.length, ids: admitted.map(x => x.run.id) };
   }
-  if (c.checkpoint && c.mode !== 'claim-wait') {
+  if (c.checkpoint && c.mode !== 'claim-wait' && c.mode !== 'purge') {
     await Bun.write(c.checkpoint, JSON.stringify(result));
     await new Promise(() => { setInterval(() => {}, 1000); });
   }
@@ -100,6 +117,14 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       expect(existsSync(name)).toBe(true);
       return Bun.file(name).json();
     }
+    async function started(child: Child, name: string) {
+      const deadline = Date.now() + 15_000;
+      while (!existsSync(name) && Date.now() < deadline) {
+        if (child.process.exitCode !== null) throw new Error(`worker failed before contention: ${await child.errors}`);
+        await Bun.sleep(20);
+      }
+      expect(existsSync(name)).toBe(true);
+    }
     try {
       process.env.STANDALONE = driver === 'sqlite' ? 'true' : 'false';
       if (driver === 'mysql') {
@@ -119,7 +144,16 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       let now = new Date('2026-11-09T08:00:00Z');
       const handler = createSchedulesHandler(db, null, () => now);
       const { schedule } = await handler.createSchedule({ projectId, name: 'Routine', cadence: 'daily', hourUtc: 9, taskTitle: 'Recovered work' }, { values });
-      const raced = await Promise.all([result(worker('2026-11-09T10:00:00Z')), result(worker('2026-11-09T10:00:00Z'))]);
+      // Boot/migrate connections before releasing concurrent operations. A
+      // migration-lock failure proves startup contention, not admission safety.
+      const raceGate = join(directory, 'race-go');
+      const firstReady = join(directory, 'first-ready'), secondReady = join(directory, 'second-ready');
+      const first = worker('2026-11-09T10:00:00Z', undefined, { started: firstReady, gate: raceGate });
+      await started(first, firstReady);
+      const second = worker('2026-11-09T10:00:00Z', undefined, { started: secondReady, gate: raceGate });
+      await started(second, secondReady);
+      await Bun.write(raceGate, 'go');
+      const raced = await Promise.all([result(first), result(second)]);
       expect(raced.reduce((sum, value) => sum + value.count, 0)).toBe(1);
       expect(await db.select().from(S.scheduleRuns)).toHaveLength(1);
       expect(await db.select().from(S.tasks)).toHaveLength(0);
@@ -223,6 +257,35 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       const [graphReceipt] = await db.select().from(S.scheduleRuns).where(eq(S.scheduleRuns.id, graphId));
       expect(graphReceipt).toMatchObject({ outcome: 'created', attempts: 3, frozenInputs: null, taskId: graphResult.taskId });
       expect(await db.select().from(S.domainEvents).where(eq(S.domainEvents.subject, 'domain.task.workflow_started'))).toHaveLength(1);
+      expect(await db.select().from(S.domainEvents).where(eq(S.domainEvents.subject, 'domain.task.created'))).toHaveLength(4);
+
+      // Force cleanup also serves retention/org cascades, which may own a
+      // still-active child project. Hold the common project lock while real
+      // independent admission/execution workers contend for it.
+      const purgePath = join(directory, 'purge-locked.json'), purgeRelease = join(directory, 'purge-release');
+      const contentionGate = join(directory, 'contention-go');
+      const admitStarted = join(directory, 'admit-started'), executeStarted = join(directory, 'execute-started');
+      const concurrentAdmit = worker('2026-11-12T10:00:00Z', undefined, { started: admitStarted, gate: contentionGate });
+      await started(concurrentAdmit, admitStarted);
+      const concurrentExecute = worker('2026-11-12T10:00:00Z', undefined,
+        { mode: 'execute', runId: committed.ids[0], started: executeStarted, gate: contentionGate, allowConflict: true });
+      await started(concurrentExecute, executeStarted);
+      const purge = worker('2026-11-12T10:00:00Z', purgePath, { mode: 'purge', projectId, release: purgeRelease });
+      expect(await checkpoint(purge, purgePath)).toEqual({ locked: true });
+      await Bun.write(contentionGate, 'go');
+      // A bounded coordination window verifies the workers remain fenced;
+      // it does not substitute a wall-clock wait for the lease-expiry test.
+      await Bun.sleep(300);
+      if (driver === 'mysql') expect(concurrentExecute.process.exitCode).toBeNull();
+      await Bun.write(purgeRelease, 'continue');
+      expect(await result(purge)).toEqual({ purged: true });
+      expect((await result(concurrentAdmit)).count).toBe(0);
+      const executionAfterPurge = await result(concurrentExecute);
+      expect(executionAfterPurge).toEqual(driver === 'sqlite' && executionAfterPurge.deferred ? { deferred: true } : {});
+      expect(await db.select().from(S.projects)).toHaveLength(0);
+      expect(await db.select().from(S.schedules)).toHaveLength(0);
+      expect(await db.select().from(S.scheduleRuns)).toHaveLength(0);
+      expect(await db.select().from(S.tasks)).toHaveLength(0);
       expect(await db.select().from(S.domainEvents).where(eq(S.domainEvents.subject, 'domain.task.created'))).toHaveLength(4);
     } finally {
       for (const child of children) {
