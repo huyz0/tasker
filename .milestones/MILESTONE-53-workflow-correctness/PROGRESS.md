@@ -389,3 +389,31 @@ only added unused ignored data in this owned worktree, not the original running
 development database. Readiness, browser transport probe and seed completion
 precede the final run. The printed diagnostic count queried the wrong user ID
 and is excluded; the actual nine passing user journeys are the evidence.
+
+T07 final regression run passes14 journeys in2.6m on the original M53 isolated
+route configuration. Nesting the temporary proxy with those existing routes
+yields403 and is stopped/excluded; no production permission change is made.
+Together with the nine existing journeys,23 final browser checks pass. The exact
+task title is required throughout summary tests. Fresh dark375 capture is
+curated and visually inspected; title/actions, writing, semantic error and
+Save/Cancel fit one task-dialog scroll. Independent W3C APG dialog guidance
+confirms title-based labeling. Fresh Storybook build completes before full
+rendered accessibility/overflow and targeted settled theme audits.
+
+A live owned-backend HTTP MCP proof also passes: real minted writable token
+stores4000 characters through MCP→loopback RPC→SQLite, eight malformed arguments
+return JSON-RPC invalidParams, a read-only token cannot clear or change persisted
+text, and explicit empty text clears the real summary. Both temporary proof
+credentials are revoked in finally. The first setup omitted SeedOrg's required
+slug and is corrected before the successful proof; no credential values are
+printed or saved. Unit mapping assertions separately establish exactly one RPC.
+
+Fresh216-story default accessibility scan passes0 violations; all216 mobile
+layouts have no unreachable horizontal overflow at375px. The targeted strict
+audit initially mistakes a portaled Dialog's empty Storybook root for blank;
+its render guard now requires the visible dialog and measures that portal's
+text. Corrected20-state ×2themes ×2widths audit passes80 scans with0violations,
+including exact dialog names/actions. A broader216-story dark375 whole-body
+audit follows because default-theme gates alone cannot establish the palette's
+error-text contrast. All rule sets remain unchanged; no production correction
+is inferred from a test-only blank-root assumption.
