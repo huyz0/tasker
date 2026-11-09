@@ -19,7 +19,9 @@ export function storyCompletionState(storyId) {
     return { ok: false, reason: `render ${render.phase}` };
   }
   if (finished?.storyId !== storyId || render?.id !== storyId || render?.story?.id !== storyId || render.phase !== 'finished') return false;
-  return { ok: finished.status === 'success', reason: `story finished: ${finished.status}` };
+  const reports = (finished.reporters ?? []).filter(report => report.status === 'failed')
+    .map(report => `${report.type}: ${(report.result?.violations ?? []).map(violation => `${violation.id} ${violation.nodes?.map(node => node.target.join(' ')).join(', ')}`).join('; ')}`);
+  return { ok: finished.status === 'success', reason: `story finished: ${finished.status}${reports.length ? ` (${reports.join('; ')})` : ''}` };
 }
 
 /** Wait for matching success, not a visible shell, network quiet or old result. */

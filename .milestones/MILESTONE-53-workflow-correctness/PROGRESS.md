@@ -495,3 +495,12 @@ remain. The mobile gate now checks both themes at375px as well, with readiness
 and fonts rechecked. Acquisition/page setup and browser-close failure paths
 retain nested server cleanup. Final matrix is217×2themes×2widths accessibility
 and217×2themes mobile overflow, not the earlier default-only overflow wording.
+
+The first completed-lifecycle catalogue rejects ArtifactsDefault with a failed
+addon report. Diagnosis identifies heading-order (best-practice), not rendering
+or a timing race: authored document h1 was followed by UI Comments/Tasks/Labels
+h3 sections. Those peer UI sections become h2, retaining visual type styles and
+user-authored content. Gates retain failed story status and now collect/report
+all story failures before exiting nonzero, including failed reporter IDs/targets,
+so multiple findings can be corrected together rather than hidden by fail-fast.
+No failed report is ignored or weakened.

@@ -750,18 +750,18 @@ export function ArtifactsBrowser() {
                  {/* The backend has accepted entityType "artifact" since M01;
                      nothing mounted it, so the comments existed and were
                      unreachable. */}
-                 <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>
+                 <h2 className="text-lg font-semibold tracking-tight mb-4">Comments</h2>
                  <Comment.Provider entityId={selectedArtifact.id} entityType="artifact">
                    <Comment.List />
                    <Comment.Composer />
                  </Comment.Provider>
                </div>
                <div className="mt-6 not-prose">
-                 <h3 className="text-sm font-semibold tracking-tight mb-3">Tasks</h3>
+                 <h2 className="text-sm font-semibold tracking-tight mb-3">Tasks</h2>
                  <TaskArtifactLinks artifactId={selectedArtifact.id} orgId={activeOrgId} />
                </div>
                <div className="mt-6 not-prose">
-                 <h3 className="text-sm font-semibold tracking-tight mb-3">Labels</h3>
+                 <h2 className="text-sm font-semibold tracking-tight mb-3">Labels</h2>
                  <Label.Provider entityId={selectedArtifact.id} entityType="artifact" orgId={activeOrgId}>
                    <Label.Chips />
                    <div className="mt-3">

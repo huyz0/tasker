@@ -121,29 +121,34 @@ try {
       const story = stories[cursor++];
       if (!story) return;
 
-      await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {
-        waitUntil: 'domcontentloaded',
-        timeout: 60000,
-      });
-      await page.waitForSelector('#storybook-root', { state: 'attached', timeout: 20000 });
-      // Successful null renders are valid; preview visibility is not completion.
-      await waitForStory(page, story.id);
-      await page.waitForTimeout(250);
-      for (const theme of ['light', 'dark']) {
-        await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
-        await page.evaluate(() => document.fonts.ready);
-        await waitForStory(page, story.id);
-
-        const offenders = await page.evaluate(findOverflow, WIDTH);
-        await waitForStory(page, story.id);
-      // One offender per element is noise once the ancestor is already reported —
-      // report only the widest handful, which is enough to find the source.
-      if (offenders.length) {
-        failures.push({
-          story: `${story.title} › ${story.name} (${theme})`,
-          offenders: offenders.sort((a, b) => b.right - a.right).slice(0, 3),
+      try {
+        await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {
+          waitUntil: 'domcontentloaded',
+          timeout: 60000,
         });
-      }
+        await page.waitForSelector('#storybook-root', { state: 'attached', timeout: 20000 });
+        // Successful null renders are valid; preview visibility is not completion.
+        await waitForStory(page, story.id);
+        await page.waitForTimeout(250);
+        for (const theme of ['light', 'dark']) {
+          await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
+          await page.evaluate(() => document.fonts.ready);
+          await waitForStory(page, story.id);
+
+          const offenders = await page.evaluate(findOverflow, WIDTH);
+          await waitForStory(page, story.id);
+          // One offender per element is noise once the ancestor is already reported —
+          // report only the widest handful, which is enough to find the source.
+          if (offenders.length) {
+            failures.push({
+              story: `${story.title} › ${story.name} (${theme})`,
+              offenders: offenders.sort((a, b) => b.right - a.right).slice(0, 3),
+            });
+          }
+        }
+      } catch (error) {
+        failures.push({ story: story.title ? `${story.title} › ${story.name}` : story.id,
+          error: error.message, offenders: [] });
       }
     }
   }
@@ -163,9 +168,10 @@ if (failures.length === 0) {
   process.exit(0);
 }
 
-console.error(`✗ mobile overflow — ${failures.length}/${stories.length} stor(y/ies) render wider than ${WIDTH}px\n`);
+console.error(`✗ mobile overflow — ${failures.length}/${stories.length} story failure(s) at ${WIDTH}px\n`);
 for (const f of failures) {
   console.error(`  ${f.story}`);
+  if (f.error) console.error(`    ${f.error}`);
   for (const o of f.offenders) {
     console.error(`    <${o.tag} class="${o.cls}"> right=${o.right}px  "${o.text}"`);
   }

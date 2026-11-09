@@ -122,43 +122,48 @@ try {
       const story = stories[cursor++];
       if (!story) return;
 
-      await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {
-        waitUntil: 'domcontentloaded',
-        timeout: 60000,
-      });
-      // A live/polling story need not become network-idle. Require Storybook's
-      // rendered state instead; preview errors must never count as empty UI.
-      await page.waitForSelector('#storybook-root', { state: 'attached', timeout: 20000 });
-      // Successful null renders are valid; preview visibility is not completion.
-      await waitForStory(page, story.id);
-      await page.waitForTimeout(250);
+      try {
+        await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {
+          waitUntil: 'domcontentloaded',
+          timeout: 60000,
+        });
+        // A live/polling story need not become network-idle. Require Storybook's
+        // rendered state instead; preview errors must never count as empty UI.
+        await page.waitForSelector('#storybook-root', { state: 'attached', timeout: 20000 });
+        // Successful null renders are valid; preview visibility is not completion.
+        await waitForStory(page, story.id);
+        await page.waitForTimeout(250);
 
-      await page.addScriptTag({ content: axeSource });
-      await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' });
-      for (const theme of ['light', 'dark']) {
-        for (const width of [375, 1280]) {
-          await page.setViewportSize({ width, height: 900 });
-          await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
-          await page.evaluate(() => document.fonts.ready);
-          await waitForStory(page, story.id);
-          const result = await page.evaluate(async () =>
-            // eslint-disable-next-line no-undef
-            await window.axe.run(document.body, {
-              runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
-            }),
-          );
+        await page.addScriptTag({ content: axeSource });
+        await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' });
+        for (const theme of ['light', 'dark']) {
+          for (const width of [375, 1280]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
+            await page.evaluate(() => document.fonts.ready);
+            await waitForStory(page, story.id);
+            const result = await page.evaluate(async () =>
+              // eslint-disable-next-line no-undef
+              await window.axe.run(document.body, {
+                runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
+              }),
+            );
 
-          await waitForStory(page, story.id);
-          for (const v of result.violations) {
-            failures.push({
-              story: `${story.title} › ${story.name} (${theme}, ${width}px)`,
-              id: v.id,
-              impact: v.impact,
-              help: v.help,
-              nodes: v.nodes.slice(0, 3).map((n) => n.target.join(' ') + ' ' + n.failureSummary),
-            });
+            await waitForStory(page, story.id);
+            for (const v of result.violations) {
+              failures.push({
+                story: `${story.title} › ${story.name} (${theme}, ${width}px)`,
+                id: v.id,
+                impact: v.impact,
+                help: v.help,
+                nodes: v.nodes.slice(0, 3).map((n) => n.target.join(' ') + ' ' + n.failureSummary),
+              });
+            }
           }
         }
+      } catch (error) {
+        failures.push({ story: story.title ? `${story.title} › ${story.name}` : story.id,
+          id: 'story-render', impact: 'serious', help: error.message, nodes: [] });
       }
     }
   }
