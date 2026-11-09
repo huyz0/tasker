@@ -37,7 +37,7 @@ canonical ownership regressions before API/GUI changes. Overall37 tasks remain.
 
 ## M53-T02 — Resolve authorized entity navigation
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Add compatible authorized ownership metadata and resolve task/artifact/Memory navigation without losing detail or trusting caller scope.
 - **Verified**: T01 accepted design and final35 checks pass; implementation regressions are next. M47 PR #5 remains at unchanged e34924e while final remote checks run.
@@ -117,3 +117,15 @@ rerun. No timeout or coverage threshold changes. Updated the scope-sync comment
 to describe owner convergence rather than the removed scope-change dismiss guard.
 Expanded browser evidence passes all5 journeys with20 light/dark desktop/mobile
 captures and no document overflow. Full checks and rendered stories rerun next.
+
+T02 verified complete: all35 local checks pass; GUI1402/95.24% branches,
+backend2180/zero failures with47 explicitly gated skips, and CLI93.8%. Five
+actual browser journeys pass with20 light/dark desktop/mobile captures. All25
+selected stories pass100 settled-state axe checks (including portal content)
+and the375px overflow sweep. Both-dialect fault/restoration, real old-client
+JSON/protobuf compatibility and independent CODE-v2/UX-v1 approval are recorded.
+Curated synthetic captures are retained under design/evidence. The final preview
+build runs from apps/gui; transitions are disabled for stable contrast snapshots.
+No UI timeout or coverage threshold changed. Next T03 covers all six search
+result types, current-query error/retry and visible-order keyboard navigation.
+Overall36 tasks remain; M53 publication waits for T03–T07 and final-head CI.

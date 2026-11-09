@@ -40,7 +40,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: .specs/adr/ADR-0047-authorized-navigation-and-bounded-history.md; .milestones/MILESTONE-53-workflow-correctness/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0053-workflow-correctness/.
   - **Verify**: Review cross-project queues, direct task/artifact/Memory links, Back/reload, org Memory tier, inaccessible entities and every loading/empty/error state; record acceptance fixtures before code.
 
-- [ ] **M53-T02** — Resolve entity navigation from authorized resource scope across queues, search and detail screens.
+- [x] **M53-T02** — Resolve entity navigation from authorized resource scope across queues, search and detail screens.
   - **Files**: packages/shared-contract/main.tsp; apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/modules/artifacts/artifacts.handler.ts; apps/gui/src/hooks/useScope.ts; apps/gui/src/components/layout/GlobalSearch.tsx; apps/gui/src/features/Tasks/; apps/gui/src/features/Memory/; apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx.
   - **Verify**: Open project B entities from project A, missing/conflicting scope links and org Memory; URL, sidebar, breadcrumbs and actions agree; Back preserves origin; inaccessible resources expose no metadata.
 

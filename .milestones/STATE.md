@@ -1,8 +1,8 @@
 ---
 active_milestone: M53
-active_task: M53-T02
+active_task: M53-T03
 last_updated: 2026-11-09
-last_commit: 88df38e
+last_commit: 252e4d1
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M53-T02 verified:2/7 tasks.** Authorized task/artifact/Memory scope, owner-keyed labels, explicit selection and access/error recovery pass64 focused cases, five real browser journeys,100 settled story contrast checks and all35 local gates. GUI1402/95.24% branches; backend2180/zero failures; CLI93.8%. SQLite/MySQL body-bound faults and old-client HTTP JSON/protobuf proofs pass. Independent implementation/UX approval is recorded. Next T03 fixes supported search types/current-query states/keyboard order. Main remains published M47; this M53 candidate is not merged. Overall36 tasks remain.
 
 **2026-11-09 — M47 published.** PR #5 merged as eeca274 after all ten final-head jobs passed (CI42614414075; real integration42614414067), including1360 GUI tests and all174 Storybook checks. M53-T02 metadata/selector foundation passes focused backend/MySQL/contract/GUI tests but canonical resource flow and final gates remain pending. This unpublished branch is rebased onto that main commit; original development work remains preserved. Overall37 tasks remain.
 
@@ -1902,14 +1904,14 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
-| M53 | Workflow Correctness | in-progress | M28, M51 | 7 | 1 |
+| M53 | Workflow Correctness | in-progress | M28, M51 | 7 | 2 |
 | M54 | Completion Evidence | todo | M46, M53 | 5 | 0 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 359 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 360 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
