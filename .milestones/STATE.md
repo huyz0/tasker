@@ -2,7 +2,7 @@
 active_milestone: M54
 active_task: null
 last_updated: 2026-11-09
-last_commit: fe028d0
+last_commit: 53b47d6
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,12 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54-T01 verified:1/5 tasks.** Accepted ADR0042/UX/TC001–009 and amended ARCH-v2/UX-v2 define bounded stored representations, metadata on every page, opt-in permissions, forward link provenance and mutable-reference/open-view freshness. All35 fresh-worktree checks pass (GUI1475/95.43%, backend2207/zero failures, CLI93.8%). T02 next implements observed-red tools/SQL bounds/paging/provenance; no M54 runtime behavior is delivered yet. M53 is published as53b47d6 after ten final-head jobs. Overall30 tasks remain.
+
+**2026-11-09 — M53 published.** PR #6 merged as53b47d6 after all ten final-head jobs passed (CI42687804647, integration42687805322), including the strengthened217-story gates and full browser suite. M54-T01's amended ADR/UX/TC001–009 receive ARCH-v2/UX-v2 approval; final local checks and branch reconciliation remain pending. No M54 runtime change is implemented;31 tasks remain.
+
+**2026-11-09 — M54-T01 in progress.** Define bounded artifact MCP handoff and metadata-only opt-in evidence before implementation, using an isolated branch based on locally verified M53c82fada. M53 PR #6 final-head CI remains in progress and gates main publication. API/security standards and static design TDD exception apply. No new feature is implemented or implied complete;31 tasks remain.
 
 **2026-11-09 — M53 complete locally:7/7 tasks,5/5 exit criteria.** T07 is committed asfe028d0 after all35 checks,42 actual browser journeys and217-story dual-theme matrices. PR #6 still requires actual final-head remote CI before merge; main remains published through M47. M54-T01 is the next eligible design task (M46/M53 locally complete), with no implementation implied done. Preserve optional field numbers, tasks-only digest access, bounded stored representations and explicit provenance. Overall31 tasks remain.
 
@@ -1927,13 +1933,13 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
-| M54 | Completion Evidence | todo | M46, M53 | 5 | 0 |
+| M54 | Completion Evidence | in-progress | M46, M53 | 5 | 1 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 365 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 366 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

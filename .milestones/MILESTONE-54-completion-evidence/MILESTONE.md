@@ -1,12 +1,12 @@
 ---
 id: M54
 title: Completion Evidence
-status: todo
+status: in-progress
 goal: External workers can discover, attach and read bounded task evidence through MCP, and people can inspect that evidence with accurate provenance.
 depends_on: [M46, M53]
 surfaces: [backend, gui, contract, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-09
 completed_at: null
 ---
 
@@ -35,7 +35,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
 
 ## 5. Task Breakdown
 
-- [ ] **M54-T01** — Define compatible evidence bounds, provenance and permissions before extending contracts.
+- [x] **M54-T01** — Define compatible evidence bounds, provenance and permissions before extending contracts.
   - **Files**: .specs/adr/ADR-0042-completion-evidence.md; .milestones/MILESTONE-54-completion-evidence/design/UX-DESIGN.md; packages/shared-contract/main.tsp.
   - **Verify**: Specify fresh optional field numbers, stored-representation prefixes, server-side limits, metadata-only digest opt-in and retry semantics; ordinary tasks:read digests remain valid without artifacts:read; no implicit completion enforcement.
 
