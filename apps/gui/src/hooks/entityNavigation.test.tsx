@@ -10,7 +10,7 @@ import { useScopeSync, useSetScope, type Scope } from './useScope';
 
 beforeEach(() => {
   useLayoutStore.setState({ activeOrgId: '', activeProjectId: '' });
-  mockRpc(OrgService, 'ListOrgs', { orgs: [{ id: 'o1', name: 'Organization one' }], page: { totalCount: 1 } });
+  mockRpc(OrgService, 'ListOrgs', { organizations: [{ id: 'o1', name: 'Organization one' }], page: { totalCount: 1 } });
   mockRpc(ProjectService, 'ListProjects', { projects: [{ id: 'p1', orgId: 'o1', name: 'Project one' }], page: { totalCount: 1 } });
 });
 
@@ -24,7 +24,11 @@ function ScopeWriter({ next, automatic = false }: { next: Partial<Scope>; automa
   </>;
 }
 
-function Switcher() { useScopeSync(); return <OrgProjectSwitcher />; }
+function Switcher() {
+  useScopeSync();
+  const navigate = useNavigate();
+  return <><OrgProjectSwitcher /><button onClick={() => navigate('/tasks?org=o1')}>Open tasks</button></>;
+}
 
 describe('entity navigation distinguishes explicit selection from owner normalization', () => {
   for (const entity of ['tasks', 'artifacts']) {
@@ -40,6 +44,16 @@ describe('entity navigation distinguishes explicit selection from owner normaliz
       expect(view.location.url).toBe(`/${entity}/entity-1?org=o1&project=p1&view=table`);
     });
   }
+
+  it('resumes automatic selection after leaving Memory for a screen that requires a project', async () => {
+    const view = renderScoped(<Switcher />, { paths, initialEntry: '/memory/belief-1?org=o1&scope=organization' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Active project' }));
+    await screen.findByRole('option', { name: 'Project one', exact: true });
+    expect(new URLSearchParams(view.location.search).has('project')).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Open tasks' }));
+    await waitFor(() => expect(new URLSearchParams(view.location.search).get('project')).toBe('p1'));
+    expect(view.location.pathname).toBe('/tasks');
+  });
 
   it('automatic scope normalization retains the entity route', () => {
     const view = renderScoped(<ScopeWriter next={{ projectId: 'p2' }} automatic />, {

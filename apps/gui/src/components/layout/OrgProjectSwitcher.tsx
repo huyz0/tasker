@@ -251,7 +251,7 @@ export function OrgProjectSwitcher() {
     const found = projects.find((p: any) => p.id === activeProjectId);
     if (found) setProjectLabel(found.name);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projects, activeProjectId]);
+  }, [projects, activeProjectId, projectlessMemory]);
 
   /**
    * Organizations are a tree. Within the page that came back, a child sits one
