@@ -53,3 +53,36 @@ Run: domain relay tests and real JetStream outage/recovery verification.
   or webhook rows are externally visible.
 - Given disposable MySQL, SQLite and NATS services, run the targeted cases and
   full local gates; record exact commands and deliberate-break evidence.
+
+## Activation regression commands (T04)
+
+- Given an unknown unary method, even one named GetAndCreate, then mutation and
+  captured event commit atomically; capture failure rolls back the mutation.
+- Given an explicit read or any stream, then it never opens a write unit.
+- Given external repository preparation, then network calls occur outside a SQL
+  unit and current credentials/permissions are rechecked inside the later write.
+- Given a stalled-alert capture failure, then its deduplication claim rolls back
+  and the next detection remains eligible.
+- Given a schedule firing from a foreign outer presentation context, then task
+  and run events carry the actual firing project and organization.
+- Given idle drain followed by a late request during pre-drain delay, then the
+  real server refuses the mutation and creates no task.
+- Given a SQL failure containing a private artifact fixture, then structured
+  error output, error ring, tracing exception and tracing status omit its body.
+- Given populated old audit tables in both dialects, then migration preserves
+  payload/time, backfills legacy identity and permits new producer IDs sharing
+  the old sequence. Deliberately retaining sequence uniqueness fails the test.
+
+Run in the backend or with these repository-relative paths:
+
+```sh
+bun test apps/backend/src/consumers/durableAudit.test.ts apps/backend/src/lib/mutationInterceptor.test.ts apps/backend/src/lib/domainEventRuntime.test.ts
+bun test apps/backend/src/lib/externalMutationBoundary.test.ts apps/backend/src/lib/backgroundWorker.test.ts apps/backend/src/lib/databaseErrorDetails.test.ts apps/backend/src/lib/telemetry/otel.test.ts
+TASKER_REAL_INTEGRATION=1 TASKER_STREAM_LIFECYCLE_INTEGRATION=1 NATS_URL=nats://127.0.0.1:4222 bun test apps/backend/src/test/wire/wire.integration.test.ts apps/backend/src/test/wire/durableEvents.integration.test.ts
+TASKER_MYSQL_INTEGRATION=1 bun test apps/backend/src/db/auditIdentity.migration.test.ts apps/backend/src/lib/domainEventRelay.mysql.test.ts apps/backend/src/lib/domainEventOutbox.mysql.test.ts
+```
+
+Configure DB_HOST/DB_USER/DB_PASSWORD and DB_NAME for a newly created disposable
+MySQL database before the last command. Upgrade/relay tests create their own
+additional owned schemas; capture uses the configured disposable database. No
+existing database should be reset. Required CI provisioning is owned by M49.

@@ -26,3 +26,12 @@
 - **Verified**: Initial red: relay module absent. Restored relay: nine SQLite tests and one real MySQL test pass; token-removal fault fails both stale-owner cases and early-return fault fails drain. Independent CODE-REVIEW-v2 approved; `moon check --all`: 35 completed (23 cached); backend suite 2124 tests with zero failures.
 - **Notes**: ADR-0040 already owns the architecture; no new decision is needed. Runtime capture/projector activation remains T04. Original worktree WIP stays untouched.
 - **Next**: M46-T04.
+
+## M46-T04 — Activate durable capture, audit identity and worker lifecycle
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Producer-identity audit migrations/hydration, mutation interception with explicit external-I/O boundaries, background units, reconnecting broker/relay lifecycle and shutdown drain.
+- **Verified**: Red→green regression evidence covers projection, external transaction boundaries, stalled rollback, schedule context, late admission and telemetry privacy. Final `moon check --all`: 35 completed (25 cached); backend 2111 pass / 40 explicitly gated skip / 0 fail. Real sockets: 11 pass, including authenticated broker feed logout. Real MySQL: four pass in fresh owned schemas; populated upgrades preserve legacy rows. Retained-sequence-index faults fail SQLite and MySQL. Independent v3 rejection and v4 approval record corrected drain/privacy findings.
+- **Notes**: Implements and clarifies ADR-0040 and TEST-PLAN-0046; no new public contract or UX. Load API/security standards for transactional authorization and retained tenant routing. Unknown unary writes default to a unit; repository remote preparation and manual schedule fire own narrower units.
+- **Next**: M46-T06 then T05 crash/operating closure.

@@ -635,7 +635,7 @@ export const beliefPromotions = mysqlTable("belief_promotions", {
 /**
  * The MySQL twin of `audit_log` — see schema.sqlite.ts for the reasoning
  * behind the shape (verbatim JSON payload, nullable orgId/actorId, unique
- * stream sequence for idempotent redelivery).
+ * producer identity for idempotent redelivery).
  *
  * `payload` is longtext rather than a varchar: an event payload has no
  * useful upper bound, and truncating an audit record is worse than storing
@@ -648,6 +648,7 @@ export const auditLog = mysqlTable("audit_log", {
   actorType: varchar("actor_type", { length: 32 }).notNull().default("system"),
   actorId: varchar("actor_id", { length: 256 }),
   requestId: varchar("request_id", { length: 256 }),
+  eventId: varchar("event_id", { length: 256 }),
   payload: longtext("payload").notNull(),
   // bigint in the DDL: JetStream sequences are 64-bit and a busy stream will
   // outrun a 32-bit int. Drizzle's `int` would silently cap it.
@@ -658,7 +659,7 @@ export const auditLog = mysqlTable("audit_log", {
     orgIdx: index("audit_log_org_idx").on(table.orgId, table.occurredAt),
     subjectIdx: index("audit_log_subject_idx").on(table.subject),
     actorIdx: index("audit_log_actor_idx").on(table.actorId),
-    streamSeqUnique: uniqueIndex("audit_log_stream_seq_unique").on(table.streamSeq),
+    eventIdUnique: uniqueIndex("audit_log_event_id_unique").on(table.eventId),
   };
 });
 

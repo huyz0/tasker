@@ -33,14 +33,15 @@ export const createHealthHandler = (db: any, nc: any = null) => {
       }
       const dbLatencyMs = Date.now() - dbStart;
 
-      const natsStatus = !nc ? "disconnected" : nc.isClosed() ? "closed" : "connected";
+      const current = typeof nc === "function" ? nc() : nc;
+      const natsStatus = !current ? "disconnected" : current.isClosed() ? "closed" : "connected";
       let natsLatencyMs: number | undefined;
-      if (natsStatus === "connected" && typeof nc.flush === "function") {
+      if (natsStatus === "connected" && typeof current.flush === "function") {
         const natsStart = Date.now();
         try {
           // flush() round-trips to the NATS server and back, giving a real
           // latency signal instead of just "the client object exists."
-          await nc.flush();
+          await current.flush();
           natsLatencyMs = Date.now() - natsStart;
         } catch {
           natsLatencyMs = undefined;

@@ -126,3 +126,10 @@ export function setRequestProject(projectId: string): void {
   const ctx = requestContextStore.getStore();
   if (ctx && !ctx.projectId && projectId) ctx.projectId = projectId;
 }
+
+/** External preparation may outlive a grant. Start a fresh authorization memo
+ * and routing scope before the later transactional write. */
+export function withFreshAuthorizationContext<T>(fn: () => T): T {
+  const previous = getRequestContext();
+  return runWithRequestContext({ ...previous, requestId: previous?.requestId ?? crypto.randomUUID(), policyCache: undefined, orgId: undefined, projectId: undefined }, fn);
+}

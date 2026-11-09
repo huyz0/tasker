@@ -30,7 +30,6 @@ import { createEventsHandler } from "./modules/events/events.handler";
 import { createWebhooksHandler } from "./modules/webhooks/webhooks.handler";
 import { createWorkflowsHandler } from "./modules/workflows/workflows.handler";
 import { createSchedulesHandler, createScheduleSweep } from "./modules/schedules/schedules.handler";
-import { createWebhookSink } from "./modules/webhooks/outbox";
 import { runWebhookSweep, httpSender } from "./modules/webhooks/delivery";
 import { allowPrivateTargets } from "./modules/webhooks/urlSafety";
 import { createRepositoriesHandler } from "./modules/repositories/repositories.handler";
@@ -38,7 +37,6 @@ import createSearchHandler from "./modules/search/search.handler";
 import createDashboardHandler from "./modules/dashboard/dashboard.handler";
 import createReportsHandler from "./modules/reports/reports.handler";
 import { setupDatabase } from "./db/db";
-import { connect as natsConnect } from "nats";
 import { logger } from "./lib/logger";
 import { requestLoggingInterceptor } from "./lib/requestLogging";
 import { reportError } from "./lib/errorReporter";
@@ -47,7 +45,11 @@ import { purgeExpiredIdempotencyKeys } from "./lib/idempotency";
 import { validationErrorInterceptor } from "./lib/validationErrors";
 import { runStalledClaimAlertSweep } from "./lib/stalledClaimAlerts";
 import { config } from "./config";
-import { withRequestCorrelation, setDomainEventSink } from "./lib/natsCorrelation";
+import { setDurableDomainEventCapture } from "./lib/natsCorrelation";
+import { captureDomainEvent } from './lib/domainEventOutbox';
+import { createDomainEventRuntime } from './lib/domainEventRuntime';
+import { createMutationInterceptor } from './lib/mutationInterceptor';
+import { createBackgroundWorker } from './lib/backgroundWorker';
 import { getRpcMethodStats } from "./lib/rpcMetrics";
 import { getBusinessEventCounts } from "./lib/businessEvents";
 import { recordHttpRequest } from "./lib/httpMetrics";
@@ -118,18 +120,18 @@ process.on("unhandledRejection", (reason) => {
   reportError({ message: "unhandledRejection", err: reason, severity: "error" });
 });
 
-let nc: any = null;
-try {
-  nc = withRequestCorrelation(await natsConnect({ servers: process.env.NATS_URL || "nats://localhost:4222" }));
-} catch (e) {
-  logger.error({ err: e, natsUrl: process.env.NATS_URL || "nats://localhost:4222" }, "nats.connect_failed");
+// Install capture before opening the listener. Domain handlers never publish
+// directly in production; network I/O belongs to the post-commit relay.
+const nc = null;
+const eventRuntime = createDomainEventRuntime(db, isStandalone);
+const brokerRequired = !isStandalone || Boolean(process.env.NATS_URL);
+setDurableDomainEventCapture((tx, standalone, event) => captureDomainEvent(tx, standalone, event, { brokerRequired }));
+const backgroundWorkers: ReturnType<typeof createBackgroundWorker>[] = [];
+function every(name: string, intervalMs: number, operation: () => Promise<unknown>) {
+  const worker = createBackgroundWorker(name, intervalMs, operation, err => reportError({ message: `${name}.failed`, err, severity: 'error' }));
+  backgroundWorkers.push(worker);
+  worker.start();
 }
-
-// M37 (ADR-0030): every published task event is offered to the webhook
-// outbox in this process - with or without a broker.
-const webhookSink = createWebhookSink(db, isStandalone, (err, subject) =>
-  reportError({ message: "webhook_outbox.enqueue_failed", err, severity: "error", context: { subject } }));
-setDomainEventSink(webhookSink.publish);
 
 const sessionInterceptor: Interceptor = (next) => async (req) => {
   // The decision about who the caller is lives in lib/authenticate.ts, not
@@ -201,9 +203,9 @@ const handler = connectNodeAdapter({
   // Tracing first, so the span covers authentication and the request-context
   // setup rather than starting after them — "why was this slow" has a
   // credential lookup in it often enough to matter.
-  interceptors: [tracingInterceptor, requestLoggingInterceptor, sessionInterceptor, validationErrorInterceptor],
+  interceptors: [tracingInterceptor, requestLoggingInterceptor, createMutationInterceptor(db, lifecycle), sessionInterceptor, validationErrorInterceptor],
   routes: (router) => {
-    router.service(HealthService as any, createHealthHandler(db, nc));
+    router.service(HealthService as any, createHealthHandler(db, eventRuntime.getConnection));
     router.service(TaskTypeService as any, createTasksHandler(db, nc));
     router.service(AuthService as any, createAuthHandler(db) as any);
     router.service(OrgService as any, createOrgsHandler(db, nc, mailer));
@@ -220,9 +222,9 @@ const handler = connectNodeAdapter({
     router.service(MemoryService as any, createMemoryHandler(db, nc));
     router.service(AuditService as any, createAuditHandler(db));
     router.service(NotificationService as any, createNotificationHandler(db));
-    router.service(EventService as any, createEventsHandler(db, nc));
+    router.service(EventService as any, createEventsHandler(db, eventRuntime.getConnection));
     router.service(RepositoryService as any, createRepositoriesHandler(db, nc));
-    router.service(WebhookService as any, createWebhooksHandler(db, nc, { onChange: webhookSink.invalidate }));
+    router.service(WebhookService as any, createWebhooksHandler(db, nc));
     router.service(WorkflowService as any, createWorkflowsHandler(db, nc));
     router.service(ScheduleService as any, createSchedulesHandler(db, nc));
     createSearchHandler(router, db);
@@ -291,6 +293,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (lifecycle.readiness().state === 'draining') {
+    res.writeHead(503, { 'Content-Type': 'application/problem+json', 'Retry-After': '1' });
+    res.end(JSON.stringify({ type: 'about:blank', title: 'Server is shutting down', status: 503 }));
+    return;
+  }
+
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
@@ -339,38 +347,41 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url?.startsWith("/api/auth/") || req.url?.startsWith("/api/client-errors") || req.url?.startsWith("/api/debug/")) {
-    const url = `http://${req.headers.host}${req.url}`;
-    const headers = new Headers();
-    for (const [key, value] of Object.entries(req.headers)) {
-      if (value === undefined) continue;
-      for (const v of Array.isArray(value) ? value : [value]) headers.append(key, v);
-    }
-
-    // Caps how much of a request body gets buffered into memory before any
-    // route-level validation runs - without this, a client posting an
-    // arbitrarily large body (e.g. to /api/client-errors) gets fully
-    // buffered via Buffer.concat regardless of what the handler eventually
-    // does with it, which is an unbounded-memory footgun on its own.
-    const MAX_BODY_BYTES = 256 * 1024;
-    const chunks: Buffer[] = [];
-    let totalBytes = 0;
-    for await (const chunk of req) {
-      totalBytes += (chunk as Buffer).length;
-      if (totalBytes > MAX_BODY_BYTES) {
-        res.writeHead(413, { "Content-Type": "application/problem+json" });
-        res.end(JSON.stringify({ type: "about:blank", title: "Payload too large", status: 413 }));
-        return;
+    return await lifecycle.track(async () => {
+      const requestPath = req.url ?? "/";
+      const url = `http://${req.headers.host}${requestPath}`;
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(req.headers)) {
+        if (value === undefined) continue;
+        for (const v of Array.isArray(value) ? value : [value]) headers.append(key, v);
       }
-      chunks.push(chunk as Buffer);
-    }
-    const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
 
-    const routes = req.url.startsWith("/api/auth/") ? authRoutes : telemetryRoutes;
-    const routeResponse = await routes.handle(new Request(url, { method: req.method, headers, body }));
-    recordHttpRequest(req.method || "GET", req.url.split("?")[0]!, routeResponse.status);
-    res.writeHead(routeResponse.status, Object.fromEntries(routeResponse.headers.entries()));
-    res.end(await routeResponse.text());
-    return;
+      // Caps how much of a request body gets buffered into memory before any
+      // route-level validation runs - without this, a client posting an
+      // arbitrarily large body (e.g. to /api/client-errors) gets fully
+      // buffered via Buffer.concat regardless of what the handler eventually
+      // does with it, which is an unbounded-memory footgun on its own.
+      const MAX_BODY_BYTES = 256 * 1024;
+      const chunks: Buffer[] = [];
+      let totalBytes = 0;
+      for await (const chunk of req) {
+        totalBytes += (chunk as Buffer).length;
+        if (totalBytes > MAX_BODY_BYTES) {
+          res.writeHead(413, { "Content-Type": "application/problem+json" });
+          res.end(JSON.stringify({ type: "about:blank", title: "Payload too large", status: 413 }));
+          return;
+        }
+        chunks.push(chunk as Buffer);
+      }
+      const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
+
+      const routes = requestPath.startsWith("/api/auth/") ? authRoutes : telemetryRoutes;
+      const routeResponse = await routes.handle(new Request(url, { method: req.method, headers, body }));
+      recordHttpRequest(req.method || "GET", requestPath.split("?")[0]!, routeResponse.status);
+      res.writeHead(routeResponse.status, Object.fromEntries(routeResponse.headers.entries()));
+      res.end(await routeResponse.text());
+      return;
+    });
   }
 
   // The GUI, out of the binary (M09-T03). Empty in dev, where Vite serves it,
@@ -390,13 +401,12 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // Counted, so a drain knows what is still running. Deliberately awaits only
-  // the adapter's own handling: a streaming response stays open for as long as
-  // the tab is open, and waiting for those would make every deploy sit out the
-  // full drain timeout.
-  await lifecycle.track(async () => handler(req, res));
+  // The mutation interceptor tracks actual unary handler promises. The Node
+  // adapter returns void; an event stream is deliberately not part of drain.
+  handler(req, res);
 });
 
+eventRuntime.start();
 server.listen(runtime.port, () => {
   lifecycle.markReady();
   logger.info({ port: runtime.port, dbPath: isStandalone ? runtime.dbPath : undefined }, "backend.listening");
@@ -425,14 +435,17 @@ async function shutdown(signal: string): Promise<void> {
   // /readyz start answering 503 — and the promise it returns settles when the
   // last in-flight request finishes. The delay runs *alongside* it, not
   // before, so the two overlap rather than adding up.
+  eventRuntime.stopLeasing();
+  const workersDraining = Promise.all(backgroundWorkers.map(worker => worker.stop()));
   const draining = lifecycle.drain(Number(process.env.SHUTDOWN_DRAIN_TIMEOUT_MS ?? DEFAULT_DRAIN_TIMEOUT_MS));
   const preDrainMs = Number(process.env.SHUTDOWN_PRE_DRAIN_MS ?? DEFAULT_PRE_DRAIN_DELAY_MS);
   if (preDrainMs > 0) await new Promise((resolve) => setTimeout(resolve, preDrainMs));
   const outcome = await draining;
 
   server.close();
+  await workersDraining;
   try {
-    if (nc && !nc.isClosed?.()) await nc.drain();
+    await eventRuntime.close();
   } catch (err) {
     logger.warn({ err }, "backend.nats_drain_failed");
   }
@@ -446,58 +459,24 @@ process.on("SIGTERM", () => void shutdown("SIGTERM"));
 process.on("SIGINT", () => void shutdown("SIGINT"));
 
 const RETENTION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
-setInterval(() => {
-  runRetentionSweep(db).catch((err) => reportError({ message: "retention_sweep.failed", err, severity: "error" }));
-  purgeExpiredIdempotencyKeys(db, isStandalone).catch((err) =>
-    reportError({ message: "idempotency_expiry.failed", err, severity: "error" }));
-}, RETENTION_SWEEP_INTERVAL_MS);
+every('retention_sweep', RETENTION_SWEEP_INTERVAL_MS, async () => {
+  const results = await Promise.allSettled([runRetentionSweep(db), purgeExpiredIdempotencyKeys(db, isStandalone)]);
+  const failure = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+  if (failure) throw failure.reason;
+});
 
-// Periodic latency summary, so "is this endpoint slow" is answerable from
-// the log stream without a separate metrics backend.
-const METRICS_LOG_INTERVAL_MS = 5 * 60 * 1000;
-setInterval(() => {
+every('metrics_summary', 5 * 60 * 1000, async () => {
   const stats = getRpcMethodStats();
-  if (stats.length > 0) logger.info({ rpcMethodStats: stats }, "rpc.latency_summary");
-
+  if (stats.length > 0) logger.info({ rpcMethodStats: stats }, 'rpc.latency_summary');
   const eventCounts = getBusinessEventCounts();
-  if (Object.keys(eventCounts).length > 0) logger.info({ eventCounts }, "business_events.summary");
-}, METRICS_LOG_INTERVAL_MS);
+  if (Object.keys(eventCounts).length > 0) logger.info({ eventCounts }, 'business_events.summary');
+});
 
-// M25-T04 (ADR-0022). Hourly, not configurable (Decision 5 - the interval is
-// a mechanism detail, not a policy a deployment has a legitimate reason to
-// tune, mirroring RETENTION_SWEEP_INTERVAL_MS's own precedent). No sweep at
-// boot, matching both blocks above - the first fire is after one full interval.
-// M37 (ADR-0030). Every few seconds, because a webhook exists to wake a runner
-// promptly; a run still in flight is not overlapped by the next.
-const WEBHOOK_SWEEP_INTERVAL_MS = 5_000;
 const webhookSender = httpSender(allowPrivateTargets());
-let webhookSweepRunning = false;
-setInterval(() => {
-  if (webhookSweepRunning) return;
-  webhookSweepRunning = true;
-  runWebhookSweep(db, isStandalone, {
-    send: webhookSender,
-    onError: (err) => reportError({ message: "webhook_sweep.delivery_failed", err, severity: "error" }),
-  })
-    .catch((err) => reportError({ message: "webhook_sweep.failed", err, severity: "error" }))
-    .finally(() => { webhookSweepRunning = false; });
-}, WEBHOOK_SWEEP_INTERVAL_MS);
-
-// M43 (ADR-0036). Every minute: schedules fire at whole hours, so a minute's
-// lateness is within the promise; a run still in flight is not overlapped.
-const SCHEDULE_SWEEP_INTERVAL_MS = 60_000;
+every('webhook_sweep', 5000, () => runWebhookSweep(db, isStandalone, {
+  send: webhookSender,
+  onError: err => reportError({ message: 'webhook_sweep.delivery_failed', err, severity: 'error' }),
+}));
 const runDueSchedules = createScheduleSweep(db, nc);
-let scheduleSweepRunning = false;
-setInterval(() => {
-  if (scheduleSweepRunning) return;
-  scheduleSweepRunning = true;
-  runDueSchedules()
-    .catch((err) => reportError({ message: "schedule_sweep.failed", err, severity: "error" }))
-    .finally(() => { scheduleSweepRunning = false; });
-}, SCHEDULE_SWEEP_INTERVAL_MS);
-
-const STALLED_ALERT_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
-setInterval(() => {
-  runStalledClaimAlertSweep(db, isStandalone, mailer, nc).catch((err) =>
-    reportError({ message: "stalled_claim_alert_sweep.failed", err, severity: "error" }));
-}, STALLED_ALERT_SWEEP_INTERVAL_MS);
+every('schedule_sweep', 60_000, () => runDueSchedules());
+every('stalled_claim_alert_sweep', 60 * 60 * 1000, () => runStalledClaimAlertSweep(db, isStandalone, mailer, nc));

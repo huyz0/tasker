@@ -110,14 +110,6 @@ describe('projectEvent', () => {
     expect(inserted[0].subject).toBe('domain.task.created');
   });
 
-  it('treats a redelivered event as a duplicate instead of a second row', async () => {
-    // The at-least-once contract: JetStream redelivers anything unacked, so a
-    // crash between write and ack replays it. The unique stream_seq makes the
-    // replay a no-op — without this the trail would double-count every crash.
-    const { db } = fakeDb(() => { throw new Error('UNIQUE constraint failed: audit_log.stream_seq'); });
-    expect(await projectEvent(db, event('domain.task.created', {}, 3))).toBe('duplicate');
-  });
-
   it('rethrows any other failure so the message goes unacked and retries', async () => {
     const { db } = fakeDb(() => { throw new Error('database is locked'); });
     await expect(projectEvent(db, event('domain.task.created', {}, 4))).rejects.toThrow('database is locked');

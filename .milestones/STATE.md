@@ -2,7 +2,7 @@
 active_milestone: M46
 active_task: null
 last_updated: 2026-11-09
-last_commit: 1ce74e1
+last_commit: f291d5c
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M46-T04 runtime activation verified.** Capture, acknowledged reference relay, producer-ID audit projection and brokerless local audit are installed. External I/O stays outside SQL units; post-network authorization is fresh. Real handler/worker drain rejects late admission; SQL error bodies are removed from logs/ring/traces. All 35 local gates, real socket 11 and isolated MySQL four tests pass. T06 webhook fencing/deadline then T05 process-crash evidence remain before M46 closure/publication.
 
 **2026-11-09 — M46-T03 relay library verified.** Fenced retry/expiry, bounded broker references, delivered-only retention and worker-error drain pass on SQLite; real MySQL recovery passes in an isolated schema. Runtime capture/audit/relay activation remains T04. Original relay WIP remains untouched in the original worktree.
 
@@ -1845,7 +1847,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
-| M46 | Durable Domain Events | in-progress | M45 | 6 | 3 |
+| M46 | Durable Domain Events | in-progress | M45 | 6 | 4 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
 | M48 | Client Recovery | todo | M44 | 4 | 0 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
@@ -1859,7 +1861,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 396 tasks across 52 milestones — 346 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 396 tasks across 52 milestones — 347 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

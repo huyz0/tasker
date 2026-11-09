@@ -1,3 +1,4 @@
+import { afterCommit } from '../../db/access';
 import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import { inArray, eq, and, not } from "drizzle-orm";
@@ -541,7 +542,7 @@ export const createOrgsHandler = (db: any, nc: any = null, mailer: Mailer | null
             .where(eq((invs as any).id, invite.id));
           // A renewed invitation is a new invitation as far as the recipient is
           // concerned — the old email said it expires, and it did.
-          await sendInviteEmail({ ...invite, role: parsed.role, invitedBy: userId, expiresAt: renewedExpiry });
+          if (!afterCommit(() => sendInviteEmail({ ...invite, role: parsed.role, invitedBy: userId, expiresAt: renewedExpiry }))) await sendInviteEmail({ ...invite, role: parsed.role, invitedBy: userId, expiresAt: renewedExpiry });
         }
         return { success: true };
       }
@@ -556,7 +557,7 @@ export const createOrgsHandler = (db: any, nc: any = null, mailer: Mailer | null
         expiresAt: invitationExpiry(),
       };
       await insertRecord(db, invs, payload, isStandalone);
-      await sendInviteEmail(payload);
+      if (!afterCommit(() => sendInviteEmail(payload))) await sendInviteEmail(payload);
       return { success: true };
     },
     async archiveOrg(req: unknown, { values: contextValues }: { values: any }) {

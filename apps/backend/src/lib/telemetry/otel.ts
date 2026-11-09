@@ -1,3 +1,4 @@
+import { databaseErrorDetails } from '../databaseErrorDetails';
 import { NodeTracerProvider, BatchSpanProcessor, type SpanProcessor } from '@opentelemetry/sdk-trace-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
@@ -162,6 +163,13 @@ export function withExtractedContext<T>(carrier: Record<string, unknown>, fn: ()
 
 /** Records an error on a span and marks it failed, in one place. */
 export function failSpan(span: Span, err: unknown): void {
+  const details = databaseErrorDetails(err);
+  if (details) {
+    span.recordException({ name: details.type, message: details.message });
+    span.setStatus({ code: SpanStatusCode.ERROR, message: details.message });
+    if (details.code) span.setAttribute?.('db.error.code', details.code);
+    return;
+  }
   span.recordException(err as Error);
   span.setStatus({ code: SpanStatusCode.ERROR, message: err instanceof Error ? err.message : String(err) });
 }

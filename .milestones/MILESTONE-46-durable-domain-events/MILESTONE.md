@@ -47,7 +47,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/modules/webhooks/outbox.ts; apps/backend/src/lib/domainEventRelay.ts; apps/backend/src/lib/domainEventOutbox.ts; apps/backend/src/index.ts.
   - **Verify**: Crash after sending but before acknowledgement retries the same event ID; two relays do not lose events; brokerless webhooks still work; matching delivery rows deduplicate.
 
-- [ ] **M46-T04** — Make audit projection idempotent by producer event identity and drain background workers.
+- [x] **M46-T04** — Make audit projection idempotent by producer event identity and drain background workers.
   - **Files**: apps/backend/src/consumers/auditProjector.ts; apps/backend/src/index.ts; apps/backend/src/lib/lifecycle.ts.
   - **Verify**: Repeated event delivery yields one audit row; shutdown stops new leases and awaits in-flight enqueue/relay work; restart resumes leases.
 

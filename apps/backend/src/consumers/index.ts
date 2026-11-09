@@ -23,6 +23,8 @@ const NATS_URL = process.env.NATS_URL || 'nats://localhost:4222';
 
 let nc: NatsConnection | null = null;
 let shuttingDown = false;
+let messages: { stop(): void } | null = null;
+let projection: Promise<unknown> | null = null;
 
 /**
  * Drains rather than closes. `drain()` finishes delivering and acknowledging
@@ -35,6 +37,8 @@ async function shutdown(signal: string): Promise<void> {
   shuttingDown = true;
   logger.info({ signal }, 'consumer.shutdown_started');
   try {
+    messages?.stop();
+    if (projection) await projection;
     if (nc) await nc.drain();
     // After the drain, so spans for messages finished during it are flushed.
     await shutdownTelemetry();
@@ -95,11 +99,14 @@ async function main(): Promise<void> {
 
   const js = nc.jetstream();
   const consumer = await js.consumers.get(STREAM_NAME, DURABLE_NAME);
-  const messages = await consumer.consume();
+  const currentMessages = await consumer.consume();
+  messages = currentMessages;
+  if (shuttingDown) { currentMessages.stop(); return; }
 
   logger.info({ stream: STREAM_NAME, durable: DURABLE_NAME }, 'consumer.listening');
 
-  for await (const msg of messages) {
+  for await (const msg of currentMessages) {
+    if (shuttingDown) break;
     const event = decodeEvent(msg.subject, msg.data, msg.seq);
     if (!event) {
       // Undecodable: acknowledge so it does not redeliver forever, but say so
@@ -116,7 +123,7 @@ async function main(): Promise<void> {
     // tracing across an asynchronous hop. An event published before this
     // existed, or by something that does not propagate, simply starts a new
     // trace here.
-    await withExtractedContext(event.payload, () =>
+    projection = Promise.resolve(withExtractedContext(event.payload, () =>
       getTracer().startActiveSpan(
         `project ${event.subject}`,
         { kind: SpanKind.CONSUMER, attributes: { 'messaging.system': 'nats', 'messaging.destination.name': event.subject } },
@@ -143,8 +150,10 @@ async function main(): Promise<void> {
           }
         },
       ),
-    );
+    ));
+    await projection;
+    projection = null;
   }
 }
 
-void main();
+void main().catch(err => { reportError({ message: 'consumer.start_failed', err, severity: 'fatal' }); process.exit(1); });
