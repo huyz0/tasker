@@ -31,7 +31,7 @@ SQLite unit tests do not establish MySQL concurrency correctness or broker outag
 
 In scope: the tasks below and their regression tests, migrations, compatibility checks and operating documentation.
 
-Related work is owned explicitly: authorization M44, atomic operations M45, durable events M46, schedules M47, client recovery M48, integration/load evidence M49, documentation M50. No new task-execution engine, separate read store, microservice split, arbitrary cron support or attention-queue product redesign is introduced by this reliability program. The attention queue from the review is a later product proposal requiring its own user-flow design.
+Related work is owned explicitly: authorization M44, atomic operations M45, durable events M46, schedules M47, client recovery M48, integration/load evidence M49, documentation M50. No new task-execution engine, separate read store, microservice split, arbitrary cron support or attention-queue product redesign is introduced by this reliability program. Attention-center product delivery is owned by M55, whose first task defines its user flow; it is outside this reliability milestone.
 
 ## 5. Task Breakdown
 

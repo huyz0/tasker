@@ -31,7 +31,7 @@ A durable consumer cannot restore an event lost before publication; the durable 
 
 In scope: the tasks below and their regression tests, migrations, compatibility checks and operating documentation.
 
-Related work is owned explicitly: authorization M44, atomic operations M45, durable events M46, schedules M47, client recovery M48, integration/load evidence M49, documentation M50. No new task-execution engine, separate read store, microservice split, arbitrary cron support or attention-queue product redesign is introduced by this reliability program. The attention queue from the review is a later product proposal requiring its own user-flow design.
+Related work is owned explicitly: authorization M44, atomic operations M45, durable events M46, schedules M47, client recovery M48, integration/load evidence M49, documentation M50. No new task-execution engine, separate read store, microservice split, arbitrary cron support or attention-queue product redesign is introduced by this reliability program. Attention-center product delivery is owned by M55, whose first task defines its user flow; it is outside this reliability milestone.
 
 ## 5. Task Breakdown
 
@@ -54,6 +54,10 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 - [ ] **M46-T05** — Verify crash boundaries and publish operating procedures.
   - **Files**: docs/webhooks.md; docs/standalone.md; .milestones/MILESTONE-46-durable-domain-events/reviews/.
   - **Verify**: Run real NATS outage/recovery and process-kill scenarios, both-dialect tests and full backend gates; document backlog inspection, retention and replay.
+
+- [ ] **M46-T06** — Fence webhook delivery completion/retry and enforce a total outbound attempt deadline.
+  - **Files**: apps/backend/src/modules/webhooks/delivery.ts; apps/backend/src/modules/webhooks/httpSender.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/.
+  - **Verify**: Reproduce an expired owner failing after its successor delivered; stale success/failure cannot change delivery or endpoint counters; trickling response bodies hit a bounded total deadline; both dialect migrations and real HTTP tests pass. Deliver before T05 closure; retain existing task IDs.
 
 ## 6. Verification
 

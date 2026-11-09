@@ -31,7 +31,7 @@ Documents repeatedly inject obsolete assumptions into development, and new relia
 
 In scope: the tasks below and their regression tests, migrations, compatibility checks and operating documentation.
 
-Related work is owned explicitly: authorization M44, atomic operations M45, durable events M46, schedules M47, client recovery M48, integration/load evidence M49, documentation M50. No new task-execution engine, separate read store, microservice split, arbitrary cron support or attention-queue product redesign is introduced by this reliability program. The attention queue from the review is a later product proposal requiring its own user-flow design.
+Related work is owned explicitly: authorization M44, atomic operations M45, durable events M46, schedules M47, client recovery M48, integration/load evidence M49, documentation M50. No new task-execution engine, separate read store, microservice split, arbitrary cron support or attention-queue product redesign is introduced by this reliability program. Attention-center product delivery is owned by M55, whose first task defines its user flow; it is outside this reliability milestone.
 
 ## 5. Task Breakdown
 
@@ -41,7 +41,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 
 - [ ] **M50-T02** — Update roadmap, delivery index and integration documentation.
   - **Files**: .specs/product/roadmap.md; README.md; docs/agent-integration.md; docs/webhooks.md; docs/cli-reference.md.
-  - **Verify**: Roadmap includes M30-M50 with truthful status; retry/processing errors, event duplicates, stream revalidation, CLI timeout and schedule recovery are documented.
+  - **Verify**: Roadmap includes M30–M58 with truthful status; retry/processing errors, event duplicates, stream revalidation, CLI timeout and schedule recovery are documented.
 
 - [ ] **M50-T03** — Add a recovery runbook and close with an evidence-backed review.
   - **Files**: docs/recovery.md; .milestones/STATE.md; .milestones/MILESTONE-50-operational-truth/reviews/.
