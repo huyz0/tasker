@@ -62,3 +62,11 @@
 - **Verified**: Red: remote GitHub integration job 129021858085 fails sync with `unit of work requires a managed database handle`; provider reads pass. Restored actual GitHub job 129023803194 and NATS job 129023803614 pass (run 42576021446). Full local `moon check --all`: 35 completed (23 cached), backend 2122 pass / 43 gated skip / 0 fail; typecheck passes. Read-only fixture seeds encrypted token/current authorization rows, enters the real transaction and checks stable local identities on repeated sync. Empty sandbox has no deployment round trip, explicitly reported by the existing test.
 - **Notes**: No ADR or UX: no production alternative or public flow changes. Existing transaction architecture requires a real managed handle; bypassing the unit for mocks would weaken the guarantee. Standards: testing/security.
 - **Next**: Verify and close M46 after actual remote checks.
+
+## Milestone closure
+
+- **Status**: done — seven tasks, four exit criteria.
+- **Date**: 2026-11-09
+- **Verified**: Post-commit SIGKILL and ACK-before-bookkeeping SIGKILL recover on both dialects; producer identity prevents duplicate audit/fanout; independent processes recover expired relay/webhook owners without stale result writes. Brokerless source/projector/webhook tests pass and active drain preserves pending work. Final local 35-task gate passes; actual GitHub/NATS integration passes. Final-head CI/browser completion remains a publication gate before PR #3 merge, not an inferred pass.
+- **Operating boundaries**: Stop incompatible old workers before migration; pending events never expire, delivered sources retain 14 days; use fresh transport identity while preserving producer identity for manual audit replay. Lease expiry in process proofs uses controlled time. Required automated MySQL/crash coverage and capacity measurements remain M49. Admin disable notifications retain existing best-effort insertion.
+- **Next**: Merge PR #3 after complete final-head CI, then M47-T01 occurrence design. Overall delivery still has 46 unfinished tasks.

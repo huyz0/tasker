@@ -1,8 +1,8 @@
 ---
-active_milestone: M46
+active_milestone: M47
 active_task: null
 last_updated: 2026-11-09
-last_commit: b83a670
+last_commit: 84bad8a
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M46 complete: 7/7 tasks, 4/4 exit criteria.** Durable event capture/ACKed fenced relay, producer-identity audit, brokerless projection, bounded webhook attempts and draining pass real SQLite/MySQL process recovery and all 35 local checks. Consumer DB_PATH, diagnostic privacy and the real provider database fixture were corrected. Actual GitHub/NATS integration passes. Final PR #3 head still needs complete CI/browser success before merge; do not describe publication as complete yet. M47-T01 is next after that merge. Recovery evidence and upgrade cautions live in M46 reviews and docs/webhooks.md; required recovery CI/load proof remains M49. Overall 46 tasks remain.
 
 **2026-11-09 — M46-T07 verified: 7/7 tasks.** The real provider integration now uses managed SQLite; actual GitHub and NATS CI jobs pass in run 42576021446. Full 35 local checks pass again. No sandbox PR/branch mutations are performed. Close the proven milestone, then wait for the final PR head's complete browser/CI gates before merging PR #3 and starting M47.
 
@@ -1855,7 +1857,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
-| M46 | Durable Domain Events | in-progress | M45 | 7 | 7 |
+| M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
 | M48 | Client Recovery | todo | M44 | 4 | 0 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |

@@ -1,13 +1,13 @@
 ---
 id: M46
 title: Durable Domain Events
-status: in-progress
+status: done
 goal: Domain changes and their emitted events commit together, and persisted events reach audit and matching webhooks despite process or broker failure.
 depends_on: [M45]
 surfaces: [backend, infra, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-08
-completed_at: null
+completed_at: 2026-11-09
 ---
 
 # M46 — Durable Domain Events
@@ -22,10 +22,10 @@ A durable consumer cannot restore an event lost before publication; the durable 
 
 ## 3. Exit Criteria
 
-- [ ] Committed mutations survive a crash before event publication.
-- [ ] Audit and webhook consumers deduplicate repeated delivery of the same event.
-- [ ] Two backend instances safely recover expired relay leases.
-- [ ] Standalone webhooks function without a broker, and shutdown preserves pending work.
+- [x] Committed mutations survive a crash before event publication.
+- [x] Audit and webhook consumers deduplicate repeated delivery of the same event.
+- [x] Two backend instances safely recover expired relay leases.
+- [x] Standalone webhooks function without a broker, and shutdown preserves pending work.
 
 ## 4. Scope
 
