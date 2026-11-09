@@ -24,6 +24,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -83,6 +85,8 @@ jobs:
     # can't express it.
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Start NATS (JetStream)
         run: |

@@ -1,8 +1,8 @@
 ---
-active_milestone: null
-active_task: null
-last_updated: 2026-11-08
-last_commit: 6c4372c
+active_milestone: M52
+active_task: M52-T02
+last_updated: 2026-11-09
+last_commit: 621162e
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — Publishing completed session fixes through PR #1.** M52 repairs the release configuration and patches newly reported dependency advisories before merging. Unfinished relay work remains separate.
 
 **2026-11-08 — M51 complete: 7/7 tasks, 5/5 exit criteria.** Responsive task reading/toolbars, grouped navigation, visible mobile project context, shared visual roles, purposeful automation screens and bounded density are delivered on `feature/m51-ui-navigation-and-layout` in the isolated UI worktree. All 35 local gates, 1338 GUI tests and 48 browser journeys pass; 48 application captures and 70 selected Storybook checks are recorded with the independent review. See [UI review](MILESTONE-51-ui-navigation-and-layout/design/UI-UX-REVIEW.md). M46–M50 remain unfinished and independently tracked; the original working tree still owns its in-progress relay work.
 
@@ -1848,8 +1850,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
+| M52 | Verified Session Release | in-progress | M44, M45, M51 | 2 | 1 |
 
-**Total: 363 tasks across 45 milestones — 343 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 365 tasks across 46 milestones — 344 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

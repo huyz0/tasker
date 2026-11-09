@@ -1,6 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
+    ".": {
+      "entry": [".milestones/MILESTONE-51-ui-navigation-and-layout/design/audit-selected-stories.mjs"]
+    },
     "apps/backend": {
       "entry": [
         "drizzle.mysql.config.ts",
