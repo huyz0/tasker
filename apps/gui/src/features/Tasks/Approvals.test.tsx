@@ -22,18 +22,22 @@ describe('TaskApprovals (M39)', () => {
     const requests: any[] = [];
     mockRpc(TaskService, 'ListTransitionApprovals', (body) => {
       requests.push(body);
-      return { approvals: [
+      const rows = [
         approval({ id: 'apr-0', status: 'rejected', decidedByName: 'Ada', reason: 'needs QA' }),
         approval(),
         approval({ id: 'apr-2', status: 'stale' }),
-      ], page: {} };
+      ];
+      const filtered = rows.filter(row => body.status === 'closed' ? row.status !== 'pending' : row.status === 'pending');
+      return { approvals: filtered, page: { totalCount: filtered.length } };
     });
     const decisions: any[] = [];
     mockRpc(TaskService, 'DecideTransitionApproval', (body) => { decisions.push(body); return { approval: approval({ status: 'approved' }) }; });
     renderScoped(<TaskApprovals taskId="t-1" />);
     const section = await screen.findByRole('region', { name: 'Status changes awaiting approval' });
+    await within(section).findByLabelText('Reason (optional)');
     expect(within(section).getByRole('heading')).toHaveTextContent('Awaiting your approval · 1');
-    expect(requests[0]).toMatchObject({ taskId: 't-1', status: 'all' });
+    expect(requests[0]).toMatchObject({ taskId: 't-1', status: 'pending' });
+    fireEvent.click(await within(section).findByText('History · 2'));
     const items = within(section).getAllByRole('listitem');
     expect(items[0]).toHaveTextContent('Shipperasks to move this task');
     expect(items[0]).toHaveTextContent('from review to done');
@@ -44,16 +48,17 @@ describe('TaskApprovals (M39)', () => {
   });
 
   it('titles a task with only past decisions plainly, and shows an unknown outcome as given', async () => {
-    mockRpc(TaskService, 'ListTransitionApprovals', { approvals: [approval({ status: 'approved', decidedByName: 'Ada' }), approval({ id: 'apr-9', status: 'withdrawn' })], page: {} });
+    mockRpc(TaskService, 'ListTransitionApprovals', body => ({ approvals: body.status === 'closed' ? [approval({ status: 'approved', decidedByName: 'Ada' }), approval({ id: 'apr-9', status: 'withdrawn' })] : [], page: { totalCount: body.status === 'closed' ? 2 : 0 } }));
     renderScoped(<TaskApprovals taskId="t-1" />);
     const section = await screen.findByRole('region', { name: 'Status changes awaiting approval' });
     expect(within(section).getByRole('heading')).toHaveTextContent('Approvals');
+    fireEvent.click(await within(section).findByText('History · 2'));
     expect(section).toHaveTextContent('Ada approved');
     expect(section).toHaveTextContent('withdrawn');
   });
 
   it('rejects with a reason, and reports a refused decision', async () => {
-    mockRpc(TaskService, 'ListTransitionApprovals', { approvals: [approval()], page: {} });
+    mockRpc(TaskService, 'ListTransitionApprovals', body => ({ approvals: body.status === 'closed' ? [] : [approval()], page: {} }));
     const decisions: any[] = [];
     mockRpc(TaskService, 'DecideTransitionApproval', (body) => { decisions.push(body); return { approval: approval({ status: 'rejected' }) }; });
     renderScoped(<TaskApprovals taskId="t-1" />);
@@ -68,11 +73,11 @@ describe('TaskApprovals (M39)', () => {
 
   it('shows a failed load with a way to retry', async () => {
     let calls = 0;
-    mockRpc(TaskService, 'ListTransitionApprovals', () => { calls++; if (calls === 1) throw new Error('down'); return { approvals: [], page: {} }; });
+    mockRpc(TaskService, 'ListTransitionApprovals', () => { calls++; if (calls <= 2) throw new Error('down'); return { approvals: [], page: {} }; });
     renderScoped(<TaskApprovals taskId="t-1" />);
     expect(await screen.findByText(/Could not load this task's approvals/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /retry|try again/i }));
-    await waitFor(() => expect(calls).toBe(2));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Pending approvals' })).getByRole('button', { name: /retry|try again/i }));
+    await waitFor(() => expect(calls).toBe(3));
   });
 });
 

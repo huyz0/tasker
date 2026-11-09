@@ -97,7 +97,13 @@ and expose an alert. Initial loading, true empty, denied and recoverable error
 remain distinct. Disabled actions cannot imply a successful decision.
 
 After answer/decision, reconcile pending, closed history, task counts and board
-from source truth. A last item disappearing must not strand later pages. Dedup
+from source truth. Organization queues include projects outside the one selected
+live feed, so refresh their bounded loaded pages every15s while visible. Stop
+automatic retries after known access loss; keep the one shared stream. A cached
+form may retain text, but its actions stay disabled after denied/authentication/
+not-found responses, through transient failures and remount/scope return, until
+a fresh successful read verifies access. Obsolete mutation callbacks cannot
+replace the current task/organization's error notice. A last item disappearing must not strand later pages. Dedup
 IDs when rows arrive during pagination; preserve server cursor identity. Scope,
 task or selector changes reset only the relevant page sequence. Concurrent human
 resolution uses the server's resulting status/error, with clear explanation;

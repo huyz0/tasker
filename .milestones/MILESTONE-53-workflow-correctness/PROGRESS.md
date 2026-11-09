@@ -174,3 +174,41 @@ and stale preview output are not. No timeout, coverage threshold, contract or
 backend permission change. Next T04 separates pending work from closed history,
 adds bound cursors and preserves intentional stale approval closure through the
 real mutation unit. Overall35 tasks remain; M53 still requires T04–T07 and final CI.
+
+## M53-T04 — Separate pending work from bounded history
+
+- **Status**: in-progress
+- **Date**: 2026-11-09
+- **Changed**: Reproduce stale approval rollback through the real mutation interceptor, then implement SQL closed selectors, bound cursor position/count and independent reachable pending/history pages.
+- **Verified**: T03 committed/pushed as fc684f9; all35 local gates pass with1421 GUI tests. Draft PR #6 contains completed T01–T03 and remains unmerged.
+- **Notes**: API/security standards selected, plus TDD. Reuse accepted ADR-0047, UX and TC-005/006. The approval RPC will own its narrow transaction and translate an intentional committed stale result into FailedPrecondition afterward; other errors still roll back. No generic commit-on-error policy, schema or stored closed status.
+- **Next**: Run the failing interceptor regression before production edits; verify durable closure, atomic normal decisions and capture failure rollback, then closed filtering/paging on both dialects, MCP, GUI and actual browser.
+
+T04 corrected candidate: the real-interceptor stale red persists pending on old
+code; narrow decision ownership commits intentional stale results before the RPC
+error. SQLite/MySQL history and transaction cases pass16/124 assertions, including
+capture rollback, normal approval and competing decisions. Closed selectors,
+endpoint/scope/order/filter cursor binding and legacy first-page restart pass;
+MCP advertises/forwards closed after two observed reds. Forty-seven GUI cases
+pass after six independent-review reds reproduce cached access actions, missed
+off-project updates and obsolete mutation notices. Cached forms are disabled
+after known access loss until fresh success; visible organization queues refresh
+at15s without another stream; obsolete notices cannot erase current errors.
+Browser task/history and organization paging behavior pass, but the first complete
+dark-mobile axe scan exposes a pre-existing1.75:1 Delete control. The touched
+control now uses the existing destructive-subtle pair; restored browser/rendered,
+full gates and final independent review remain pending. No rule waiver or new
+font/palette. TypeSpec generation succeeds; story required args are corrected.
+
+T04 review refinement: a second lifetime red proves that local denial state was
+lost on remount after an unavailable retry. Each mounted/query identity now
+requires a fresh successful acceptance before cached forms become actionable;
+A→B→A recovery is covered too. Independent human review approves the corrected
+source. All49 focused GUI tests pass; final SQLite/MySQL16 cases/128 assertions
+include a second authorized-org cursor mismatch and generated service descriptors.
+Both actual browser journeys pass, including52 org questions/51 approvals, task
+history23/13, local page retry/retained text, durable stale closure/reload and
+dark375px0axe. A suspected delimiter-format change is disproved at byte/runtime
+level: source has one JS escape, preserving runtime NUL. The pre-existing facet
+cursor test passes; a deliberate two-backslash literal fault fails3vs4 and is
+restored. Backend focused36/485 assertions pass. Full/rendered closure remains.

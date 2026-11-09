@@ -2,7 +2,7 @@
 active_milestone: M53
 active_task: M53-T04
 last_updated: 2026-11-09
-last_commit: d3305e4
+last_commit: fc684f9
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M53-T04 in progress.** T03 is pushed as fc684f9 and draft PR #6 reflects completed navigation/search. First reproduce stale-decision rollback through the real interceptor, then implement bounded closed selectors/cursor identity and reachable pending/history. Overall35 tasks remain.
 
 **2026-11-09 — M53-T03 verified:3/7 tasks.** All six search types, current query/org binding, honest error/retry states, scoped destinations and native keyboard/scroll behavior pass45 focused tests, three actual browser journeys and24 settled story audits. All35 local checks pass; GUI1421/95.31% branches. SQLite36/MySQL6 and deliberate binding faults are observed; independent CODE-v4/UX-v2 approve. Next T04 resolves bounded pending/history and stale-decision atomicity. Draft PR #6 still awaits final milestone/head CI before merge. Overall35 tasks remain.
 

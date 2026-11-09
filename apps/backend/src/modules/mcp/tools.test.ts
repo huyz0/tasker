@@ -54,6 +54,15 @@ describe("MCP tool catalogue (M36-T02)", () => {
     expect(TOOL_SPECS.some((t) => ["CreateSchedule", "UpdateSchedule", "DeleteSchedule"].includes(t.method))).toBe(false);
   });
 
+  it.each(["list_input_requests", "list_transition_approvals"])("%s advertises and forwards the closed list selector", async (name) => {
+    const tool = TOOL_SPECS.find(t => t.name === name)!;
+    expect((tool.inputSchema.properties.status as any).enum).toContain("closed");
+    const sent: any[] = [];
+    const host = createToolHost(async (_service, method, request) => { sent.push({ method, request }); return {}; });
+    await host.call(name, { task_id: "task-1", status: "closed", limit: 10, cursor: "next" });
+    expect(sent).toEqual([{ method: tool.method, request: { taskId: "task-1", status: "closed", page: { limit: 10, cursor: "next" } } }]);
+  });
+
   it("validates arguments against the advertised schema", async () => {
     const host = createToolHost(async () => ({}));
     const refuse = (name: string, args: Record<string, unknown>, msg: RegExp) =>

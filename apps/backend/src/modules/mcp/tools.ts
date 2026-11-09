@@ -283,7 +283,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "list_input_requests", title: "List questions",
     description: "Questions on one task, or your organization's questions still waiting on people.",
-    inputSchema: schema({ task_id: str("Only this task's questions"), status: str("Status", { enum: ["open", "answered", "cancelled", "all"] }), limit, cursor }),
+    inputSchema: schema({ task_id: str("Only this task's questions"), status: str("Status", { enum: ["open", "answered", "cancelled", "closed", "all"] }), limit, cursor }),
     annotations: readOnly,
     service: TaskService, method: "ListInputRequests", request: (a) => defined({ taskId: a.task_id, status: a.status, ...page(a) }),
   },
@@ -343,7 +343,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "list_transition_approvals", title: "List approval requests",
     description: "Status changes on one task, or your organization's, waiting on (or decided by) a person.",
-    inputSchema: schema({ task_id: str("Only this task's approvals"), status: str("Status", { enum: ["pending", "approved", "rejected", "stale", "all"] }), limit, cursor }),
+    inputSchema: schema({ task_id: str("Only this task's approvals"), status: str("Status", { enum: ["pending", "approved", "rejected", "stale", "closed", "all"] }), limit, cursor }),
     annotations: readOnly,
     service: TaskService, method: "ListTransitionApprovals", request: (a) => defined({ taskId: a.task_id, status: a.status, ...page(a) }),
   },

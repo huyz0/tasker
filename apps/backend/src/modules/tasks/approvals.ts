@@ -8,6 +8,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
+import { transactionalOperation } from "../../db/access";
 import { executePaginatedQuery } from "../../db/query-builder";
 import { requirePrincipal, requireUser, getTaskOrgId, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
@@ -23,7 +24,7 @@ const DecideSchema = z.object({
   reason: z.preprocess((v) => (v === "" ? undefined : v), z.string().trim().max(2000).optional()),
 });
 const IdSchema = z.object({ id: z.string().min(1, "id is required") });
-const STATUSES = ["pending", "approved", "rejected", "stale", "all"] as const;
+const STATUSES = ["pending", "approved", "rejected", "stale", "closed", "all"] as const;
 const ListSchema = z.object({
   orgId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
   taskId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
@@ -133,37 +134,43 @@ export function createApprovalHandlers(db: any, nc: any, isStandalone: boolean, 
 
     /** People only. Approving applies the move as the approver; a task that moved meanwhile makes it stale. */
     async decideTransitionApproval(req: unknown, { values }: { values: any }) {
-      const userId = requireUser(values);
-      const parsed = DecideSchema.parse(req);
-      const row = await load(parsed.id);
-      await assertCan(db, { kind: "user", userId }, { type: "organization", id: row.orgId }, "task:write");
-      if (row.status !== "pending") throw new ConnectError(`this approval is already ${row.status}`, Code.FailedPrecondition);
-      const decided = { decidedByUserId: userId, decidedAt: new Date(), reason: parsed.reason ?? null };
+      // This RPC owns the unit: stale is an intentional committed closure,
+      // while authorization, storage and event-capture failures still roll back.
+      const result = await transactionalOperation(db, async () => {
+        const userId = requireUser(values);
+        const parsed = DecideSchema.parse(req);
+        const row = await load(parsed.id);
+        await assertCan(db, { kind: "user", userId }, { type: "organization", id: row.orgId }, "task:write");
+        if (row.status !== "pending") throw new ConnectError(`this approval is already ${row.status}`, Code.FailedPrecondition);
+        const decided = { decidedByUserId: userId, decidedAt: new Date(), reason: parsed.reason ?? null };
 
-      if (!parsed.approve) {
-        if (!(await closeIfPending(row.id, { ...decided, status: "rejected" }))) {
-          throw new ConnectError(`this approval is already ${(await load(row.id)).status}`, Code.FailedPrecondition);
+        if (!parsed.approve) {
+          if (!(await closeIfPending(row.id, { ...decided, status: "rejected" }))) {
+            throw new ConnectError(`this approval is already ${(await load(row.id)).status}`, Code.FailedPrecondition);
+          }
+        } else {
+          // Claim the decision first, so two approvers cannot both apply it.
+          if (!(await closeIfPending(row.id, { ...decided, status: "approved" }))) {
+            throw new ConnectError(`this approval is already ${(await load(row.id)).status}`, Code.FailedPrecondition);
+          }
+          const [task] = await db.select().from(tasks).where(eq(tasks.id, row.taskId)).limit(1);
+          try {
+            if (!task || task.status !== row.fromStatus) throw new ConnectError("stale", Code.Aborted);
+            await applyStatusChange(task, row.toStatus, { kind: "user", userId } as Principal);
+          } catch (e) {
+            if (!(e instanceof ConnectError) || e.code !== Code.Aborted) throw e;
+            await db.update(approvals).set({ status: "stale" }).where(eq(approvals.id, row.id));
+            return { staleMessage: `the task has moved since this was asked (it is now "${task?.status ?? "gone"}") - the request is closed as stale` };
+          }
         }
-      } else {
-        // Claim the decision first, so two approvers cannot both apply it.
-        if (!(await closeIfPending(row.id, { ...decided, status: "approved" }))) {
-          throw new ConnectError(`this approval is already ${(await load(row.id)).status}`, Code.FailedPrecondition);
-        }
-        const [task] = await db.select().from(tasks).where(eq(tasks.id, row.taskId)).limit(1);
-        try {
-          if (!task || task.status !== row.fromStatus) throw new ConnectError("stale", Code.Aborted);
-          await applyStatusChange(task, row.toStatus, { kind: "user", userId } as Principal);
-        } catch (e) {
-          if (!(e instanceof ConnectError) || e.code !== Code.Aborted) throw e;
-          await db.update(approvals).set({ status: "stale" }).where(eq(approvals.id, row.id));
-          throw new ConnectError(`the task has moved since this was asked (it is now "${task?.status ?? "gone"}") - the request is closed as stale`, Code.FailedPrecondition);
-        }
-      }
-      publishDomainEvent(nc, "domain.task.approval_decided", {
-        approvalId: row.id, taskId: row.taskId, approved: parsed.approve, fromStatus: row.fromStatus, toStatus: row.toStatus,
-        reason: parsed.reason ?? null, decidedByUserId: userId, requestedByAgentId: row.requestedByAgentId,
-      });
-      return { approval: (await toWire([await load(row.id)]))[0] };
+        publishDomainEvent(nc, "domain.task.approval_decided", {
+          approvalId: row.id, taskId: row.taskId, approved: parsed.approve, fromStatus: row.fromStatus, toStatus: row.toStatus,
+          reason: parsed.reason ?? null, decidedByUserId: userId, requestedByAgentId: row.requestedByAgentId,
+        });
+        return { approval: (await toWire([await load(row.id)]))[0] };
+      })();
+      if ("staleMessage" in result) throw new ConnectError(result.staleMessage, Code.FailedPrecondition);
+      return result;
     },
 
     async getTransitionApproval(req: unknown, { values }: { values: any }) {
@@ -184,7 +191,8 @@ export function createApprovalHandlers(db: any, nc: any, isStandalone: boolean, 
       const scope = and(
         eq(approvals.orgId, orgId),
         parsed.taskId ? eq(approvals.taskId, parsed.taskId) : undefined,
-        parsed.status === "all" ? undefined : eq(approvals.status, parsed.status),
+        parsed.status === "all" ? undefined : parsed.status === "closed"
+          ? inArray(approvals.status, ["approved", "rejected", "stale"]) : eq(approvals.status, parsed.status),
       );
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, approvals, scope, parsed.page, {
         sortableColumns: { createdAt: approvals.createdAt },
@@ -194,6 +202,7 @@ export function createApprovalHandlers(db: any, nc: any, isStandalone: boolean, 
           decidedByUserId: approvals.decidedByUserId, reason: approvals.reason, createdAt: approvals.createdAt, decidedAt: approvals.decidedAt,
         },
         extraCacheKey: [orgId, parsed.taskId ?? "", parsed.status].join("|"),
+        cursorScope: JSON.stringify(["approvals", orgId, parsed.taskId ?? "", parsed.status]),
       });
       return { approvals: await toWire(items), page: { nextCursor, totalCount } };
     },

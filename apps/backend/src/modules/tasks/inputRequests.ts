@@ -26,7 +26,7 @@ const AnswerSchema = z.object({
   answer: z.string().trim().min(1, "answer is required").max(4000),
 });
 const IdSchema = z.object({ id: z.string().min(1, "id is required") });
-const STATUSES = ["open", "answered", "cancelled", "all"] as const;
+const STATUSES = ["open", "answered", "cancelled", "closed", "all"] as const;
 const ListSchema = z.object({
   orgId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
   taskId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
@@ -178,7 +178,8 @@ export function createInputRequestHandlers(db: any, nc: any, isStandalone: boole
       const scope = and(
         eq(requests.orgId, orgId),
         parsed.taskId ? eq(requests.taskId, parsed.taskId) : undefined,
-        parsed.status === "all" ? undefined : eq(requests.status, parsed.status),
+        parsed.status === "all" ? undefined : parsed.status === "closed"
+          ? inArray(requests.status, ["answered", "cancelled"]) : eq(requests.status, parsed.status),
       );
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, requests, scope, parsed.page, {
         sortableColumns: { createdAt: requests.createdAt },
@@ -188,6 +189,7 @@ export function createInputRequestHandlers(db: any, nc: any, isStandalone: boole
           answeredByUserId: requests.answeredByUserId, createdAt: requests.createdAt, answeredAt: requests.answeredAt,
         },
         extraCacheKey: [orgId, parsed.taskId ?? "", parsed.status].join("|"),
+        cursorScope: JSON.stringify(["inputRequests", orgId, parsed.taskId ?? "", parsed.status]),
       });
       return { inputRequests: await toWire(items), page: { nextCursor, totalCount } };
     },

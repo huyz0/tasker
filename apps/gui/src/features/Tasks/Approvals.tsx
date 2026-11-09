@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
 import { TaskService, type TransitionApproval } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
-import { ListState } from '../../components/ui/ListState';
+import { WorkPages, WorkHistory, WorkNotice, useWorkPages, useWorkNotice } from './WorkPages';
 import { TONE_CLASSES } from '../../components/ui/statusStyles';
 import { formatDateTime } from '../../lib/format';
 import { useScopedTo } from '../../hooks/useScope';
@@ -19,14 +19,17 @@ const OUTCOME: Record<string, string> = {
 
 interface DecideProps {
   approval: TransitionApproval;
+  onNotice: (message: string) => void;
 }
 
 /** Approve or reject one held move. Rejecting takes an optional reason the agent is told. */
-function Decide({ approval }: DecideProps) {
+function Decide({ approval, onNotice }: DecideProps) {
   const [reason, setReason] = useState('');
   const queryClient = useQueryClient();
   const decide = useMutation({
     mutationFn: async (approve: boolean) => taskClient.decideTransitionApproval({ id: approval.id, approve, reason: reason.trim() || undefined }),
+    onMutate: () => onNotice(''),
+    onError: (error) => onNotice(`Could not decide: ${error.message}`),
     onSettled: () => {
       // Approving moves the task; a stale refusal means the list is out of date. Either way, refetch.
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
@@ -45,7 +48,6 @@ function Decide({ approval }: DecideProps) {
         placeholder="Reason (optional)"
         className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
       />
-      {decide.isError && <p className="text-xs text-destructive">Could not decide: {(decide.error as Error).message}</p>}
       <div className="flex gap-2">
         <button
           type="button"
@@ -72,13 +74,14 @@ interface ApprovalItemProps {
   approval: TransitionApproval;
   /** Show which task it is on - for the org-wide queue, not a task's own panel. */
   showTask?: boolean;
+  onNotice: (message: string) => void;
 }
 
-function ApprovalItem({ approval, showTask }: ApprovalItemProps) {
+function ApprovalItem({ approval, showTask, onNotice }: ApprovalItemProps) {
   const scopedTo = useScopedTo();
   const pending = approval.status === 'pending';
   return (
-    <li className={`rounded-md p-3 flex flex-col gap-2 text-sm ${pending ? TONE_CLASSES.warning : 'border'}`}>
+    <li className={`min-w-0 rounded-md p-3 flex flex-col gap-2 text-sm [overflow-wrap:anywhere] ${pending ? TONE_CLASSES.warning : 'border'}`}>
       <div className="flex flex-wrap items-baseline gap-x-2 text-xs">
         <span className="font-medium">{approval.requestedByName}</span>
         <span>asks to move{showTask ? '' : ' this task'}</span>
@@ -93,7 +96,7 @@ function ApprovalItem({ approval, showTask }: ApprovalItemProps) {
         from <span className="font-medium">{approval.fromStatus}</span> to <span className="font-medium">{approval.toStatus}</span>
       </p>
       {pending ? (
-        <Decide approval={approval} />
+        <Decide approval={approval} onNotice={onNotice} />
       ) : (
         <p className="text-xs">
           {approval.decidedByName ? <span className="font-medium">{approval.decidedByName} </span> : null}
@@ -109,61 +112,50 @@ interface TaskApprovalsProps {
   taskId: string;
 }
 
-/**
- * A task's held moves (M39, ADR-0032): pending first, each with approve and
- * reject, then the recent decisions. Renders nothing for a task no agent
- * asked to move across a gate.
- */
+/** A pending move is never hidden behind a newer page of decisions. */
 export function TaskApprovals({ taskId }: TaskApprovalsProps) {
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['approvals', 'task', taskId],
-    queryFn: async () => (await taskClient.listTransitionApprovals({ taskId, status: 'all', page: { limit: 10 } })).approvals,
+  const [notice, onNotice] = useWorkNotice(taskId);
+  const pending = useWorkPages(['approvals', 'task', taskId, 'pending'], async cursor => {
+    const response = await taskClient.listTransitionApprovals({ taskId, status: 'pending', page: { limit: 10, cursor } });
+    return { items: response.approvals, page: response.page };
   });
-  if (isLoading || error) {
-    return (
-      <ListState isLoading={isLoading} error={error} isEmpty={false} emptyMessage="" loadingMessage="Loading approvals…"
-        errorLabel="Could not load this task's approvals" onRetry={() => refetch()} />
-    );
-  }
-  const approvals = [...(data ?? [])].sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending'));
-  if (approvals.length === 0) return null;
-  const pendingCount = approvals.filter((a) => a.status === 'pending').length;
+  const history = useWorkPages(['approvals', 'task', taskId, 'closed'], async cursor => {
+    const response = await taskClient.listTransitionApprovals({ taskId, status: 'closed', page: { limit: 10, cursor } });
+    return { items: response.approvals, page: response.page };
+  });
+  if (pending.isSuccess && history.isSuccess && !pending.items.length && !history.items.length && !notice) return null;
   return (
     <section aria-label="Status changes awaiting approval" className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold tracking-tight">
-        {pendingCount > 0 ? `Awaiting your approval · ${pendingCount}` : 'Approvals'}
-      </h3>
-      <ul className="flex flex-col gap-2">
-        {approvals.map((a) => <ApprovalItem key={a.id} approval={a} />)}
-      </ul>
+      <h3 className="text-sm font-semibold tracking-tight">{pending.totalCount > 0 ? `Awaiting your approval · ${pending.totalCount}` : 'Approvals'}</h3>
+      <WorkNotice message={notice} />
+      <WorkPages query={pending} kind="pending" listLabel="Pending approvals" loadingMessage="Loading approvals…"
+        errorLabel="Could not load this task's approvals" emptyMessage="No status change is waiting for approval.">
+        {pending.items.map(approval => <ApprovalItem key={approval.id} approval={approval} onNotice={onNotice} />)}
+      </WorkPages>
+      <WorkHistory key={taskId} query={history}>
+        <WorkPages query={history} kind="closed" listLabel="Closed approvals" loadingMessage="Loading approval history…"
+          errorLabel="Could not load approval history" emptyMessage="No closed approvals yet.">
+          {history.items.map(approval => <ApprovalItem key={approval.id} approval={approval} onNotice={onNotice} />)}
+        </WorkPages>
+      </WorkHistory>
     </section>
   );
 }
 
-interface ApprovalsQueueProps {
-  orgId: string;
-}
+interface ApprovalsQueueProps { orgId: string; }
 
-/** The organization's pending approvals - moves agents are waiting on a person to allow. */
+/** The organization's pending approvals across every project, fifty per page. */
 export function ApprovalsQueue({ orgId }: ApprovalsQueueProps) {
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['approvals', 'org', orgId],
-    enabled: !!orgId,
-    queryFn: async () => (await taskClient.listTransitionApprovals({ orgId, status: 'pending', page: { limit: 50 } })).approvals,
-  });
-  return (
-    <ListState
-      isLoading={isLoading}
-      error={error}
-      isEmpty={(data ?? []).length === 0}
-      loadingMessage="Loading approvals…"
-      errorLabel="Could not load approvals"
-      emptyMessage="No status change is waiting for approval."
-      onRetry={() => refetch()}
-    >
-      <ul className="flex flex-col gap-2" aria-label="Pending approvals">
-        {(data ?? []).map((a) => <ApprovalItem key={a.id} approval={a} showTask />)}
-      </ul>
-    </ListState>
-  );
+  const [notice, onNotice] = useWorkNotice(orgId);
+  const pending = useWorkPages(['approvals', 'org', orgId, 'pending'], async cursor => {
+    const response = await taskClient.listTransitionApprovals({ orgId, status: 'pending', page: { limit: 50, cursor } });
+    return { items: response.approvals, page: response.page };
+  }, !!orgId, 15_000);
+  return <div className="flex flex-col gap-2">
+    <WorkNotice message={notice} />
+    <WorkPages query={pending} kind="pending" listLabel="Pending approvals" loadingMessage="Loading approvals…"
+      errorLabel="Could not load approvals" emptyMessage="No status change is waiting for approval.">
+      {pending.items.map(approval => <ApprovalItem key={approval.id} approval={approval} onNotice={onNotice} showTask />)}
+    </WorkPages>
+  </div>;
 }

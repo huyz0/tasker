@@ -1128,7 +1128,7 @@ export function TasksWorkbench() {
                    }
                  }}
                  disabled={deleteTaskMutation.isPending}
-                 className="text-destructive hover:text-destructive/80 text-sm font-medium disabled:opacity-50"
+                 className="rounded-md bg-destructive-subtle px-3 py-1 text-destructive-subtle-foreground hover:opacity-90 text-sm font-medium disabled:opacity-50"
                >
                  {deleteTaskMutation.isPending ? 'Moving to bin…' : 'Delete'}
                </button>

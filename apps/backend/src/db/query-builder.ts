@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@connectrpc/connect";
 import { SQL, and, lt, gt, or, eq, desc, asc, isNull, sql } from "drizzle-orm";
 import { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
@@ -27,14 +28,16 @@ export interface CursorData {
   field: string;
   totalCount?: number;
   filter?: string;
+  binding?: string;
 }
 
-export function encodeCursor(value: number | string, id: string, field: string = "createdAt", totalCount?: number, filter?: string): string {
+export function encodeCursor(value: number | string, id: string, field: string = "createdAt", totalCount?: number, filter?: string, binding?: string): string {
   if (value === undefined || value === null || value === "" || !id) return "";
   const data: CursorData = {
     value, id, field,
     ...(totalCount !== undefined ? { totalCount } : {}),
     ...(filter ? { filter } : {}),
+    ...(binding !== undefined ? { binding } : {}),
   };
   return Buffer.from(JSON.stringify(data)).toString("base64");
 }
@@ -55,6 +58,7 @@ export function decodeCursor(cursor?: string): CursorData | null {
         field: data.field,
         ...(typeof data.totalCount === "number" ? { totalCount: data.totalCount } : {}),
         ...(typeof data.filter === "string" ? { filter: data.filter } : {}),
+        ...(typeof data.binding === "string" ? { binding: data.binding } : {}),
       };
     }
   } catch {
@@ -239,6 +243,10 @@ export interface PaginatedQueryOptions {
    * whenever that condition does; everyone else can leave this unset.
    */
   extraCacheKey?: string;
+  /** Opt in to binding position and count to an endpoint's authorized rowset.
+   * Legacy unbound cursors restart page one; mismatched bound cursors fail.
+   * This is pagination identity, never an authorization capability. */
+  cursorScope?: string;
 }
 
 export async function executePaginatedQuery(
@@ -260,7 +268,15 @@ export async function executePaginatedQuery(
   const idColumn = opts.idColumn ?? table.id;
   const idField = opts.idField ?? "id";
 
-  const cursorData = decodeCursor(pageOpts?.cursor);
+  const binding = opts.cursorScope === undefined ? undefined
+    : JSON.stringify([opts.cursorScope, pageOpts?.filter || "", sortField, direction]);
+  let cursorData = decodeCursor(pageOpts?.cursor);
+  if (binding !== undefined && cursorData) {
+    if (cursorData.binding === undefined) cursorData = null;
+    else if (cursorData.binding !== binding) {
+      throw new ConnectError("pagination changed; restart from the first page", Code.InvalidArgument);
+    }
+  }
   const whereClause = buildCursorPaginationWhere(cursorData, sortCol, idColumn, sortField, direction);
   const finalWhere = whereClause ? (condition ? and(condition, whereClause) : whereClause) : condition;
 
@@ -279,7 +295,7 @@ export async function executePaginatedQuery(
   // reapplied as a WHERE clause, so folding it in here (rather than adding a
   // second cursor field) needs no change anywhere else that reads `filter`.
   const rawFilter = pageOpts?.filter || undefined;
-  const currentFilter = extraCacheKey ? `${rawFilter ?? ""} ${extraCacheKey}` : rawFilter;
+  const currentFilter = extraCacheKey ? `${rawFilter ?? ""}\u0000${extraCacheKey}` : rawFilter;
   const canReuseCursorCount = cursorData?.totalCount !== undefined && cursorData.filter === currentFilter;
 
   // The join is applied to the count as well as the page. It has to be: the
@@ -301,7 +317,7 @@ export async function executePaginatedQuery(
 
   const lastItem = result[result.length - 1];
   const nextCursor = lastItem && result.length === limit
-    ? encodeCursor(extractCursorValue(lastItem, opts.cursorFields?.[sortField] ?? sortField), lastItem[idField], sortField, totalCount, currentFilter)
+    ? encodeCursor(extractCursorValue(lastItem, opts.cursorFields?.[sortField] ?? sortField), lastItem[idField], sortField, totalCount, currentFilter, binding)
     : undefined;
 
   return { items: result, nextCursor, totalCount };
