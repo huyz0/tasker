@@ -1,13 +1,13 @@
 ---
 id: M54
 title: Completion Evidence
-status: in-progress
+status: done
 goal: External workers can discover, attach and read bounded task evidence through MCP, and people can inspect that evidence with accurate provenance.
 depends_on: [M46, M53]
 surfaces: [backend, gui, contract, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-09
-completed_at: null
+completed_at: 2026-11-09
 ---
 
 # M54 — Completion Evidence
@@ -22,10 +22,10 @@ Task summaries describe work; existing artifact records supply reviewable output
 
 ## 3. Exit Criteria
 
-- [ ] MCP workers can discover folders/artifacts, create/link evidence and explicitly read bounded stored content using existing permissions.
-- [ ] Opt-in digest evidence stays bounded and ordinary digest clients need no new scope.
-- [ ] People can inspect evidence with source/time/provenance and honest unavailable states.
-- [ ] Both dialects, generated clients, wire compatibility and real worker-to-human journeys pass.
+- [x] MCP workers can discover folders/artifacts, create/link evidence and explicitly read bounded stored content using existing permissions.
+- [x] Opt-in digest evidence stays bounded and ordinary digest clients need no new scope.
+- [x] People can inspect evidence with source/time/provenance and honest unavailable states.
+- [x] Both dialects, generated clients, wire compatibility and real worker-to-human journeys pass.
 
 ## 4. Scope
 

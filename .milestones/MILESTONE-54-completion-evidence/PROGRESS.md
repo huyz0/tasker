@@ -316,3 +316,12 @@ T05 is complete:5/5 M54 tasks,370 done/26 pending overall. Close M54's verified
 exit criteria next, push its final head and require all applicable final-head CI
 before merging draft PR #7. Checkpointf702e2a already passes all8 jobs;2de4b61's
 CI is in progress. This is not yet a claim that M54 is published on main.
+
+## M54 — Local milestone closure
+
+- **Status**: done locally; main publication pending final-head CI
+- **Date**: 2026-11-09
+- **Tasks**:5/5 complete; exit criteria4/4 demonstrated.
+- **Verified**: Thin real-authorized MCP handoff; task-only digest defaults and bounded positive metadata; current human evidence/provenance controls and explicit unknown/unavailable states; real SQLite/MySQL content/upgrade/socket cases, old TS/Go compatibility, current browser stories and standalone packaging. Final35 checks and task closure35/33cached pass; independent CODE-v5/UX-v4 approve, with previous rejection/correction history retained.
+- **Notes**: All user fixes remain authorized for main. Publish PR #7 only after all applicable CI jobs for the actual final head succeed. Current artifact references are mutable, provider records may be incomplete/outdated, and existing unbounded project PR selection remains an M49 scale concern. No runner, immutable version store, enforced completion, new permission or dependency is introduced. Preserve original worktree/services and private fixture credentials.
+- **Next**: Final closure check/commit/push, final-head CI and merge. M55-T01 is the next eligible design task;26 tasks remain overall.

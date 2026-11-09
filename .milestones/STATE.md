@@ -1,8 +1,8 @@
 ---
-active_milestone: M54
+active_milestone: M55
 active_task: null
 last_updated: 2026-11-09
-last_commit: 2de4b61
+last_commit: b1892d6
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54 complete locally:5/5 tasks,4/4 exit criteria.** T05 is committed asb1892d6 after all35 source and closure checks. Bounded artifacts/MCP/digest, one current Evidence surface, real SQLite/MySQL/socket/upgrade proof, old-client compatibility, reviewed captures and live worker-to-human automatic refresh are verified. Draft PR #7 still requires all applicable actual final-head CI before main merge. M55-T01 is next eligible, with M54 base reconciliation before its publication. Overall26 tasks remain; original worktree/services and private credentials remain preserved.
 
 **2026-11-09 — M54-T05 verified:5/5 tasks.** Real MCP socket coverage passes on SQLite/MySQL (7cases/134assertions each), final content/capability/upgrade proof totals216 assertions, all3 Evidence browser journeys and18 old-client decodes pass. CODE-v5 approves coverage/docs;61 focused MCP cases and four restored end-to-end faults pass. All35 source gates pass (GUI1498/95.13%, backend2282/zero failures), including standalone. Close M54 next; draft PR #7 still requires actual final-head CI before main publication. Overall26 tasks remain.
 
@@ -1949,7 +1951,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
-| M54 | Completion Evidence | in-progress | M46, M53 | 5 | 5 |
+| M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
