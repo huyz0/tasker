@@ -30,7 +30,7 @@ async function fixture(page: Page) {
   await expect(page.getByText(tasks[0].title, { exact: true })).toBeVisible();
   return { orgId: organization.id, project, templateId: template.id, a: tasks[0], b: tasks[1] };
 }
-const dialog = (page: Page) => page.getByRole('dialog', { name: /^Task Details/ });
+const dialog = (page: Page) => page.getByRole('dialog', { name: 'Task Details', exact: true });
 async function open(page: Page, title: string) {
   await page.getByText(title, { exact: true }).click();
   await expect(dialog(page)).toBeVisible();

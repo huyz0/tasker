@@ -354,3 +354,38 @@ approves the bounded adapter and source-audited workflow examples. Three restore
 faults and42 focused cases support the explicit empty/invalid-input contract.
 Next T07 closes existing human-flow/browser/review coverage and requires actual
 final-head remote CI before publishing M53. Overall32 tasks remain.
+
+## M53-T07 — Verify existing human workflows and close correctness review
+
+- **Status**: in-progress
+- **Date**: 2026-11-09
+- **Changed**: Reproduce header actions polluting task-dialog accessible names, then verify existing notification/core journeys alongside all M53 regression flows and full gates.
+- **Verified**: T06 committed/pushed asc6e3f38 after35 closure checks (32cached); all earlier M53 focused, browser, both-dialect and compatibility evidence remains recorded.
+- **Notes**: Frontend/UI-UX standards selected, plus TDD. Existing ADR-0009/0011/0047 and accepted UX govern the shared primitive and flows; no new ADR, persistence, tokens or fonts. Real browser work already disproved the earlier modal-masking claim; do not revive it. A concrete task-dialog name includes Edit/Delete/Close actions because Radix.Title wraps the full header; isolate only its title with observed reds and retain header action/focus behavior. Final rendered evidence, notification destinations, source suites and actual final-head remote CI gate publication.
+- **Next**: Run primitive naming red, correct title boundary/story, then isolated real browser human flows, full rendered/a11y/overflow/source checks and final four-lens review.
+
+T07 primitive red observes Task Details Edit task instead of the promised title.
+Radix.Title now labels only its h2; header actions remain siblings and hidden-title
+actions stay outside sr-only. Both naming/action variants and the full existing
+Dialog/Task suites pass118 cases; app TypeScript passes. The header-actions story
+asserts exact portal name and visible Edit/Delete/Close, using the production
+semantic Delete pair. Actual summary browser helpers now require the exact title.
+Independent human-flow source review finds no blocker or notification-link drift.
+
+The first existing-human-flow browser attempt starts before the owned restarted
+backend is ready and is excluded. The next detects a test-only forward-proxy
+compression mismatch (ERR_CONTENT_DECODING_FAILED), not an application defect.
+The proxy now requests identity encoding; a browser ListOrgs probe passes before
+re-seeding and the next run. It forwards8080 only to owned8093, leaving original
+services/database untouched. No production transport/timeout workaround.
+
+T07 final existing-human-flow run passes9 browser checks in35.2s: full sign-in →
+organization → template/project → task/comment → search → archive journey,
+notification badge/list, scoped task destination and persisted read state after
+reload. A prior notification attempt used consumed fixture data because seed.ts
+uses relative .data and ignores DB_PATH; invoking its absolute script from the
+owned fixture directory seeds the actual8093 database. The mistaken invocation
+only added unused ignored data in this owned worktree, not the original running
+development database. Readiness, browser transport probe and seed completion
+precede the final run. The printed diagnostic count queried the wrong user ID
+and is excluded; the actual nine passing user journeys are the evidence.

@@ -105,12 +105,12 @@ export function Dialog({
             }}
             className={`pointer-events-auto relative bg-surface-raised text-card-foreground border rounded-xl shadow-2xl flex flex-col overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${className}`}
           >
-            <RadixDialog.Title asChild>
-              <div className={hideTitle ? 'sr-only' : 'p-4 border-b flex justify-between items-center shrink-0'}>
+            <div className={hideTitle ? 'sr-only' : 'p-4 border-b flex justify-between items-center shrink-0'}>
+              <RadixDialog.Title asChild>
                 <h2 className={hideTitle ? '' : 'font-semibold'}>{title}</h2>
-                {!hideTitle && headerRight}
-              </div>
-            </RadixDialog.Title>
+              </RadixDialog.Title>
+              {!hideTitle && headerRight}
+            </div>
             {hideTitle && headerRight}
             {children}
           </RadixDialog.Content>
