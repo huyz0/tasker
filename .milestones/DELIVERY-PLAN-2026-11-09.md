@@ -21,7 +21,9 @@ M46 added T07 after actual CI exposed an obsolete unmanaged database fixture;
 the ledger is now 397 tasks. M46 is complete and published in PR #3 as
 `62a0c3f`, with all ten CI jobs passing. M48 started independently during that
 final browser run because it depends only on M44; it proceeds before M47 and is
-rebased onto the published M46 base. All other dependency and acceptance
+rebased onto the published M46 base. M48 is locally complete (four tasks and
+four exit criteria), with final-head PR #4 CI required before publication;
+M47 design can proceed during that wait. All other dependency and acceptance
 boundaries below remain in force. Current completion counts live in STATE.md,
 not the historical planning baseline above.
 

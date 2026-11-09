@@ -1,8 +1,8 @@
 ---
-active_milestone: M48
+active_milestone: M47
 active_task: null
 last_updated: 2026-11-09
-last_commit: c45b21b
+last_commit: 4c0e22f
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M48 complete: 4/4 tasks and 4/4 exit criteria.** Reconnect and overflow reconcile current source data; bounded jitter, per-request CLI deadlines and signal/terminal cleanup are verified. All 35 local checks, four browser journeys, four native CLI journeys, deliberate fault checks and independent v8 review pass. PR #4 must obtain final-head remote CI before merge. M47-T01 is next; its dependencies M45/M46 are already published, allowing independent design during CI with rebase/ledger reconciliation before publication. Overall 42 tasks remain.
 
 **2026-11-09 — M48 implementation verified: 4/4 tasks.** Four browser journeys use controlled feed bytes with real source RPC/SQL; four native CLI journeys cover timeout/signal/MCP/terminal. All corresponding deliberate faults fail, restored runs pass, independent v8 approves, and all 35 local checks pass. Close M48, then obtain final-head CI/browser success before PR #4 merge. M47's published dependencies are satisfied; its design may proceed independently during that CI wait, with rebase/ledger reconciliation before publication. Overall 42 tasks remain.
 
@@ -1871,7 +1873,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
-| M48 | Client Recovery | in-progress | M44 | 4 | 4 |
+| M48 | Client Recovery | done | M44 | 4 | 4 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |

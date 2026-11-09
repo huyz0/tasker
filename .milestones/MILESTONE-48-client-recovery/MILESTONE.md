@@ -1,13 +1,13 @@
 ---
 id: M48
 title: Client Recovery
-status: in-progress
+status: done
 goal: Browsers reconcile missed changes and CLI calls terminate predictably when the server stalls.
 depends_on: [M44]
 surfaces: [backend, gui, cli, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-09
-completed_at: null
+completed_at: 2026-11-09
 ---
 
 # M48 — Client Recovery
@@ -22,10 +22,10 @@ An apparently live screen can be stale after a brief outage, and an unbounded CL
 
 ## 3. Exit Criteria
 
-- [ ] Short disconnects cannot leave active views indefinitely stale.
-- [ ] Queue overflow explicitly triggers reconciliation.
-- [ ] Reconnect jitter stays within a documented bound and can be deterministic in tests.
-- [ ] Unary CLI calls support deadlines and cancellation without breaking long-lived MCP operation.
+- [x] Short disconnects cannot leave active views indefinitely stale.
+- [x] Queue overflow explicitly triggers reconciliation.
+- [x] Reconnect jitter stays within a documented bound and can be deterministic in tests.
+- [x] Unary CLI calls support deadlines and cancellation without breaking long-lived MCP operation.
 
 ## 4. Scope
 

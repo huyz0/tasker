@@ -35,3 +35,12 @@
 - **Verified**: Four browser journeys pass against real source RPC/SQL with controlled stream bytes; each fails under its corresponding reconnect/resync/abort/polling fault, then all four pass restored. Four actual-binary journeys pass, including private PTY restoration; omitting restoration fails the committed terminal test. Independent v7 requested stronger source evidence, planned scope/polling cases and native child reaping; v8 approved corrected candidates. Final CLI/backend race suites pass (including native cases); `moon check --all`: 35 completed (24 cached), fresh CLI coverage gate 93.7%; GUI/source evidence remains 1350 tests / 95.26% branches and backend 2129 tests / zero failures. Generated reference passes. See reviews/RECOVERY-EVIDENCE.md. Final-head remote CI remains a publication gate.
 - **Notes**: Existing ADR-0045/0046 and TEST-PLAN-0048 own the boundaries; no new ADR or UX. Browser stream interception controls failure timing only; source mutations/reads remain real, and real broker/socket coverage is recorded separately. Use an isolated backend/database and frontend port locally to preserve existing dev services. Linux pseudo-terminal coverage uses existing Go/OS facilities, no new dependency. Standards: testing/UI testing.
 - **Next**: Close and merge M48 after final-head CI; then M47-T01.
+
+## Milestone closure — Client Recovery
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: All four task outcomes and all four exit criteria are demonstrated; mark M48 done and select M47-T01 next.
+- **Verified**: Final implementation `moon check --all`: 35 completed (24 cached), fresh CLI coverage gate 93.7%; CLI/backend race suites pass. Four browser and four native journeys pass; corresponding deliberate faults fail and restored source passes. Independent v8 approves. Final documentation gates pass (386 files, zero drift); post-closure `moon check --all` also passes all 35 tasks (32 cached). Final-head remote CI remains required before PR #4 merges; no remote success is inferred here.
+- **Notes**: Browser failure timing is controlled while source reads/mutations are real; T02 separately verifies actual broker/socket behavior. Cross-platform CLI builds pass, but private PTY runtime is Linux only. No capacity claim is made. M47 dependencies are already published; independent design may use the CI wait, then rebase onto published M48 and reconcile the ledger.
+- **Next**: Push final head, wait for complete CI/browser success, merge PR #4; deliver M47 recoverable schedules.
