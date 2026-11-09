@@ -76,8 +76,11 @@ function RelationshipPanel({ owner, children }: RelationshipPanelProps) {
   const offered = settled && raw && candidates.isSuccess && !candidates.isFetching && writable
     ? candidates.data.filter(candidate => candidate.type === (taskSide ? 'artifact' : 'task') && !linkedIds.has(candidate.id)) : [];
   const refresh = async () => {
+    const before = queryClient.getQueryState(relationshipKey(owner))?.dataUpdateCount ?? 0;
     const result = await query.refetch();
-    if (result.isSuccess) { setWriteAccessLost(false); link.reset(); unlink.reset(); }
+    const after = queryClient.getQueryState(relationshipKey(owner))?.dataUpdateCount ?? 0;
+    // Cancellation can return the previous successful result without a response.
+    if (result.isSuccess && after > before) { setWriteAccessLost(false); link.reset(); unlink.reset(); }
   };
   const noun = taskSide ? 'evidence' : 'task links';
   const content = <>

@@ -75,6 +75,8 @@ const enabled = process.env.TASKER_MYSQL_INTEGRATION === '1';
     }
     const first: any = await handler.listTaskArtifactLinks({ taskId, page: { limit: 20 } }, ctx);
     const next: any = await handler.listTaskArtifactLinks({ taskId, page: { limit: 20, cursor: first.page.nextCursor } }, ctx);
+    expect(first.canLink).toBe(true);
+    expect(first.canUnlink).toBe(true);
     expect(first.links).toHaveLength(20);
     expect(first.evidence).toHaveLength(20);
     expect(next.links).toHaveLength(5);
@@ -91,6 +93,13 @@ const enabled = process.env.TASKER_MYSQL_INTEGRATION === '1';
     expect(optedOut.digest).not.toHaveProperty('artifacts');
     await expect(tasks.getTaskDigest({ taskId, includeArtifacts: true }, reader)).rejects.toMatchObject({ code: Code.PermissionDenied });
     reader.values.set(currentPrincipalKey, { ...principal, scopes: ['tasks:read', 'artifacts:read'] });
+    const readControls: any = await handler.listTaskArtifactLinks({ taskId, page: { limit: 20 } }, reader);
+    expect(readControls.canLink).toBe(false);
+    expect(readControls.canUnlink).toBe(false);
+    reader.values.set(currentPrincipalKey, { ...principal, scopes: ['tasks:read', 'artifacts:read', 'artifacts:write'] });
+    const writeControls: any = await handler.listTaskArtifactLinks({ taskId, page: { limit: 20 } }, reader);
+    expect(writeControls.canLink).toBe(true);
+    expect(writeControls.canUnlink).toBe(false);
     const enriched: any = await tasks.getTaskDigest({ taskId, includeArtifacts: true }, reader);
     expect(enriched.digest.artifacts).toHaveLength(20);
     expect(enriched.digest.truncated).toBe(true);
@@ -105,6 +114,8 @@ const enabled = process.env.TASKER_MYSQL_INTEGRATION === '1';
     const old: any = await handler.listTaskArtifactLinks({ taskId }, ctx);
     expect(old.links).toHaveLength(25);
     expect(old.page).toBeUndefined();
+    expect(old).not.toHaveProperty('canLink');
+    expect(old).not.toHaveProperty('canUnlink');
   } finally {
     if (db) await db.$client.end();
     if (admin) {

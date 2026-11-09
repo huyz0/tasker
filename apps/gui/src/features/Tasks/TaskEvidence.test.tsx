@@ -217,24 +217,20 @@ describe('visible metadata freshness', () => {
   it('polls only the visible mounted pane and refreshes on focus and reconnect', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     let reads = 0;
-    mockRpc(ArtifactService, 'ListTaskArtifactLinks', () => { reads++; return page(); });
+    mockRpc(ArtifactService, 'ListTaskArtifactLinks', () => { reads++; const changed = { ...link, artifactName: `output-${reads}.md` }; return page({ links: [changed], evidence: [{ ...evidence, link: changed }] }); });
     const ui = view();
-    await screen.findByRole('link', { name: 'output.md' });
+    await screen.findByRole('link', { name: 'output-1.md' });
     expect(reads).toBe(1);
     await act(async () => { await vi.advanceTimersByTimeAsync(15_001); });
-    await waitFor(() => expect(reads).toBe(2));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh evidence' })).toBeEnabled());
+    await screen.findByRole('link', { name: 'output-2.md' });
     act(() => focusManager.setFocused(false));
     await act(async () => { await vi.advanceTimersByTimeAsync(30_001); });
     expect(reads).toBe(2);
-    console.log('focus probe', focusManager.hasListeners(), ui.client.getQueryCache().getAll().map(q => ({ key:q.queryKey, stale:q.isStale(), observers:q.getObserversCount(), status:q.state.status })));
-    ui.client.getQueryCache().onFocus();
     act(() => focusManager.setFocused(true));
-    await waitFor(() => expect(reads).toBe(3));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh evidence' })).toBeEnabled());
+    await screen.findByRole('link', { name: 'output-3.md' });
     act(() => onlineManager.setOnline(false));
     act(() => onlineManager.setOnline(true));
-    await waitFor(() => expect(reads).toBe(4));
+    await screen.findByRole('link', { name: 'output-4.md' });
     ui.unmount();
     await act(async () => { await vi.advanceTimersByTimeAsync(30_001); });
     expect(reads).toBe(4);
@@ -285,4 +281,20 @@ describe('denial fences', () => {
     expect(await screen.findByText('Read only')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Unlink output.md' })).not.toBeInTheDocument();
   });
+});
+
+
+it('does not treat a canceled refresh’s old success as fresh write authorization', async () => {
+  const ui = view();
+  mockRpcError(ArtifactService, 'UnlinkTaskArtifact', 'permission_denied', 'Write removed');
+  fireEvent.click(await screen.findByRole('button', { name: 'Unlink output.md' }));
+  await screen.findByText(/Write removed/);
+  const pending = mockRpcPending(ArtifactService, 'ListTaskArtifactLinks');
+  try {
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh evidence' }));
+    await waitFor(() => expect(pending.requests).toHaveLength(1));
+    await act(async () => { await ui.client.cancelQueries({ queryKey: ['taskArtifactLinks'] }); });
+    expect(screen.getByRole('button', { name: 'Unlink output.md' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Link an artifact…' })).toBeDisabled();
+  } finally { pending.resolve(page({ canLink: false, canUnlink: false })); }
 });

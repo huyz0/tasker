@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Code, ConnectError, createClient } from '@connectrpc/connect';
 import { ArtifactService, type ListTaskArtifactLinksResponse, type TaskArtifactEvidence, type TaskArtifactLink } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
@@ -51,7 +51,10 @@ export function useArtifactRelationships(owner: RelationshipOwner) {
   const denied = relationshipAccessLost(query.error);
   const fresh = query.isSuccess && !query.isFetching && query.isFetchedAfterMount;
   const blocked = denied || !(fresh || accepted);
-  useEffect(() => { setAccepted(previous => denied ? false : fresh ? true : previous); }, [denied, fresh]);
+  // Settle read acceptance before children become actionable; a queued effect
+  // could otherwise re-enable the query after a quick next-page failure.
+  if (denied && accepted) setAccepted(false);
+  else if (fresh && !accepted) setAccepted(true);
   const rows = blocked ? [] : rowsFrom(query.data?.pages ?? []);
   const controls = blocked ? undefined : query.data?.pages[0];
   return { query, rows, blocked, denied, canLink: controls?.canLink, canUnlink: controls?.canUnlink,

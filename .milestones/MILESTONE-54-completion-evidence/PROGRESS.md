@@ -173,3 +173,46 @@ focused lifetime/denial cases pass after correction. Broader workbench97 cases
 pass after its fixture supplies authenticated session; remaining21 affected
 suites passed. TypeScript is clean and Storybook builds. Full rendering/coverage,
 controlled faults and current-source browser proof remain pending. T04 is WIP.
+
+T04 proof checkpoint:36 focused GUI cases pass after settling acceptance before
+children become actionable (a delayed acceptance effect could otherwise trigger
+a first-page retry after a quick next-page failure). The visible/focus/reconnect
+test now awaits changed metadata, rather than a request counter before response
+settles; no production freshness change was needed. Six deliberately broken
+behaviors each fail and restore. Real MySQL passes70 assertions including paged
+human/read-only-agent/write-agent capabilities and unchanged legacy shape.
+All18 old-client decodes preserve442 message descriptors/1241 existing fields.
+
+Two current-source live browser journeys pass, covering21 real links, loaded
+extent, no metadata-triggered body reads, dirty summary refresh, keyboard source
+activation/Back and permission→offline→explicit recovery. Four actual375/1280
+light/dark captures are retained. Fresh Storybook build and234 stories pass936
+accessibility scans and468 mobile overflow scans. The build predates the final
+control-state-only correction and will be rebuilt/rechecked before closure.
+
+Full35 run1 stops at one existing GlobalSearch real-debounce readiness wait:
+1496 GUI cases pass, one remains Searching beyond the default1s DOM wait. All19
+search cases pass isolated. That single wait now has a finite3s budget with the
+same behavioral assertions; no production search change. Full2 runs without
+concurrent browser audits. T04 stays in-progress; final coverage/review/head
+verification and failed-state captures remain pending.
+
+Final independent review catches cancellation semantics: an in-flight refetch
+canceled by M48 recovery can resolve with prior cached isSuccess=true, without
+a fresh capabilities response. The new canceled-refresh regression fails before
+correction. Refresh now requires the query's accepted-response dataUpdateCount
+to advance before clearing write denial.37 focused cases pass, including this
+regression; independent reviewer approves source/captures with no remaining
+blockers, explicitly pending full-gate completion. No server authorization bypass
+was present. Earlier WIP644671b remains an implementation checkpoint only.
+
+Two additional backend capability faults fail (agent unlink and guessed human
+write); restored focused backend checks pass45 cases/565 assertions. Full2 GUI
+passes1497 cases at95.17% branches, but its source snapshot predates the final
+cancellation regression/counter correction, so a final-head full rerun remains
+required. Backend/CLI/packaging gates are still progressing. A current-source
+browser rerun first encounters connection-refused because both temporary server
+processes exited; these are excluded harness failures. Only owned M54 processes
+are restarted detached, readiness200 verified, then the9 affected journeys rerun.
+No original service or data is reset. Final Storybook rebuild succeeds; full
+rendered matrices continue. T04 remains unchecked/in-progress.
