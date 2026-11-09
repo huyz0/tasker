@@ -60,7 +60,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/backend/src/modules/mcp/tools.ts; apps/backend/src/modules/mcp/tools.test.ts; docs/agent-integration.md; docs/mcp.md.
   - **Verify**: Empty summary reaches exactly one existing RPC; missing/null/non-string text, empty IDs and oversized text still fail; example never promises project-wide claim-next selects one step; template org/project visibility and ordinary parent claimability are accurate.
 
-- [ ] **M53-T07** — Verify existing human workflows end to end and close the correctness review.
+- [x] **M53-T07** — Verify existing human workflows end to end and close the correctness review.
   - **Files**: apps/gui/tests/e2e/; apps/gui/src/components/; apps/gui/src/features/; apps/gui/.storybook/; apps/gui/scripts/; .specs/design/design-system.md; .milestones/MILESTONE-53-workflow-correctness/reviews/; docs/.
   - **Verify**: Run full GUI coverage, backend/MCP suites, scoped browser journeys and moon check --all; review notification links and task dialogs without reviving disproved dialog-masking claim.
 

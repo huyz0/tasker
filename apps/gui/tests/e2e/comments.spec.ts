@@ -18,9 +18,9 @@ test.describe('Comments E2E rendering', () => {
     // made every card an axe `nested-interactive` violation (the card
     // announced as a button while containing the assignee picker's own
     // button), so the roles were inverted: the card is a plain draggable
-    // container and the h4 holds a real <button>. Same click target as before
+    // container and the h3 holds a real <button>. Same click target as before
     // — clicking the title — reached through the structure that replaced it.
-    const taskTitle = page.locator('h4 > button').first();
+    const taskTitle = page.getByRole('heading', { level: 3 }).getByRole('button').first();
     await expect(taskTitle).toBeVisible({ timeout: 30_000 });
     await taskTitle.click();
 

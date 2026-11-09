@@ -1,6 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { selectSeededOrg } from './selectSeededOrg';
 
+test.beforeEach(async ({ context }) => {
+  const backend = process.env.TASKER_E2E_BACKEND_URL;
+  if (backend) await context.route('http://localhost:8080/**', async route => {
+    const url = new URL(route.request().url());
+    const response = await route.fetch({ url: new URL(url.pathname + url.search, backend).href });
+    await route.fulfill({ response });
+  });
+});
+test.afterEach(async ({ context }) => context.unrouteAll({ behavior: 'ignoreErrors' }));
+
 test.describe('Rich markdown editor E2E', () => {
   test('bolding text via the toolbar round-trips as markdown, confirmed by a fresh getTask read', async ({ page }) => {
     // Needs a backend seeded with at least one task - `bun run seed` from
@@ -12,8 +22,8 @@ test.describe('Rich markdown editor E2E', () => {
     // The task title is itself the button that opens the task — see the note
     // in comments.spec.ts: the card stopped being a `role="button"` div when a
     // UX review flagged the resulting axe `nested-interactive` violation, so
-    // the real control moved inside the h4.
-    const taskTitle = page.locator('h4 > button').first();
+    // the real control is inside the card's level-three heading.
+    const taskTitle = page.getByRole('heading', { level: 3 }).getByRole('button').first();
     await expect(taskTitle).toBeVisible({ timeout: 30_000 });
     await taskTitle.click();
 
@@ -96,18 +106,13 @@ test.describe('Rich markdown editor E2E', () => {
     // not just local React Query cache and not merely "renders bold" (which
     // an HTML-native editor could also manage while silently drifting the
     // underlying string - the exact risk ADR-0018 chose MDXEditor to avoid).
-    // A page reload can't be used here: it re-hits a pre-existing, unrelated
-    // bug where a deep link to /tasks/:taskId loses its route once
-    // activeProjectId finishes hydrating on a fresh load (Tasks/index.tsx's
-    // "closes the detail overlay when the active project changes" effect)
-    // - out of scope for this milestone. A direct getTask call proves the
-    // same thing (a fresh server read, bypassing any client cache) without
-    // depending on that unrelated code path.
-    const getTaskResponse = await page.request.post(`http://localhost:8080/tasker.health.v1.TaskService/GetTask`, {
+    // A direct read bypasses the React Query cache and verifies durable text.
+    const backendUrl = process.env.TASKER_E2E_BACKEND_URL ?? 'http://localhost:8080';
+    const getTaskResponse = await page.request.post(`${backendUrl}/tasker.health.v1.TaskService/GetTask`, {
       headers: { 'Content-Type': 'application/json', 'Connect-Protocol-Version': '1' },
       data: { taskId },
     });
-    expect(getTaskResponse.ok()).toBe(true);
+    expect(getTaskResponse.ok(), `Fresh GetTask read: ${getTaskResponse.status()}`).toBe(true);
     const { task } = await getTaskResponse.json();
     expect(task.description).toBe(`**E2E ${stamp} bold check**`);
   });

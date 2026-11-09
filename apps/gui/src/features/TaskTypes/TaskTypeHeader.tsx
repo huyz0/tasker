@@ -83,7 +83,7 @@ export function TaskTypeHeader({ typeId, name }: { typeId: string; name: string 
         </form>
       ) : (
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold tracking-tight">{name}</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{name || 'Task type'}</h2>
           <button
             onClick={() => { setIsRenaming(true); setRenameValue(name); }}
             className="text-xs text-muted-foreground hover:text-foreground"

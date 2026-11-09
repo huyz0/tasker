@@ -366,10 +366,10 @@ function BoardColumn({
       className={`flex-1 basis-80 min-w-70 max-w-sm snap-start flex flex-col md:min-h-0 bg-muted/30 rounded-lg p-3 border-2 transition-colors ${isDragOver ? 'border-primary' : 'border-transparent'}`}
     >
       <div className="flex shrink-0 items-center justify-between mb-3 font-medium text-sm">
-        <span className="flex items-center gap-2">
+        <h2 className="flex items-center gap-2">
           <span className={`type-caption rounded-full px-2 py-0.5 ${TONE_CLASSES[taskTone(status)]}`}>{display}</span>
           <span className="text-xs bg-muted text-muted-foreground px-2 rounded-full">{count}</span>
-        </span>
+        </h2>
         <button
           aria-label={`Add task to ${display}`}
           onClick={onStartAdding}
@@ -416,7 +416,7 @@ function BoardColumn({
               <NeedsInputBadge count={task.openInputRequestCount ?? 0} />
               <AwaitingApprovalBadge count={task.pendingApprovalCount ?? 0} />
             </div>
-            <h4 className="mb-2">
+            <h3 className="mb-2">
               <button
                 type="button"
                 onClick={() => onOpenTask(task.id)}
@@ -424,7 +424,7 @@ function BoardColumn({
               >
                 {task.title}
               </button>
-            </h4>
+            </h3>
 
             <div className="mb-3">
               <AssigneePicker taskId={task.id} orgId={orgId} assignees={task.assignees ?? []} />

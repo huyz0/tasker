@@ -1350,7 +1350,7 @@ describe('TasksWorkbench', () => {
       renderPage('/tasks/task-1');
 
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
-      // level 3 is the overlay's title; the board card renders an h4.
+      // The modal title is visible; the board behind it is masked.
       expect(screen.getByRole('heading', { level: 3, name: 'Fix bug' })).toBeInTheDocument();
     });
 

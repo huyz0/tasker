@@ -357,7 +357,7 @@ final-head remote CI before publishing M53. Overall32 tasks remain.
 
 ## M53-T07 — Verify existing human workflows and close correctness review
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Reproduce header actions polluting task-dialog accessible names, then verify existing notification/core journeys alongside all M53 regression flows and full gates.
 - **Verified**: T06 committed/pushed asc6e3f38 after35 closure checks (32cached); all earlier M53 focused, browser, both-dialect and compatibility evidence remains recorded.
@@ -504,3 +504,44 @@ user-authored content. Gates retain failed story status and now collect/report
 all story failures before exiting nonzero, including failed reporter IDs/targets,
 so multiple findings can be corrected together rather than hidden by fail-fast.
 No failed report is ignored or weakened.
+
+Completed-lifecycle catalogue collection reports only three remaining failed
+stories: desktop/mobile workbench card h4 skips levels, and the not-yet-loaded
+type name creates an empty h2. The board now exposes its existing visual column
+labels as h2 and card titles as h3; no type size/layout changes. The type header
+uses its existing breadcrumb's truthful Task type fallback. Actual addon reports
+are retained as failures rather than ignored best-practice results. The mobile
+collector finishes against the same frozen prior build before the next rebuild.
+
+Final clean build6 passes217 stories×2themes×2widths=868 completed-lifecycle
+accessibility scans and217×2themes=434 mobile overflow scans. Native Fleet
+keyboard scrolling/read-only toolbar checks pass, and four refreshed captures
+are inspected. Independent human/reliability source reviews approve these final
+changes, with final source checks still pending. Remote d12ba96 passes seven CI
+jobs and both real-integration jobs; its GUI story failure names exactly the
+three heading defects corrected in this build, so that older head is not green.
+
+The corrected heading hierarchy requires browser selectors in comments,
+addressable, layout, live-recovery and rich-editor fixtures to target level3.
+Seven comments/addressable journeys pass. Rich-editor formatting/save succeeds,
+but the browser-forward-proxy API read is403 even when its explicit backend
+URL is correct. Its existing isolated context-route forwarding and direct API
+read now consistently use TASKER_E2E_BACKEND_URL; the full rich-editor journey
+passes including fresh authenticated stored-markdown equality. An accidental
+non-forwarded attempt is stopped before completion and excluded from evidence.
+Obsolete prose claiming deep-link loss is removed: actual reload journeys pass.
+
+The first final source run has1474 passing GUI cases and one initial task-read
+readiness timeout in canonicalNavigation, before its access-loss assertions.
+All12 canonical cases pass unchanged in isolation. A serial Moon rerun with
+no browser work competing for CPU follows; assertions/timeouts remain unchanged.
+
+Final source run passes35 checks (23cached): GUI1475/95.43% branches, backend
+2207/zero failures/57 environment-gated skips, plus contracts/wire/standalone.
+All11 final layout/recovery journeys pass after isolated forwarding replaces
+the test-only proxy for route.fetch. CODE-v12 and UX-v8 approve all four lenses
+and final captures. T07 is complete: M53 has7/7 tasks,365 done/31 pending overall.
+Milestone closure and actual final-head remote CI still gate publication.
+
+T07 closure checks pass35/33cached after formatting one review link; runtime
+source and rendered evidence remain unchanged.
