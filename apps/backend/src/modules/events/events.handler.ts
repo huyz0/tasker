@@ -329,7 +329,15 @@ export function createEventsHandler(db: any, nc: any, opts: {
         while (true) {
           if (ctx?.signal?.aborted) return;
           await revalidate();
-          const next = await outbox.take(Math.min(heartbeatMs, Math.max(1, revalidateAt - now())));
+          const waitStarted = now();
+          const waitMs = Math.min(heartbeatMs, Math.max(1, revalidateAt - waitStarted));
+          const wakeAt = waitStarted + waitMs;
+          let next = await outbox.take(waitMs);
+          // Timer granularity can wake early. Keep the same absolute deadline
+          // so repeated early wakes cannot postpone a heartbeat.
+          while (next === IDLE && now() < wakeAt) {
+            next = await outbox.take(Math.max(1, wakeAt - now()));
+          }
           if (next === CLOSED) return;
           // An event or timer can wake us after the credential deadline.
           // Check before yielding either domain data or another heartbeat.

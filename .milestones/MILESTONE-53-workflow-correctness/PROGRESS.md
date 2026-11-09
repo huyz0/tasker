@@ -278,3 +278,29 @@ admission and stale-login cache) fail and restore. Rendered strict audits catch
 a pre-existing drawer fixture mount race; the preview applies its initial open
 state after AppShell mounts, rather than accepting a hidden-drawer audit. Final
 rendered/full checks and final review remain pending.
+
+T05 full-gate correction in progress: the routing-only TanStack mock needs the
+new mutation-cache selector, and direct workbench fixtures need an explicit
+verified draft owner. The bounded organization paging case hit its existing5s
+limit under full coverage; reproduce in isolation before deciding any change.
+Remote T04 CI also exposed an early idle timer wake that emitted a premature
+heartbeat. A focused API/security repair will reproduce that scheduling boundary
+with a controlled clock before changing the stream; no timeout or auth waiver.
+
+T05 full-gate fixtures now pass136 cases without timeout changes. The first
+correction run was overlapped by the inadvertently launched old-source command
+and is excluded; the clean second invocation is the evidence. The next full
+run is intentionally interrupted after two existing GUI timing assertions fail
+under coverage, to correct the independently identified timer deadline issue.
+Serial coverage diagnosis follows; no test or coverage requirement is waived.
+
+The CI stream repair has two observed controlled reds: an early credential wake
+emits a premature frame, and the first repair slides a heartbeat deadline. The
+final inner wait retains its absolute deadline and checks credentials after
+waking before every yield. Both controlled clock/timer cases and the full44
+stream tests pass. Deliberately removing post-wake authentication fails the
+credential regression; restored44 pass. Independent reliability approves both
+deadlines, immediate domain/scope wakes and abort/iterator cleanup. This narrow
+backend scheduling repair is recorded here because it resolves T04 remote CI
+while the same session's T05 candidate is being verified. API/security standards
+apply to that repair; no contract/authz policy or timeout is changed.

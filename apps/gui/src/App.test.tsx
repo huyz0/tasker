@@ -32,6 +32,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: (opts: unknown) => mockUseQuery(opts as { queryKey: unknown[] }),
   useQueries: () => [],
   useMutation: () => mockUseMutation(),
+  useMutationState: () => [],
   useQueryClient: () => mockUseQueryClient(),
   useInfiniteQuery: () => mockUseInfiniteQuery(),
 }));

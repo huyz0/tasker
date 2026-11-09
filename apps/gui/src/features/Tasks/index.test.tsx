@@ -1,5 +1,5 @@
 import { screen, fireEvent, waitFor, within, createEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   TaskService, CommentService, LabelService, RepositoryService, TaskTypeService,
   TaskNoteService, OrgService, AgentService, ArtifactService, SearchService, ProjectService,
@@ -30,6 +30,7 @@ vi.mock('../../components/ui/RichMarkdownEditor', () => ({
 }));
 
 import { TasksWorkbench } from './index';
+import { useSummaryDrafts } from './summaryDrafts';
 import { confirmAction, cancelAction } from '../../test/confirm';
 import { renderScoped, type LocationRef } from '../../test/renderScoped';
 import { useLocation } from 'react-router-dom';
@@ -89,6 +90,8 @@ function withTasks(tasks: any[], page: object = {}) {
 
 describe('TasksWorkbench', () => {
   beforeEach(() => {
+    useSummaryDrafts.getState().endSession();
+    useSummaryDrafts.getState().setAccount('workbench-fixture-user');
     mockActiveProjectId = 'proj-1';
     mockActiveOrgId = 'org-1';
     // Board columns for custom statuses come from the project's task types now,
@@ -120,6 +123,8 @@ describe('TasksWorkbench', () => {
     mockRpc(TaskService, 'ListInputRequests', { inputRequests: [], page: {} });
     mockRpc(TaskService, 'ListTransitionApprovals', { approvals: [], page: {} });
   });
+
+  afterEach(() => useSummaryDrafts.getState().endSession());
 
   it('titles the page "Tasks" and says what the screen is for', async () => {
     withTasks([]);
