@@ -207,10 +207,16 @@ for (const c of cases) describe(`${c.kind} bounded pending/history`, () => {
     function Switchable() { const [org, setOrg] = useState('org-a'); return <><button onClick={() => setOrg('org-b')}>Switch organization</button><c.Queue orgId={org} /></>; }
     renderScoped(<Switchable />);
     await screen.findByText('Showing 50 of 51 pending');
-    fireEvent.click(screen.getByRole('button', { name: 'Load more pending' }));
+    // These native buttons have visible text. Avoid computing names/visibility
+    // for every action in all50 forms just to locate the two paging controls.
+    const more = screen.getByText('Load more pending', { selector: 'button' });
+    expect(more).toBeVisible();
+    fireEvent.click(more);
     await screen.findByText('Showing 51 of 51 pending');
     expect(requests.at(-1)).toMatchObject({ orgId: 'org-a', status: c.status, page: { limit: 50, cursor: 'org-next' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch organization' }));
+    const switchOrg = screen.getByText('Switch organization', { selector: 'button' });
+    expect(switchOrg).toBeVisible();
+    fireEvent.click(switchOrg);
     await screen.findByText('Showing 1 of 1 pending');
     expect(screen.queryByText('oldest')).toBeNull();
     expect(requests.at(-1)).toMatchObject({ orgId: 'org-b', page: { limit: 50 } });
