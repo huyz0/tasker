@@ -3,9 +3,11 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -191,4 +193,91 @@ func TestRequestTimeoutMustBePositive(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHTTPResponseBodyKeepsDeadlineAndCancellationClassification(t *testing.T) {
+	for _, helper := range []string{"auth", "debug"} {
+		for _, cancelParent := range []bool{false, true} {
+			name := helper + "/timeout"
+			if cancelParent {
+				name = helper + "/cancel"
+			}
+			t.Run(name, func(t *testing.T) {
+				resetAllFlags(t)
+				limit := 200 * time.Millisecond
+				if cancelParent {
+					limit = time.Second
+				}
+				if err := backend.SetRequestTimeout(limit); err != nil {
+					t.Fatal(err)
+				}
+				headers := make(chan struct{}, 1)
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					_, _ = io.Copy(io.Discard, r.Body)
+					w.WriteHeader(http.StatusServiceUnavailable)
+					_, _ = io.WriteString(w, "partial error body")
+					w.(http.Flusher).Flush()
+					headers <- struct{}{}
+					<-r.Context().Done()
+				}))
+				defer server.Close()
+				reading := make(chan struct{})
+				var noticed sync.Once
+				client := server.Client()
+				base := client.Transport
+				client.Transport = lifetimeRoundTrip(func(req *http.Request) (*http.Response, error) {
+					res, err := base.RoundTrip(req)
+					if err == nil {
+						res.Body = &lifetimeBodyRead{ReadCloser: res.Body, notify: func() { noticed.Do(func() { close(reading) }) }}
+					}
+					return res, err
+				})
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				defer cancel()
+				finished := make(chan error, 1)
+				go func() {
+					if helper == "auth" {
+						_, _, err := loginWithPassword(ctx, client, server.URL, "fixture", "fixture-password")
+						finished <- err
+					} else {
+						_, err := checkSessionWithServer(ctx, client, server.URL, "fixture-token")
+						finished <- err
+					}
+				}()
+				select {
+				case <-headers:
+				case <-time.After(time.Second):
+					t.Fatal("server never flushed error headers")
+				}
+				want := exitUnavailable
+				if cancelParent {
+					select {
+					case <-reading:
+					case <-time.After(time.Second):
+						t.Fatal("client never started the error-body read")
+					}
+					cancel()
+					want = exitCanceled
+				}
+				err := <-finished
+				if got := exitCodeFor(err); got != want {
+					t.Fatalf("body read exit=%d want=%d: %v", got, want, err)
+				}
+			})
+		}
+	}
+}
+
+type lifetimeRoundTrip func(*http.Request) (*http.Response, error)
+
+func (f lifetimeRoundTrip) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+type lifetimeBodyRead struct {
+	io.ReadCloser
+	notify func()
+}
+
+func (b *lifetimeBodyRead) Read(p []byte) (int, error) {
+	b.notify()
+	return b.ReadCloser.Read(p)
 }

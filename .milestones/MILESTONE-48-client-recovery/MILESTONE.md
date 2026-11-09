@@ -43,7 +43,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/modules/events/events.handler.ts; apps/gui/src/lib/eventQueryKeys.ts; apps/gui/src/hooks/useLiveEvents.ts.
   - **Verify**: A tiny queue drops an event for one entity while another survives; resync signal causes the dropped entity to refetch; no cross-tenant payload is exposed.
 
-- [ ] **M48-T03** — Use cancellable CLI command contexts and configurable unary deadlines.
+- [x] **M48-T03** — Use cancellable CLI command contexts and configurable unary deadlines.
   - **Files**: apps/cli/cmd/*.go; apps/cli/internal/backend/clients.go; apps/cli/cmd/root.go.
   - **Verify**: A server that accepts but never responds hits the configured deadline; command cancellation interrupts a call; MCP stdio and subscriptions retain appropriate long-lived semantics; generated docs match.
 

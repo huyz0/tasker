@@ -106,7 +106,10 @@ func loginWithPassword(ctx context.Context, httpClient *http.Client, serverURL, 
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return "", false, fmt.Errorf("failed to read backend response: %w", err)
+		}
 		var problem problemDetailsBody
 		if json.Unmarshal(body, &problem) == nil && problem.Detail != "" {
 			return "", false, errors.New(problem.Detail)

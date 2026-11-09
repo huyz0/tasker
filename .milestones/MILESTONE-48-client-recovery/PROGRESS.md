@@ -20,9 +20,9 @@
 
 ## M48-T03 — Bound individual CLI requests and propagate cancellation
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Add a positive --timeout per-request limit (default 30 seconds), propagate command/signal contexts through RPC and plain HTTP calls, and keep MCP stdio alive across bounded requests.
-- **Verified**: Initial accepted-request cancellation fails before replacing background contexts; positive/invalid timeout tests fail before the flag/deadline implementation. Current CLI/backend suites pass; parent, per-page, repeated-command, long-lived stream and MCP request/session tests pass. Four deliberate faults (unary deadline, MCP request deadline, idle input cancellation, fresh contexts) fail their regressions. Race run passes after widening a too-tight pagination timing fixture. Actual binary pseudo-terminal proof first exits 130 with echo unrestored, then passes with explicit terminal restoration. Final review, reference generation and full gates remain pending.
+- **Verified**: Initial accepted-request cancellation fails before replacing background contexts; timeout/invalid-duration tests fail before implementation. Parent, per-page, repeated-command, real event-stream and MCP request/session tests pass. Four deliberate faults (unary deadline, MCP request deadline, idle input cancellation, fresh contexts) fail. Independent v5 found ignored error-body reads; synchronized auth/debug timeout/cancel cases all fail when that bug is restored and pass after correction. Final CLI/backend race suites pass. Actual binary PTY first exits 130 with echo unrestored, then passes with explicit restoration; T04 commits native journey coverage. Windows amd64/macOS arm64 cross-builds and generated reference pass. Independent v6 approved; final `moon check --all`: 35 completed (26 cached), fresh CLI coverage gate 93.7% (floor 80%).
 - **Notes**: ADR-0046 chooses unary interception plus caller contexts instead of timing an entire interactive command or a streaming connection. Raw auth/debug HTTP and each MCP exchange use the same bounded request context. Tests cover cancellation, timeout classification, parent deadlines and long-lived relay behavior. Standards: coding/security. No new dependency or visual UX.
 - **Next**: M48-T04 actual browser/CLI journeys and closure.

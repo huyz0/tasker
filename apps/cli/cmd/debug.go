@@ -79,7 +79,10 @@ func checkSessionWithServer(ctx context.Context, httpClient *http.Client, server
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read backend response: %w", err)
+		}
 		return nil, fmt.Errorf("backend returned status %d: %s", res.StatusCode, strings.TrimSpace(string(body)))
 	}
 
