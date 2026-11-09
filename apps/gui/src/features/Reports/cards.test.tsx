@@ -100,10 +100,48 @@ describe('Reports exception cards', () => {
   });
 
   describe('stalled work', () => {
+    it('previews five exceptions and expands every claim and waiting task', async () => {
+      const claims = Array.from({ length: 6 }, (_, i) => ({ ...CLAIM_NEVER_STARTED, taskId: `claim-${i}`, taskTitle: `Silent claim ${i}` }));
+      const waiting = Array.from({ length: 3 }, (_, i) => ({ taskId: `waiting-${i}`, taskDisplayId: `W-${i}`, taskTitle: `Waiting task ${i}`, waitingSince: hoursAgo(5) }));
+      mockRpc(ReportService, 'GetReportExceptions', { ...BASE_RESPONSE, stalledClaims: claims, unclaimed: waiting });
+      const released: unknown[] = [];
+      mockRpc(TaskService, 'UnassignTask', body => { released.push(body); return { success: true }; });
+      renderPage();
+      await screen.findByText('Silent claim 0');
+      const card = screen.getByRole('heading', { name: 'Stalled work' }).closest('section')!;
+      expect(within(card).getAllByRole('link')).toHaveLength(5);
+      const expand = within(card).getByRole('button', { name: 'Show all 9 exceptions' });
+      expect(expand).toHaveAttribute('aria-expanded', 'false');
+      fireEvent.click(expand);
+      expect(within(card).getAllByRole('link')).toHaveLength(9);
+      expect(within(card).getByText('Waiting task 2')).toBeVisible();
+      fireEvent.click(within(card).getByRole('button', { name: 'Unassign Silent claim 5' }));
+      const confirmation = await screen.findByTestId('confirm-dialog');
+      fireEvent.click(within(confirmation).getByRole('button', { name: 'Unassign' }));
+      await waitFor(() => expect(released).toEqual([{ taskId: 'claim-5', agentId: 'agent-1' }]));
+      fireEvent.click(within(card).getByRole('button', { name: 'Show fewer exceptions' }));
+      expect(within(card).getAllByRole('link')).toHaveLength(5);
+      expect(within(card).queryByText('Waiting task 2')).toBeNull();
+    });
+
+    it('uses the remaining preview space for unclaimed work', async () => {
+      const waiting = Array.from({ length: 6 }, (_, i) => ({ taskId: `waiting-${i}`, taskDisplayId: `W-${i}`, taskTitle: `Waiting task ${i}`, waitingSince: hoursAgo(5) }));
+      mockRpc(ReportService, 'GetReportExceptions', { ...BASE_RESPONSE, unclaimed: waiting });
+      renderPage();
+      await screen.findByText('Migrate the billing job');
+      const card = screen.getByRole('heading', { name: 'Stalled work' }).closest('section')!;
+      expect(within(card).getAllByRole('link')).toHaveLength(5);
+      expect(within(card).getByText('Waiting task 2')).toBeVisible();
+      expect(within(card).queryByText('Waiting task 3')).toBeNull();
+      fireEvent.click(within(card).getByRole('button', { name: 'Show all 8 exceptions' }));
+      expect(within(card).getAllByRole('link')).toHaveLength(8);
+    });
+
     it('distinguishes never-started from went-quiet claims', async () => {
       renderPage();
       await waitFor(() => expect(screen.getByText('Migrate the billing job')).toBeInTheDocument());
 
+      expect(screen.queryByRole('button', { name: /Show all .* exceptions/ })).toBeNull();
       expect(screen.getByText('never started')).toBeInTheDocument();
       expect(screen.getByText('went quiet')).toBeInTheDocument();
       // The never-started row has no signal to date; the went-quiet one does.

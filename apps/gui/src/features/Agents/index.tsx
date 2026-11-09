@@ -221,9 +221,9 @@ export function AgentsDashboard() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="border rounded-lg bg-card p-4 shadow-sm md:p-6">
+        <div className="border rounded-lg bg-surface-panel p-panel">
           <div className="flex justify-between items-center mb-4">
-             <h2 className="text-xl font-medium">AI Agent Instances</h2>
+             <h2 className="type-section-title">AI Agent Instances</h2>
              <button
                onClick={() => setIsDeploying((v) => !v)}
                className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
@@ -274,7 +274,7 @@ export function AgentsDashboard() {
             <p className="text-sm text-destructive mb-2">Failed to update agent: {(updateAgentMutation.error as Error).message}</p>
           )}
           <div className="border rounded-md divide-y">
-            <div className={`${AGENT_ROW_GRID} p-3 text-xs font-medium text-muted-foreground bg-muted/30`}>
+            <div className={`${AGENT_ROW_GRID} min-h-row p-3 text-xs font-medium text-muted-foreground bg-muted/30`}>
               <span>Name</span>
               <span className={`hidden sm:block ${AGENT_ROLE_CELL}`}>Role</span>
               <span className={`sr-only ${AGENT_ACTIONS_CELL}`}>Actions</span>
@@ -327,7 +327,7 @@ export function AgentsDashboard() {
                   </form>
                 ) : (
                 <div key={a.id}>
-                <div className={`${AGENT_ROW_GRID} p-3 text-sm`}>
+                <div className={`${AGENT_ROW_GRID} min-h-row p-3 text-sm`}>
                   <span className="min-w-0 truncate font-medium text-primary" title={a.name}>
                     {a.name}
                   </span>
@@ -388,9 +388,9 @@ export function AgentsDashboard() {
           </div>
         </div>
 
-        <div className="border rounded-lg bg-card p-4 shadow-sm md:p-6">
+        <div className="border rounded-lg bg-surface-panel p-panel">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-medium">Agent Activity</h2>
+            <h2 className="type-section-title">Agent Activity</h2>
             <span className="text-xs text-muted-foreground">Quietest first</span>
           </div>
           <ListState
@@ -436,9 +436,9 @@ export function AgentsDashboard() {
         </div>
       </div>
 
-      <div className="border rounded-lg bg-card p-4 shadow-sm md:p-6">
+      <div className="border rounded-lg bg-surface-panel p-panel">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-medium">Agent Roles</h2>
+          <h2 className="type-section-title">Agent Roles</h2>
           <button
             onClick={() => setIsAddingRole((v) => !v)}
             className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"

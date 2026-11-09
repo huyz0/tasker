@@ -177,7 +177,7 @@ describe("workflow templates (M42)", () => {
       await expectCode(wf.instantiateWorkflow({ templateId: t.id, projectId }, ctx), Code.InvalidArgument, /does not have \(other\)/);
       expect(await db.select().from(S.tasks)).toHaveLength(0);
 
-      // A failure CreateTask itself raises mid-way is rolled back too.
+      // Malformed persisted step data is rejected during schema validation.
       await db.update(S.workflowTemplates).set({
         steps: JSON.stringify([{ key: "a", title: "A", description: "", priority: 0, dependsOn: [] },
           { key: "b", title: "B", description: "", priority: 0, status: "x".repeat(300), dependsOn: ["a"] }]),
@@ -185,6 +185,37 @@ describe("workflow templates (M42)", () => {
       await expectCode(wf.instantiateWorkflow({ templateId: t.id, projectId }, ctx), Code.InvalidArgument);
       expect(await db.select().from(S.tasks)).toHaveLength(0);
       expect(await db.select().from(S.taskLinks)).toHaveLength(0);
+    });
+
+    it("racing identical workflow keys return one complete graph", async () => {
+      const t = (await create()).template;
+      const req = { templateId: t.id, projectId, idempotencyKey: "parallel-workflow" };
+      const [first, second] = await Promise.all([
+        wf.instantiateWorkflow(req, agentCtx()), wf.instantiateWorkflow(req, agentCtx()),
+      ]);
+      expect(second.parent.id).toBe(first.parent.id);
+      expect(second.steps.map((s: any) => s.id)).toEqual(first.steps.map((s: any) => s.id));
+      expect(await db.select().from(S.tasks)).toHaveLength(RELEASE.length + 1);
+    });
+
+    it.each([0, 1, 2])("rolls back counters, activity and events when untyped step %i has an invalid status", async (failedStep) => {
+      const { eq } = await import("drizzle-orm");
+      const keys = ["a", "b", "c"];
+      const t = (await create(keys.map((key, index) => ({
+        key, title: key.toUpperCase(),
+        ...(index === failedStep ? { status: "not-a-task-status" } : {}),
+        dependsOn: index ? [keys[index - 1]!] : [],
+      })))).template;
+      const [before] = await db.select().from(S.projects).where(eq(S.projects.id, projectId));
+      nc.clear();
+      await expectCode(wf.instantiateWorkflow({ templateId: t.id, projectId }, ctx), Code.InvalidArgument);
+      const [after] = await db.select().from(S.projects).where(eq(S.projects.id, projectId));
+      expect({
+        taskCount: (await db.select().from(S.tasks)).length,
+        activityCount: (await db.select().from(S.taskActivity)).length,
+        nextTaskNumber: after.nextTaskNumber,
+        events: nc.publishedMessages.map((m: any) => m.subject),
+      }).toEqual({ taskCount: 0, activityCount: 0, nextTaskNumber: before.nextTaskNumber, events: [] });
     });
 
     it("needs tasks:write in the template's organization, and the template's project", async () => {

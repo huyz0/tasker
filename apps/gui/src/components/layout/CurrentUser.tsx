@@ -34,7 +34,7 @@ export function CurrentUser() {
   const initial = label.charAt(0).toUpperCase();
 
   return (
-    <div className="flex items-center gap-2" aria-label={`Signed in as ${label}`}>
+    <div role="group" className="flex items-center gap-2" aria-label={`Signed in as ${label}`}>
       {data.avatarUrl ? (
         <img src={data.avatarUrl} alt={label} className="h-6 w-6 rounded-full object-cover" />
       ) : (

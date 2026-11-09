@@ -13,7 +13,7 @@ import { requirePrincipal, requireUser, getProjectOrgId, authorizePrincipal } fr
 import { assertCan } from "../../lib/policy";
 import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { withIdempotency } from "../../lib/idempotency";
-import { purgeTaskCascade } from "../../lib/cascadePurge";
+import { transactionalOperation } from "../../db/access";
 import { createTaskManagementHandler } from "../tasks/tasks.handler";
 
 const MAX_STEPS = 50;
@@ -167,7 +167,7 @@ export function createWorkflowsHandler(db: any, nc: any = null) {
     return row;
   }
 
-  return {
+  const handlers = {
     async createWorkflowTemplate(req: unknown, { values }: { values: any }) {
       const userId = requireUser(values);
       const parsed = CreateSchema.parse(req);
@@ -245,8 +245,8 @@ export function createWorkflowsHandler(db: any, nc: any = null) {
 
     /**
      * Parent first, then the steps in dependency order through CreateTask
-     * itself. All or nothing: validated before anything is written, and a
-     * create that still fails purges everything this call made (ADR-0035).
+     * itself. The operation owns one transaction through validation, retry
+     * replay and every step (ADR-0038); failures roll back rather than purge.
      */
     async instantiateWorkflow(req: unknown, ctx: { values: any }) {
       const principal = requirePrincipal(ctx.values);
@@ -262,41 +262,35 @@ export function createWorkflowsHandler(db: any, nc: any = null) {
       const firstStatus = await checkTypes(row.orgId, steps);
 
       return withIdempotency(db, isStandalone, principal, "instantiateWorkflow", parsed.idempotencyKey, parsed, async () => {
-        const created: string[] = [];
-        try {
-          const parent = (await tasks.createTask({
-            projectId: parsed.projectId, title: parsed.title ?? row.name, status: "todo", description: row.description ?? "",
+        const parent = (await tasks.createTask({
+          projectId: parsed.projectId, title: parsed.title ?? row.name, status: "todo", description: row.description ?? "",
+        }, ctx)).task;
+        const idByKey = new Map<string, string>();
+        const byKey = new Map<string, any>();
+        for (const s of steps) {
+          const task = (await tasks.createTask({
+            projectId: parsed.projectId,
+            title: s.title,
+            description: s.description,
+            priority: s.priority,
+            ...(s.taskTypeId ? { taskTypeId: s.taskTypeId, status: s.status ?? firstStatus.get(s.taskTypeId) ?? "todo" } : { status: s.status ?? "todo" }),
+            parentTaskId: parent.id,
+            blockedBy: s.dependsOn.map((k) => idByKey.get(k)!),
           }, ctx)).task;
-          created.push(parent.id);
-          const idByKey = new Map<string, string>();
-          const byKey = new Map<string, any>();
-          for (const s of steps) {
-            const task = (await tasks.createTask({
-              projectId: parsed.projectId,
-              title: s.title,
-              description: s.description,
-              priority: s.priority,
-              ...(s.taskTypeId ? { taskTypeId: s.taskTypeId, status: s.status ?? firstStatus.get(s.taskTypeId) ?? "todo" } : { status: s.status ?? "todo" }),
-              parentTaskId: parent.id,
-              blockedBy: s.dependsOn.map((k) => idByKey.get(k)!),
-            }, ctx)).task;
-            created.push(task.id);
-            idByKey.set(s.key, task.id);
-            byKey.set(s.key, task);
-          }
-          publishDomainEvent(nc, "domain.task.workflow_started", {
-            taskId: parent.id, projectId: parsed.projectId, templateId: row.id, steps: steps.length,
-          });
-          // Steps come back in the template's own order, not creation order.
-          const authorOrder = (JSON.parse(row.steps) as Step[]).map((s) => byKey.get(s.key));
-          return { parent, steps: authorOrder };
-        } catch (e) {
-          for (const id of created.reverse()) {
-            await purgeTaskCascade(db, id).catch(() => undefined);
-          }
-          throw e;
+          idByKey.set(s.key, task.id);
+          byKey.set(s.key, task);
         }
+        publishDomainEvent(nc, "domain.task.workflow_started", {
+          taskId: parent.id, projectId: parsed.projectId, templateId: row.id, steps: steps.length,
+        });
+        // Steps come back in the template's own order, not creation order.
+        const authorOrder = (JSON.parse(row.steps) as Step[]).map((s) => byKey.get(s.key));
+        return { parent, steps: authorOrder };
       });
     },
+  };
+  return {
+    ...handlers,
+    instantiateWorkflow: transactionalOperation(db, handlers.instantiateWorkflow),
   };
 }

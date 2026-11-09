@@ -54,3 +54,14 @@ export const Populated: Story = {
     children: <ul className="p-4 text-sm"><li>Seed Project</li><li>Another Project</li></ul>,
   },
 };
+
+export const CollectionIntroduction: Story = {
+  args: {
+    isLoading: false,
+    error: null,
+    isEmpty: true,
+    emptyTitle: 'No workflows yet.',
+    emptyMessage: 'Turn a repeatable process into linked tasks. For example, build, verify and ship a release.',
+    emptyAction: <Button>New workflow</Button>,
+  },
+};

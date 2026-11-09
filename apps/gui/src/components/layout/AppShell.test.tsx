@@ -6,6 +6,15 @@ import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import * as authSession from '../../lib/authSession';
 import { useLayoutStore } from '../../store/layout';
+import { mockRpc } from '../../test/mockRpc';
+import { ProjectService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+
+// Navigation/focus tests use the hook's status, not its independently tested broker lifecycle.
+vi.mock('../../hooks/useLiveEvents', () => ({ useLiveEvents: () => ({ status: 'connecting' }) }));
+beforeEach(() => {
+  useLayoutStore.setState({ activeOrgId: '', activeProjectId: '', sidebarOpen: false, searchOpen: false });
+  mockRpc(ProjectService, 'GetProject', { project: { id: 'proj-1', name: 'Seed Project' } });
+});
 
 vi.mock('use-debounce', () => ({
   useDebounce: (value: string) => [value, { flush: vi.fn(), cancel: vi.fn() }],
@@ -215,5 +224,33 @@ describe('keyboard and screen-reader affordances', () => {
     renderShell();
     expect(screen.getAllByRole('radiogroup', { name: 'Colour theme' })).toHaveLength(1);
     expect(document.querySelector('aside')!.contains(screen.getByRole('radiogroup'))).toBe(true);
+  });
+});
+
+describe('activity navigation', () => {
+  test('puts tasks and handoffs together and automation in its own group', () => {
+    renderShell();
+    const work = screen.getByRole('group', { name: 'Work' });
+    expect(work).toContainElement(screen.getByRole('link', { name: 'Tasks' }));
+    expect(work).toContainElement(screen.getByRole('link', { name: 'Handoffs' }));
+    expect(screen.getByRole('group', { name: 'Automation' })).toContainElement(screen.getByRole('link', { name: 'Workflows' }));
+  });
+
+  test('keeps administration behind a named disclosure on daily screens', () => {
+    renderShell();
+    const settings = screen.getByRole('button', { name: 'Workspace settings' });
+    expect(settings).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('group', { name: 'Workspace settings' })).toContainElement(settings);
+    expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
+    fireEvent.click(settings);
+    expect(settings).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('link', { name: 'Roles' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Account & system' })).toHaveAttribute('href', '/settings');
+  });
+
+  test('automatically exposes the active settings destination on a deep link', () => {
+    renderScoped(<AppShell><div /></AppShell>, { initialEntry: '/roles?org=org-1', paths: ['*'] });
+    expect(screen.getByRole('button', { name: 'Workspace settings' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('link', { name: 'Roles' })).toHaveAttribute('aria-current', 'page');
   });
 });

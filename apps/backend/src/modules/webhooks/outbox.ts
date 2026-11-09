@@ -18,11 +18,11 @@ export interface WebhookEventBody {
 }
 
 /** Queues one delivery, due now. Returns its row. */
-export async function insertDelivery(db: any, isStandalone: boolean, webhookId: string, event: WebhookEventBody) {
+export async function insertDelivery(db: any, isStandalone: boolean, webhookId: string, event: WebhookEventBody, id = `whd-${crypto.randomUUID()}`) {
   const deliveries = isStandalone ? schemaSqlite.webhookDeliveries : schemaMysql.webhookDeliveries;
   const now = new Date();
   const row = {
-    id: `whd-${crypto.randomUUID()}`,
+    id,
     webhookId,
     eventId: event.id,
     eventType: event.type,

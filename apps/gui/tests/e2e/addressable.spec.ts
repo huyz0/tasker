@@ -1,3 +1,4 @@
+import { openWorkspaceSettings } from './workspaceSettings';
 import { test, expect, type Page } from '@playwright/test';
 import { selectSeededOrg } from './selectSeededOrg';
 
@@ -195,6 +196,7 @@ test.describe('Addressable screens', () => {
     // screen has nothing to distinguish one tier from the other; Task Types'
     // `:typeId` gets its own test at the bottom of this file.
     await selectSeededOrg(page);
+    await openWorkspaceSettings(page);
     await page.getByRole('link', { name: 'Organizations' }).click();
     await expect(page.getByRole('heading', { name: 'Organizations', level: 1 })).toBeVisible({
       timeout: 15_000,
@@ -225,6 +227,7 @@ test.describe('Addressable screens', () => {
   test("Bin's ?tab= survives a reload", async ({ page }) => {
     await selectSeededOrg(page);
     await selectProject(page, 'Seed Project', /^Seed Project$/);
+    await openWorkspaceSettings(page);
     await page.getByRole('link', { name: 'Bin' }).click();
     await expect(page.getByRole('heading', { name: 'Bin', level: 1 })).toBeVisible({ timeout: 15_000 });
 
@@ -283,6 +286,7 @@ test.describe('Addressable screens', () => {
 
   test('a deep-linked task type keeps its selection across a reload and shows a trail back', async ({ page }) => {
     await selectSeededOrg(page);
+    await openWorkspaceSettings(page);
     await page.getByRole('link', { name: 'Task Types' }).click();
 
     // The type rail — identified by the form it holds, not by position: the

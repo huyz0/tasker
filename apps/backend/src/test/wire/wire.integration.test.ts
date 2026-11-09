@@ -6,6 +6,7 @@ import {
   HealthService,
   OrgService,
   TaskService,
+  EventService,
 } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { join } from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -190,4 +191,36 @@ testIf('the real server over a real socket', () => {
       expect([Code.Unauthenticated, Code.PermissionDenied]).toContain(code);
     }
   });
+
+  const lifecycleTest = process.env.TASKER_STREAM_LIFECYCLE_INTEGRATION === '1' ? it : it.skip;
+  lifecycleTest('closes an already-open feed after logout through the real auth and streaming adapters', async () => {
+    // Needs the real NATS broker as well as this suite's server. Keep it
+    // explicit so running ordinary wire tests without a broker stays valid.
+    const registered = await fetch(`${BASE_URL}/api/auth/password/register`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: 'wire-stream-user', password: 'Wire-test-strong-password-123!' }),
+    });
+    expect(registered.ok).toBe(true);
+    const cookie = registered.headers.get('set-cookie')!.split(';')[0]!;
+    const events = createClient(EventService, transportWith({ cookie }));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 35_000);
+    const iterator = events.subscribeEvents({}, { signal: controller.signal })[Symbol.asyncIterator]();
+    try {
+      expect((await iterator.next()).value.subject).toBe('stream.ready');
+      const loggedOutAt = Date.now();
+      const response = await fetch(`${BASE_URL}/api/auth/logout`, { method: 'POST', headers: { cookie } });
+      expect(response.status).toBe(204);
+      const untilClosed = async () => {
+        while (!(await iterator.next()).done) { /* heartbeats may precede revalidation */ }
+      };
+      await expect(untilClosed()).rejects.toMatchObject({ code: Code.Unauthenticated });
+      expect(Date.now() - loggedOutAt).toBeLessThan(33_000);
+    } finally {
+      clearTimeout(timeout);
+      controller.abort();
+      await iterator.return?.();
+    }
+  }, 45_000);
+
 });

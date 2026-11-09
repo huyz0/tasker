@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, setSystemTime } from "bun:test";
 import * as http from "node:http";
 import type { AddressInfo } from "node:net";
 import { createHmac } from "node:crypto";
@@ -36,9 +36,15 @@ describe("webhook outbox and delivery (M37-T04)", () => {
     tasks = createTaskManagementHandler(db, nc);
     hooks = createWebhooksHandler(db, nc, { resolve: publicDns, allowPrivate: false });
     clock = Date.now();
+    // Delivery creation and the sweep must agree on time. Crossing a real
+    // second after freezing only the sweep used to leave a new row not due.
+    setSystemTime(clock);
   });
 
-  afterEach(() => setDomainEventSink(null));
+  afterEach(() => {
+    setSystemTime();
+    setDomainEventSink(null);
+  });
 
   const webhook = async (extra: Record<string, unknown> = {}) =>
     hooks.createWebhook({ orgId, url: "https://hooks.example.com/in", events: ["task.*"], ...extra }, admin);
@@ -203,6 +209,9 @@ describe("webhook outbox and delivery (M37-T04)", () => {
     it("never sends one delivery twice when sweeps overlap", async () => {
       const { webhook: w } = await webhook();
       for (let i = 0; i < 10; i++) await hooks.pingWebhook({ id: w.id }, admin);
+      // Ping timestamps use wall time. Freeze the race clock after queuing,
+      // otherwise a second boundary can leave all ten rows not due yet.
+      clock = Date.now();
       const { sent, send } = recordingSender(200);
       const slow: Sender = async (...args) => { await new Promise((r) => setTimeout(r, 5)); return send(...args); };
       await Promise.all([runWebhookSweep(db, true, { send: slow, now }), runWebhookSweep(db, true, { send: slow, now })]);

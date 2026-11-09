@@ -10,15 +10,10 @@ bun = "1.3.11"
 # invoking `moon` through proto's shim - the pre-commit hook included - fails
 # with "Failed to detect an applicable version to run moon with".
 moon = "2.4.6"
-# Must be >= the `go` directive in apps/cli/go.mod (1.26.1), which is the
-# module's own minimum - a lower pin here means `moon setup` installs a
-# toolchain the CLI refuses to build with.
-#
-# 1.26.6 rather than 1.26.1 because `govulncheck` (M11-T11) reports five
-# reachable standard-library vulnerabilities in 1.26.5 and earlier — including
-# ones traced through `net/http` from the CLI's own generated Connect client.
-# The stdlib is a dependency like any other; the fix is the toolchain version.
-go = "1.26.6"
+# Match the CLI module minimum. govulncheck found ten reachable standard-library
+# vulnerabilities in 1.26.6; the latest required patch is crypto/x509 in
+# 1.26.10 (GO-2026-6809). Keep local and CI builds on the patched standard library.
+go = "1.26.10"
 
 [settings]
 auto-install = true

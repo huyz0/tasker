@@ -110,6 +110,34 @@ describe('TasksWorkbench', () => {
     expect(screen.getByText('Every task in this project, by status.')).toBeInTheDocument();
   });
 
+  it('keeps empty optional context closed while preserving guidance and summary creation', async () => {
+    withTasks([{ id: 'task-1', title: 'Readable task', status: 'todo' }]);
+    renderPage('/tasks/task-1');
+    const emptyPlan = await screen.findByText('The agent has not shared a plan.');
+    expect(emptyPlan).not.toBeVisible();
+    expect(screen.getByText('No agent has reported usage for this task.')).not.toBeVisible();
+    expect(screen.getByText(/No summary yet/)).not.toBeVisible();
+    for (const name of ['Summary', 'Agent plan', 'Usage and cost']) {
+      fireEvent.click(screen.getByText(name, { exact: true }));
+    }
+    expect(emptyPlan).toBeVisible();
+    expect(screen.getByText('No agent has reported usage for this task.')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Write a summary' }));
+    expect(screen.getByRole('textbox', { name: 'Summary' })).toBeVisible();
+  });
+
+  it('opens populated summary, plan and usage without an extra click', async () => {
+    withTasks([{ id: 'task-1', title: 'Readable task', status: 'todo',
+      summary: { text: 'Outcome is recorded.', authorName: 'Closer', updatedAt: '2026-10-02T10:00:00Z' },
+      plan: [{ title: 'Verify the outcome', status: 'done' }],
+      usage: { reports: '1', costMicros: '2000000', inputTokens: '10', outputTokens: '5' },
+    }]);
+    renderPage('/tasks/task-1');
+    expect(await screen.findByText('Outcome is recorded.')).toBeVisible();
+    expect(screen.getByText('Verify the outcome')).toBeVisible();
+    expect(screen.getByText('$2.00')).toBeVisible();
+  });
+
   it('updates a task status via the detail panel dropdown', async () => {
     withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     const requests: any[] = [];

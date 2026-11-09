@@ -1,3 +1,4 @@
+import { useId, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { sinceLabel } from '../../lib/sinceLabel';
@@ -28,6 +29,8 @@ export type UnclaimedRow = {
   waitingSince: string;
 };
 
+const PREVIEW_LIMIT = 5;
+
 function SectionHeading({ children }: { children: string }) {
   return <h3 className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground">{children}</h3>;
 }
@@ -43,6 +46,11 @@ export function StalledWorkCard({ stalledClaims, unclaimed }: {
 }) {
   const { confirm, confirmDialog } = useConfirm();
   const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(false);
+  const listId = useId();
+  const total = stalledClaims.length + unclaimed.length;
+  const visibleClaims = expanded ? stalledClaims : stalledClaims.slice(0, PREVIEW_LIMIT);
+  const visibleUnclaimed = expanded ? unclaimed : unclaimed.slice(0, Math.max(0, PREVIEW_LIMIT - visibleClaims.length));
 
   const unassignMutation = useMutation({
     mutationFn: async (variables: { taskId: string; agentId: string }) => {
@@ -58,88 +66,99 @@ export function StalledWorkCard({ stalledClaims, unclaimed }: {
       title="Stalled work"
       subtitle="Claims with no recent signal, and tasks nobody has picked up. This is what to free today."
     >
-      <SectionHeading>Claimed and silent</SectionHeading>
-      {unassignMutation.isError && (
-        <p className="px-2 pb-1 text-xs text-destructive">
-          Failed to unassign: {(unassignMutation.error as Error).message}
-        </p>
-      )}
-      {stalledClaims.length === 0 ? (
-        <p className="p-2 text-sm text-muted-foreground">Nothing stalled. Every claimed task has recent activity.</p>
-      ) : (
-        <ul className="divide-y">
-          {stalledClaims.map((c) => {
-            // Per-row pending: compare the shared mutation's variables to the
-            // row, so one in-flight unassign does not disable its neighbours
-            // (the M20 lesson).
-            const isRowPending = unassignMutation.isPending && unassignMutation.variables?.taskId === c.taskId;
-            const seen = sinceLabel(c.agentLastSeenAt);
-            return (
-              <li key={c.taskId} className="p-2 flex flex-col gap-1">
-                <div className="flex items-center justify-between gap-2">
-                  <TaskLink taskId={c.taskId} displayId={c.taskDisplayId} title={c.taskTitle} />
-                  <button
-                    aria-label={`Unassign ${c.taskTitle}`}
-                    disabled={isRowPending}
-                    onClick={async () => {
-                      if (await confirm({
-                        title: `Unassign "${c.taskTitle}"?`,
-                        consequence: `Releases ${c.agentName}'s claim so the task can be picked up again.`,
-                        undo: 'Any agent can claim it again, or you can reassign it from the task view.',
-                        confirmLabel: 'Unassign',
-                      })) {
-                        unassignMutation.mutate({ taskId: c.taskId, agentId: c.agentId });
-                      }
-                    }}
-                    className="shrink-0 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
-                  >
-                    {isRowPending ? 'Unassigning…' : 'Unassign'}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {c.agentName}
-                  {c.claimedAt ? ` · claimed ${agoLabel(c.claimedAt)}` : ''}
-                  {' · '}
-                  {c.lastSignalAt ? `last signal ${agoLabel(c.lastSignalAt)}` : 'no signal since claim'}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-xs rounded px-1.5 py-0.5 ${
-                      c.neverStarted
-                        ? 'bg-destructive-subtle text-destructive-subtle-foreground'
-                        : 'bg-warning-subtle text-warning-subtle-foreground'
-                    }`}
-                  >
-                    {c.neverStarted ? 'never started' : 'went quiet'}
-                  </span>
-                  <span
-                    className={`text-xs rounded px-1.5 py-0.5 ${
-                      seen.silent
-                        ? 'bg-warning-subtle text-warning-subtle-foreground'
-                        : 'bg-success-subtle text-success-subtle-foreground'
-                    }`}
-                  >
-                    agent {seen.text}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div id={listId}>
+        <SectionHeading>Claimed and silent</SectionHeading>
+        {unassignMutation.isError && (
+          <p className="px-2 pb-1 text-xs text-destructive">
+            Failed to unassign: {(unassignMutation.error as Error).message}
+          </p>
+        )}
+        {stalledClaims.length === 0 ? (
+          <p className="p-2 text-sm text-muted-foreground">Nothing stalled. Every claimed task has recent activity.</p>
+        ) : (
+          <ul className="divide-y">
+            {visibleClaims.map((c) => {
+              // Per-row pending: compare the shared mutation's variables to the
+              // row, so one in-flight unassign does not disable its neighbours
+              // (the M20 lesson).
+              const isRowPending = unassignMutation.isPending && unassignMutation.variables?.taskId === c.taskId;
+              const seen = sinceLabel(c.agentLastSeenAt);
+              return (
+                <li key={c.taskId} className="p-2 flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <TaskLink taskId={c.taskId} displayId={c.taskDisplayId} title={c.taskTitle} />
+                    <button
+                      aria-label={`Unassign ${c.taskTitle}`}
+                      disabled={isRowPending}
+                      onClick={async () => {
+                        if (await confirm({
+                          title: `Unassign "${c.taskTitle}"?`,
+                          consequence: `Releases ${c.agentName}'s claim so the task can be picked up again.`,
+                          undo: 'Any agent can claim it again, or you can reassign it from the task view.',
+                          confirmLabel: 'Unassign',
+                        })) {
+                          unassignMutation.mutate({ taskId: c.taskId, agentId: c.agentId });
+                        }
+                      }}
+                      className="shrink-0 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
+                    >
+                      {isRowPending ? 'Unassigning…' : 'Unassign'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {c.agentName}
+                    {c.claimedAt ? ` · claimed ${agoLabel(c.claimedAt)}` : ''}
+                    {' · '}
+                    {c.lastSignalAt ? `last signal ${agoLabel(c.lastSignalAt)}` : 'no signal since claim'}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs rounded px-1.5 py-0.5 ${
+                        c.neverStarted
+                          ? 'bg-destructive-subtle text-destructive-subtle-foreground'
+                          : 'bg-warning-subtle text-warning-subtle-foreground'
+                      }`}
+                    >
+                      {c.neverStarted ? 'never started' : 'went quiet'}
+                    </span>
+                    <span
+                      className={`text-xs rounded px-1.5 py-0.5 ${
+                        seen.silent
+                          ? 'bg-warning-subtle text-warning-subtle-foreground'
+                          : 'bg-success-subtle text-success-subtle-foreground'
+                      }`}
+                    >
+                      agent {seen.text}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
-      <SectionHeading>Waiting unclaimed</SectionHeading>
-      {unclaimed.length === 0 ? (
-        <p className="p-2 text-sm text-muted-foreground">No tasks waiting unclaimed. Everything ready has been picked up.</p>
-      ) : (
-        <ul className="divide-y">
-          {unclaimed.map((t) => (
-            <li key={t.taskId} className="p-2 flex items-center justify-between gap-2">
-              <TaskLink taskId={t.taskId} displayId={t.taskDisplayId} title={t.taskTitle} />
-              <span className="shrink-0 text-xs text-muted-foreground">waiting {agoLabel(t.waitingSince)}</span>
-            </li>
-          ))}
-        </ul>
+        <SectionHeading>Waiting unclaimed</SectionHeading>
+        {unclaimed.length === 0 ? (
+          <p className="p-2 text-sm text-muted-foreground">No tasks waiting unclaimed. Everything ready has been picked up.</p>
+        ) : visibleUnclaimed.length === 0 ? (
+          <p className="p-2 text-sm text-muted-foreground">{unclaimed.length} waiting unclaimed. Expand the exceptions to see them.</p>
+        ) : (
+          <ul className="divide-y">
+            {visibleUnclaimed.map((t) => (
+              <li key={t.taskId} className="p-2 flex items-center justify-between gap-2">
+                <TaskLink taskId={t.taskId} displayId={t.taskDisplayId} title={t.taskTitle} />
+                <span className="shrink-0 text-xs text-muted-foreground">waiting {agoLabel(t.waitingSince)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {total > PREVIEW_LIMIT && (
+        <button type="button" aria-expanded={expanded} aria-controls={listId}
+          onClick={() => setExpanded(value => !value)}
+          className="m-2 rounded-md border px-3 py-2 type-label hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary/50">
+          {expanded ? 'Show fewer exceptions' : `Show all ${total} exceptions`}
+        </button>
       )}
       {confirmDialog}
     </ReportPanel>

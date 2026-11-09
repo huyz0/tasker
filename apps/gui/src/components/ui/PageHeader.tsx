@@ -16,18 +16,24 @@ export function PageHeader({
   title,
   description,
   actions,
+  toolbar,
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  /** Filters and view controls grow on their own row rather than squeezing the title. */
+  toolbar?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-      <div className="min-w-0">
-        <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 max-w-prose text-muted-foreground">{description}</p>}
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="min-w-0">
+          <h1 className="type-page-title">{title}</h1>
+          {description && <p className="mt-1 max-w-prose text-muted-foreground">{description}</p>}
+        </div>
+        {actions && <div className="flex min-h-control flex-wrap items-center gap-3 md:shrink-0">{actions}</div>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-3 md:shrink-0">{actions}</div>}
+      {toolbar && <div className="flex min-w-0 flex-wrap items-center gap-3">{toolbar}</div>}
     </div>
   );
 }

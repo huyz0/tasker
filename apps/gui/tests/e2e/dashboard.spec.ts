@@ -1,3 +1,4 @@
+import { openWorkspaceSettings } from './workspaceSettings';
 import { test, expect } from '@playwright/test';
 
 // The dashboard is the one screen where the unit tests prove the least. Every
@@ -74,7 +75,8 @@ test.describe('Dashboard', () => {
   // deleted rather than relocated. Navigating by click is what proves it.
   test('reaches System Health from the sidebar, not just by typing the URL', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('link', { name: 'Settings' }).click();
+    await openWorkspaceSettings(page);
+    await page.getByRole('link', { name: 'Account & system' }).click();
     await expect(page.getByRole('heading', { name: 'System health', level: 2 })).toBeVisible();
   });
 

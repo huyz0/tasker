@@ -330,6 +330,20 @@
       "when": 1789500000000,
       "tag": "0046_schedules",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1794096000000,
+      "tag": "0047_notification_dedupe_hash",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "5",
+      "when": 1794096000001,
+      "tag": "0048_domain_events",
+      "breakpoints": true
     }
   ]
 }

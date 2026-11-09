@@ -39,6 +39,26 @@
   --color-popover: hsl(var(--popover));
   --color-popover-foreground: hsl(var(--popover-foreground));
 
+  /* Surface roles alias the semantic theme layers; components never pick raw colors. */
+  --color-surface-canvas: hsl(var(--background));
+  --color-surface-panel: hsl(var(--card));
+  --color-surface-raised: hsl(var(--popover));
+  --font-ui: var(--font-sans);
+  --font-data: var(--font-mono);
+  --text-ui-page: 1.75rem;
+  --text-ui-page--line-height: 2.25rem;
+  --text-ui-section: 1.125rem;
+  --text-ui-section--line-height: 1.5rem;
+  --text-ui-detail: 1.25rem;
+  --text-ui-detail--line-height: 1.75rem;
+  --text-ui-body: 0.875rem;
+  --text-ui-body--line-height: 1.375rem;
+  --text-ui-caption: 0.75rem;
+  --text-ui-caption--line-height: 1rem;
+  --spacing-control: 2.25rem;
+  --spacing-row: 2.75rem;
+  --spacing-panel: 1rem;
+
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
@@ -113,7 +133,7 @@
 @layer base {
   :root {
     color-scheme: light;
-    --background: 0 0% 100%;
+    --background: 210 20% 98%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -358,3 +378,13 @@
     -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 20px), transparent 100%);
   }
 }
+
+/* Role classes keep type scale, weight and rhythm consistent across screens. */
+@utility type-page-title { @apply font-ui text-ui-page font-semibold tracking-tight; }
+@utility type-section-title { @apply font-ui text-ui-section font-semibold tracking-tight; }
+@utility type-detail-title { @apply font-ui text-ui-detail font-semibold tracking-tight; }
+@utility type-item-title { @apply font-ui text-ui-body font-medium; }
+@utility type-body { @apply font-ui text-ui-body; }
+@utility type-label { @apply font-ui text-ui-body font-medium; }
+@utility type-caption { @apply font-ui text-ui-caption; }
+@utility type-code { @apply font-data text-ui-caption; }

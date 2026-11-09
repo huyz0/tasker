@@ -103,7 +103,7 @@ export function Dialog({
               event.preventDefault();
               getLastFocusOutside()?.focus();
             }}
-            className={`pointer-events-auto relative bg-card text-card-foreground border rounded-xl shadow-2xl flex flex-col overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${className}`}
+            className={`pointer-events-auto relative bg-surface-raised text-card-foreground border rounded-xl shadow-2xl flex flex-col overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${className}`}
           >
             <RadixDialog.Title asChild>
               <div className={hideTitle ? 'sr-only' : 'p-4 border-b flex justify-between items-center shrink-0'}>

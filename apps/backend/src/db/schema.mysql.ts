@@ -1,4 +1,5 @@
-import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, bigint, boolean, text, mediumtext, longtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
+import { binary, varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, bigint, boolean, text, mediumtext, longtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const testSchema = mysqlTable("schema_migrations_test", {
   id: varchar("id", { length: 256 }).primaryKey(),
@@ -714,11 +715,14 @@ export const notifications = mysqlTable("notifications", {
   /** Bounded, unlike the sqlite side: it is part of a unique index, and
    * MySQL cannot index an unbounded TEXT column without a prefix length. */
   dedupeKey: varchar("dedupe_key", { length: 512 }).notNull(),
+  // Full keys remain available; indexing their fixed-size digest fits InnoDB's
+  // 3072-byte limit even with utf8mb4 identifiers and notification types.
+  dedupeHash: binary("dedupe_hash", { length: 32 }).generatedAlwaysAs(sql`UNHEX(SHA2(dedupe_key, 256))`, { mode: "stored" }),
   createdAt: timestamp("created_at").notNull(),
   readAt: timestamp("read_at"),
 }, (table) => {
   return {
-    dedupeIdx: uniqueIndex("notifications_user_id_type_dedupe_key_idx").on(table.userId, table.type, table.dedupeKey),
+    dedupeIdx: uniqueIndex("notifications_user_id_type_dedupe_key_idx").on(table.userId, table.type, table.dedupeHash),
     userCreatedIdx: index("notifications_user_id_created_at_idx").on(table.userId, table.createdAt),
     userReadIdx: index("notifications_user_id_read_at_idx").on(table.userId, table.readAt),
   };
@@ -903,3 +907,24 @@ export const scheduleRuns = mysqlTable("schedule_runs", {
     scheduleRanIdx: index("schedule_runs_schedule_id_ran_idx").on(table.scheduleId, table.ranAt),
   };
 });
+
+// M46 (ADR-0040): retained transactional source for audit and broker delivery.
+export const domainEvents = mysqlTable("domain_events", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  subject: varchar("subject", { length: 256 }).notNull(),
+  orgId: varchar("org_id", { length: 256 }),
+  projectId: varchar("project_id", { length: 256 }),
+  payload: longtext("payload").notNull(),
+  occurredAt: timestamp("occurred_at").notNull(),
+  createdAt: timestamp("created_at").notNull(),
+  brokerRequired: boolean("broker_required").notNull(),
+  deliveredAt: timestamp("delivered_at"),
+  nextAttemptAt: timestamp("next_attempt_at").notNull(),
+  attempts: int("attempts").notNull().default(0),
+  leaseToken: varchar("lease_token", { length: 128 }),
+  claimedUntil: timestamp("claimed_until"),
+  lastError: text("last_error"),
+}, table => ({
+  pendingIdx: index("domain_events_pending_idx").on(table.deliveredAt, table.nextAttemptAt, table.claimedUntil),
+  orgCreatedIdx: index("domain_events_org_created_idx").on(table.orgId, table.createdAt),
+}));

@@ -37,6 +37,8 @@ export interface RequestContext {
   actor?: RequestActor;
   /** Filled in by the first authorization check. See `setRequestOrg`. */
   orgId?: string;
+  /** Authorized project routing, retained even when the entity is purged. */
+  projectId?: string;
   policyCache?: PolicyCache;
 }
 
@@ -117,4 +119,10 @@ export function getPolicyCache(): PolicyCache | null {
     };
   }
   return ctx.policyCache;
+}
+
+/** First authorized project wins, as with organization routing. */
+export function setRequestProject(projectId: string): void {
+  const ctx = requestContextStore.getStore();
+  if (ctx && !ctx.projectId && projectId) ctx.projectId = projectId;
 }

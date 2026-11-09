@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 const preview: Preview = {
   decorators: [
-    (Story) => (
+    (Story, context) => context.parameters.router === false ? <Story /> : (
       <BrowserRouter>
         <Story />
       </BrowserRouter>

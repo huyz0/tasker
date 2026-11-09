@@ -33,7 +33,7 @@ test.describe('Workflows', () => {
 
     // The parent task's relations list both steps as subtasks.
     await expect(page.getByRole('heading', { name: `${name} run` })).toBeVisible();
-    await expect(page.getByText('Build the artifacts')).toBeVisible();
-    await expect(page.getByText('Ship the release')).toBeVisible();
+    await expect(page.getByRole('link', { name: /Build the artifacts/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Ship the release/ })).toBeVisible();
   });
 });

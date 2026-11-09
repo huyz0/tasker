@@ -221,3 +221,9 @@ reintroduce without a roadmap entry and an owner.
 | Charmbracelet TUI, Viper, `mcp-go` | The CLI is flag-and-JSON driven. No milestone owns a TUI or an MCP server mode. |
 | Chromatic service, Checkly | No visual-regression or uptime service is configured or budgeted. |
 | `npx skills` distribution | Skills are read from `.agents/` by the host agent; nothing is packaged or published. `npx` is forbidden repo-wide. |
+
+## Security patch constraints (M52)
+
+The root lockfile refresh stays within existing dependency ranges. Root overrides select `markdown-it` 15.0.3 (through markdownlint-cli2), `undici` 7.30.1 (through jsdom), Vite 8.3.6 and Zod 4.6.7 so their already-installed transitive copies cannot remain on releases with the November 2026 high-severity advisories. These are dependency patch constraints, not additional product libraries. Storybook is refreshed within its existing range; Vite and Zod constraints deduplicate old nested copies within their existing ranges; the audit gate and its empty exception list remain enabled.
+
+Go's module minimum and proto pin are 1.26.10. The publication scan found ten reachable standard-library vulnerabilities on 1.26.6; the highest required fix is crypto/x509 in 1.26.10 (GO-2026-6809). No Go production dependency is added.

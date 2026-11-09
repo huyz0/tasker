@@ -14,13 +14,7 @@
   (`text-primary`, `bg-background`). Prefer cohesive, bold palettes over timid
   AI defaults.
 - **Reference**: MUST strictly follow the explicit token mappings defined in `.specs/design/design-system.md`.
-- **Components**: Primitives are **hand-rolled in this repository** — Shadcn and
-  Radix are not installed, and the reasoning plus M06's revisit is in
-  [ADR-0005](../adr/ADR-0005-hand-rolled-ui-primitives-instead-of-shadcn-and-radix.md).
-  Reach for an existing primitive in `apps/gui/src/components/ui/` before
-  writing a new one; put generic components there and standard layouts in
-  `apps/gui/src/components/layout/`. Macro layouts MUST align with
-  `.specs/design/layout-manifest.md`.
+- **Components**: Reuse the primitives in `apps/gui/src/components/ui/` and layouts in `components/layout/`. Radix backs the shared dialog, dropdown and tabs primitives (ADR-0011); do not hand-roll a second overlay. Macro layouts follow `.specs/design/layout-manifest.md`.
 
 ## 2. Accessibility (a11y)
 
@@ -53,8 +47,6 @@
 
 ## 5. Visual Hierarchy & Spacing
 
-- **Typography Metric**: Map `h1`-`h6`, `body`, and `small`. Pair distinct
-  display fonts with readable body text. Avoid generic AI fonts unless matching
-  brand guidelines exactly.
+- **Typography Metric**: Use the documented page, section, item, body, label, caption and code roles from the design system. Tasker uses one system sans stack with monospace for identifiers/code; do not import a display font to compensate for weak hierarchy.
 - **Composition**: Embrace functional grouping and intentional whitespace
   proximity. Break symmetry for high-impact landing layouts.

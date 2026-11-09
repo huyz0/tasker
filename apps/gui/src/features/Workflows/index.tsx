@@ -158,6 +158,12 @@ export function WorkflowsScreen() {
 
   if (!activeOrgId) return <p className="p-4 text-sm text-muted-foreground">Select an organization to see its workflows.</p>;
   const templates = list.data ?? [];
+  const showCollectionState = !templateId && (list.isLoading || !!list.error || templates.length === 0);
+  const createAction = (
+    <button onClick={() => navigate(scopedTo('/workflows/new'))} className="inline-flex min-h-control items-center justify-center rounded-md bg-primary px-3 type-label text-primary-foreground hover:bg-primary/90">
+      New workflow
+    </button>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -165,38 +171,36 @@ export function WorkflowsScreen() {
         title="Workflows"
         description="Repeatable work with steps that wait on each other. Start one and its steps become tasks, handed out in order."
       />
-      <div className="flex flex-col gap-6 md:flex-row md:items-start">
-        <aside className="w-full md:w-56 shrink-0 flex flex-col gap-1">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <aside className={`${templateId ? 'hidden lg:flex' : 'flex'} ${showCollectionState ? 'w-full max-w-xl' : 'w-full lg:w-56'} shrink-0 flex-col gap-1`}>
           <ListState
             isLoading={list.isLoading}
             error={list.error}
             isEmpty={templates.length === 0}
             loadingMessage="Loading workflows…"
-            emptyMessage="No workflows yet."
+            emptyTitle={showCollectionState ? 'No workflows yet.' : undefined}
+            emptyMessage={showCollectionState ? 'Turn a repeatable process into linked tasks. For example, build, verify and ship a release.' : 'No workflows yet.'}
+            emptyAction={showCollectionState ? createAction : undefined}
             onRetry={() => list.refetch()}
           >
             {templates.map((t) => (
-              <button
+              <Link
                 key={t.id}
-                onClick={() => navigate(scopedTo(`/workflows/${t.id}`))}
-                aria-current={templateId === t.id ? 'true' : undefined}
+                to={scopedTo(`/workflows/${t.id}`)}
+                aria-current={templateId === t.id ? 'page' : undefined}
                 className={`text-sm text-left px-3 py-2 rounded-md border ${templateId === t.id ? 'bg-primary-subtle text-primary-subtle-foreground border-primary/40' : 'border-transparent hover:bg-muted'}`}
               >
                 {t.name} <span className="text-xs text-muted-foreground">· {t.steps.length}</span>
-              </button>
+              </Link>
             ))}
           </ListState>
-          <button
-            onClick={() => navigate(scopedTo('/workflows/new'))}
-            className="mt-2 text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground"
-          >
-            New workflow
-          </button>
+          {!showCollectionState && createAction}
         </aside>
 
-        <div className={`${templateId ? 'block' : 'hidden md:block'} flex-1 min-w-0`}>
+        <div className={`${templateId ? 'block' : 'hidden lg:block'} flex-1 min-w-0`}>
+          {templateId && !isNew && !editing && <Link to={scopedTo('/workflows')} className="mb-4 inline-flex lg:hidden type-label text-primary hover:underline">All workflows</Link>}
           {!templateId ? (
-            <p className="text-sm text-muted-foreground">Choose a workflow on the left, or create one.</p>
+            !showCollectionState && <p className="type-body text-muted-foreground">Choose a workflow on the left, or create one.</p>
           ) : isNew ? (
             <WorkflowEditor
               key="new"
@@ -219,7 +223,7 @@ export function WorkflowsScreen() {
             />
           ) : (
             <div className="flex flex-col gap-6">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
                 <div>
                   <h2 className="text-lg font-semibold tracking-tight">{detail.data.name}</h2>
                   {detail.data.description && <p className="text-sm text-muted-foreground mt-1">{detail.data.description}</p>}

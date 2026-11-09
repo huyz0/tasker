@@ -3,9 +3,7 @@ import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useScopedTo } from '../../hooks/useScope';
 import { PriorityBadge, BlockedBadge, NeedsInputBadge, AwaitingApprovalBadge } from './PriorityBadge';
-import { TaskPlan } from './TaskPlan';
-import { TaskUsage } from './TaskUsage';
-import { TaskSummaryPanel } from './TaskSummary';
+import { TaskContext } from './TaskContext';
 import { TaskInputRequests, QuestionsQueue } from './InputRequests';
 import { TaskApprovals, ApprovalsQueue } from './Approvals';
 import { PRIORITY_OPTIONS } from './priority';
@@ -31,6 +29,7 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { Breadcrumbs } from '../../components/layout/Breadcrumbs';
 import { LazyRichMarkdownEditor } from '../../components/ui/LazyRichMarkdownEditor';
 import { ListState } from '../../components/ui/ListState';
+import { TONE_CLASSES, taskTone } from '../../components/ui/statusStyles';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { allowedStatuses, type TypeStateMachine } from './statusTransitions';
 import { formatDateTime } from '../../lib/format';
@@ -367,7 +366,7 @@ function BoardColumn({
     >
       <div className="flex shrink-0 items-center justify-between mb-3 font-medium text-sm">
         <span className="flex items-center gap-2">
-          {display}
+          <span className={`type-caption rounded-full px-2 py-0.5 ${TONE_CLASSES[taskTone(status)]}`}>{display}</span>
           <span className="text-xs bg-muted text-muted-foreground px-2 rounded-full">{count}</span>
         </span>
         <button
@@ -839,7 +838,7 @@ export function TasksWorkbench() {
       <PageHeader
         title="Tasks"
         description="Every task in this project, by status."
-        actions={
+        toolbar={
           <>
             <div className="flex rounded-md border overflow-hidden text-sm font-medium">
               <button
@@ -1020,7 +1019,7 @@ export function TasksWorkbench() {
                         <AwaitingApprovalBadge count={task.pendingApprovalCount ?? 0} />
                       </div>
                       <div role="cell" className="px-4 py-2">
-                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                        <span className={`type-caption px-2 py-0.5 rounded-full ${TONE_CLASSES[taskTone(task.status)]}`}>
                           {statusDisplay(task.status || 'todo')}
                         </span>
                       </div>
@@ -1167,9 +1166,9 @@ export function TasksWorkbench() {
            {deleteTaskMutation.isError && (
              <p className="text-sm text-destructive px-4 pt-2 shrink-0">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
            )}
-           <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
-             <div className="text-sm text-primary font-medium mb-1">{expandedTask.displayId}</div>
+           <div className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden flex flex-col md:flex-row">
+           <div className="flex-none md:flex-1 md:min-w-0 p-6 overflow-visible md:overflow-y-auto custom-scrollbar">
+             <div className="type-code text-muted-foreground mb-1">{expandedTask.displayId}</div>
              {isEditingTask ? (
                <form
                  onSubmit={(e) => {
@@ -1215,7 +1214,7 @@ export function TasksWorkbench() {
                  </div>
                </form>
              ) : (
-               <h3 className="text-xl font-bold mb-4">{expandedTask.title}</h3>
+               <h3 className="type-detail-title mb-4">{expandedTask.title}</h3>
              )}
              <div className="mb-4 flex flex-col gap-4">
                <TaskApprovals taskId={expandedTask.id} />
@@ -1230,18 +1229,7 @@ export function TasksWorkbench() {
                   )}
                </div>
              )}
-             <div className="mt-8">
-               <h3 className="text-lg font-semibold tracking-tight mb-3">Summary</h3>
-               <TaskSummaryPanel key={expandedTask.id} taskId={expandedTask.id} summary={expandedTask.summary} />
-             </div>
-             <div className="mt-8">
-               <h3 className="text-lg font-semibold tracking-tight mb-3">Agent plan</h3>
-               <TaskPlan steps={expandedTask.plan ?? []} />
-             </div>
-             <div className="mt-8">
-               <h3 className="text-lg font-semibold tracking-tight mb-3">Usage and cost</h3>
-               <TaskUsage usage={expandedTask.usage} />
-             </div>
+             <TaskContext key={expandedTask.id} taskId={expandedTask.id} summary={expandedTask.summary} plan={expandedTask.plan} usage={expandedTask.usage} />
              <div className="mt-8">
                <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>
                <Comment.Provider entityId={expandedTask.id} entityType="task">
@@ -1250,7 +1238,7 @@ export function TasksWorkbench() {
                </Comment.Provider>
              </div>
            </div>
-           <div className="w-full md:w-72 shrink-0 border-t md:border-t-0 md:border-l p-6 overflow-y-auto custom-scrollbar space-y-6 bg-muted/20">
+           <div className="w-full md:w-72 shrink-0 border-t md:border-t-0 md:border-l p-6 overflow-visible md:overflow-y-auto custom-scrollbar space-y-6 bg-muted/20">
              <div className="space-y-3 text-sm text-muted-foreground">
                 <div className="flex justify-between items-center">
                   <span className="w-20">Status:</span>

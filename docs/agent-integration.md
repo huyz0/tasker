@@ -393,6 +393,20 @@ used with: the same key with *different* arguments is refused with
 `InvalidArgument` rather than answered with the first request's result, so
 never reuse a key for a new request. Keys are kept for 24 hours.
 
+Task creation, claims and workflow starts reserve the key, change the database
+and save the response in one transaction. A process interrupted before commit
+leaves no partial mutation; after commit, the same key retrieves that committed
+response. Overlapping requests can receive `Aborted` (CLI exit 5): wait briefly
+and retry the same request with the same key. Do not invent a new key to recover
+a timeout. A successful earlier call still requires your current permissions
+when its response is replayed.
+
+Without a key, each individual operation is atomic, but sending the request
+again asks for another operation. Workflow steps share their parent's
+transaction, including project task numbering and event buffering. Event
+publication is still best effort after commit; the database retry guarantee
+does not yet guarantee that an external runner received its webhook.
+
 Every exit code, the `--json` shape and `--page-all` are in the
 [CLI reference](cli-reference.md#output-errors-and-exit-codes).
 
@@ -643,3 +657,17 @@ tasker schedules runs "$S"            # created / skipped / failed, with reasons
   as a skill for a harness that supports invoking one.
 - `.agents/skills/handoff-task/SKILL.md` — the same §10 guidance, written
   as a skill for a harness that supports invoking one.
+
+## Event subscription credential lifetime
+
+An open event feed rechecks its original credential at least every 30 seconds,
+including while idle or receiving continuous traffic. Logout, expiry or token
+revocation closes the feed with `Unauthenticated`; losing `events:read` closes
+it with `PermissionDenied`. Organization membership is refreshed on that same
+schedule as well as on membership events. Revocation does not depend on the
+revocation event reaching the subscriber.
+
+After rotating a token, reconnect with the replacement credential. An existing
+feed continues to use the credential it opened with. A retry of a keyed task
+mutation also checks current permissions before returning its saved response;
+a prior successful request never grants permission to replay its result.

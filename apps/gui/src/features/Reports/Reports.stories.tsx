@@ -21,7 +21,7 @@ const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString
 
 const meta = {
   title: 'Features/Reports',
-  parameters: { layout: 'padded' },
+  parameters: { router: false, layout: 'padded', docs: { description: { component: 'Report panels use the same surface and section-heading roles as the dashboard.' } } },
   decorators: [
     (Story) => (
       <QueryClientProvider client={queryClient}>
@@ -214,4 +214,13 @@ export const EmptyEverything: Story = {
       <FleetScorecardCard agentRows={[]} roleRows={[]} />
     </div>
   ),
+};
+
+
+/** The preview bounds long exception lists while every loaded row remains reachable. */
+export const StalledLongPreview: Story = {
+  render: () => <StalledWorkCard
+    stalledClaims={Array.from({ length: 7 }, (_, i) => ({ taskId: `stalled-${i}`, taskDisplayId: `TSK-${100 + i}`, taskTitle: `Investigate stalled runner ${i + 1}`, agentId: `agent-${i}`, agentName: `Runner ${i + 1}`, neverStarted: i < 3, claimedAt: hoursAgo(30), lastSignalAt: i < 3 ? undefined : hoursAgo(26) }))}
+    unclaimed={Array.from({ length: 4 }, (_, i) => ({ taskId: `waiting-${i}`, taskDisplayId: `TSK-${200 + i}`, taskTitle: `Review incoming work ${i + 1}`, waitingSince: hoursAgo(36) }))}
+  />,
 };

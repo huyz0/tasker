@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { ProjectService, ScheduleService, WorkflowService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
-import { mockRpc, mockRpcError } from '../../test/mockRpc';
+import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 import { renderScoped } from '../../test/renderScoped';
 import { SchedulesScreen } from './index';
 
@@ -43,9 +43,9 @@ describe('SchedulesScreen (M43)', () => {
 
   it('lists schedules with their cadence or paused, and shows one with its runs', async () => {
     renderScreen();
-    expect(await screen.findByRole('button', { name: /^Triage\s*Every Mon, Thu at 09:00 UTC$/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Paused one\s*Paused$/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^Triage\s*Every/ }));
+    expect(await screen.findByRole('link', { name: /^Triage\s*Every Mon, Thu at 09:00 UTC$/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^Paused one\s*Paused$/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: /^Triage\s*Every/ }));
     expect(await screen.findByText('Every Mon, Thu at 09:00 UTC in Alpha')).toBeInTheDocument();
     expect(screen.getByText(/Creates a task "Triage the inbox", skipping while the last one is unfinished/)).toBeInTheDocument();
     const runs = await screen.findByRole('list', { name: 'Runs' });
@@ -128,9 +128,38 @@ describe('SchedulesScreen (M43)', () => {
     expect(await screen.findByText('It has not run yet.')).toBeInTheDocument();
     mockActiveOrgId = 'org-2';
     rerender();
-    expect(await screen.findByText('Choose a schedule on the left, or create one.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'No schedules yet.' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'New schedule' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
-    expect(await screen.findByText('Choose a schedule on the left, or create one.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'No schedules yet.' })).toBeInTheDocument();
   });
+  it('offers one purposeful empty introduction and enters the existing create flow', async () => {
+    mockRpc(ScheduleService, 'ListSchedules', { schedules: [], page: {} });
+    renderScreen();
+    expect(await screen.findByRole('heading', { level: 2, name: 'No schedules yet.' })).toBeInTheDocument();
+    expect(screen.queryByText('Choose a schedule on the left, or create one.')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'New schedule' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'New schedule' }));
+    expect(await screen.findByLabelText('Name')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'No schedules yet.' })).toBeInTheDocument();
+  });
+
+  it('keeps loading distinct from an empty collection without a choose-detail prompt', async () => {
+    mockRpcPending(ScheduleService, 'ListSchedules');
+    renderScreen();
+    expect(await screen.findByText('Loading schedules…')).toBeInTheDocument();
+    expect(screen.queryByText('Choose a schedule on the left, or create one.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New schedule' })).not.toBeInTheDocument();
+  });
+
+  it('reports denied reads with retry rather than an empty collection or creation prompt', async () => {
+    mockRpcError(ScheduleService, 'ListSchedules', 'permission_denied', 'No access to these schedules');
+    renderScreen();
+    expect(await screen.findByRole('alert')).toHaveTextContent('No access to these schedules');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByText('Choose a schedule on the left, or create one.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New schedule' })).not.toBeInTheDocument();
+  });
+
 });

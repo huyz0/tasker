@@ -1,4 +1,6 @@
 import { getRequestContext } from './requestContext';
+import { afterCommit, beforeCommit, currentUnitOfWork } from '../db/access';
+import { snapshotDomainEvent, type CapturedDomainEvent } from './domainEventOutbox';
 import { injectTraceContext } from './telemetry/otel';
 import { recordBusinessEvent } from './businessEvents';
 
@@ -104,6 +106,18 @@ export function withRequestCorrelation<T extends { publish: (subject: string, da
  * debug in.
  */
 export function publishDomainEvent(nc: { publish: (subject: string, data?: any) => void } | null, subject: string, payload: unknown): void {
+  const capture = durableCapture;
+  if (capture) {
+    const unit = currentUnitOfWork();
+    if (!unit) throw new Error('durable domain events require a unit of work');
+    const event = snapshotDomainEvent(subject, payload);
+    beforeCommit(() => capture(unit.db, unit.sqlite, event));
+    afterCommit(() => { recordBusinessEvent(subject); });
+    return;
+  }
+  // Do not announce provisional task/workflow writes. M46 makes this buffer
+  // durable; this boundary already prevents events from rolled-back work.
+  if (afterCommit(() => publishDomainEvent(nc, subject, payload))) return;
   recordBusinessEvent(subject);
   if (nc) nc.publish(subject, Buffer.from(JSON.stringify(payload)));
   // M37 (ADR-0030): the webhook outbox, fed in-process so it works with or
@@ -123,4 +137,13 @@ let domainEventSink: DomainEventSink | null = null;
 /** M37: installs (or with null, removes) the one in-process consumer of every published event. */
 export function setDomainEventSink(sink: DomainEventSink | null): void {
   domainEventSink = sink;
+}
+
+
+type DurableEventCapture = (db: any, standalone: boolean, event: CapturedDomainEvent) => Promise<void>;
+let durableCapture: DurableEventCapture | null = null;
+
+/** Install once after migrations and before serving; null restores legacy mode. */
+export function setDurableDomainEventCapture(capture: DurableEventCapture | null): void {
+  durableCapture = capture;
 }

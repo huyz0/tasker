@@ -1,8 +1,8 @@
 ---
-active_milestone: M43
+active_milestone: null
 active_task: null
-last_updated: 2026-10-02
-last_commit: 0c5e508
+last_updated: 2026-11-09
+last_commit: 1ce74e1
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,16 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M52 candidate readiness complete; publication in PR #1.** Integration history/cache inputs are repaired; JavaScript high/critical audit and Go 1.26.10 govulncheck pass. All 35 forced local gates and seven forced CLI tasks pass. The latest GitHub workflows must pass before merging [PR #1](https://github.com/huyz0/tasker/pull/1) to main. Unfinished relay work remains separate.
+
+**2026-11-08 — M51 complete: 7/7 tasks, 5/5 exit criteria.** Responsive task reading/toolbars, grouped navigation, visible mobile project context, shared visual roles, purposeful automation screens and bounded density are delivered on `feature/m51-ui-navigation-and-layout` in the isolated UI worktree. All 35 local gates, 1338 GUI tests and 48 browser journeys pass; 48 application captures and 70 selected Storybook checks are recorded with the independent review. See [UI review](MILESTONE-51-ui-navigation-and-layout/design/UI-UX-REVIEW.md). M46–M50 remain unfinished and independently tracked; the original working tree still owns its in-progress relay work.
+
+**2026-11-08 — M45 complete:** database-owned async units, current authorization inside task units, atomic retry reservation/result, workflow rollback and deferred events. Separate-process overlap and SIGKILL recovery pass on SQLite and MySQL 8.4.13; deliberate transaction removal fails both crash tests. A fresh utf8mb4 MySQL boot defect was also repaired (T06). All 35 local tasks pass; real socket/broker suites pass. M46 owns the remaining post-commit event-loss gap.
+
+**2026-11-08 — M44 complete:** current authorization before keyed response replay; event feeds revalidate original credentials and membership every 30 seconds. Local 35-task gates pass; real broker and real socket logout scenarios pass; deliberate-break check fails as expected. M45 is next.
+
+**2026-11-08 — Reliability review delivery authorized.** M44–M50 define 31 tasks covering current authorization on replay/streams, atomic keyed mutations, transactional events, recoverable schedule occurrences, browser/CLI recovery, production integration/load evidence, and documentation. Deliver in dependency order; M48 depends only on M44. No remote merge or production deployment is implied. The first task records the design and acceptance scenarios.
 
 **2026-10-02 — M35–M38 planned from a landscape review**
 (`.specs/reviews/2026-10-02-ai-native-landscape.md`): what agent-first trackers
@@ -1831,8 +1841,18 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M41 | Task Digests                    | done   | M38, M40   | 5     | 5    |
 | M42 | Workflow Templates              | done   | M35        | 6     | 6    |
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
+| M44 | Authorization Lifecycle | done | — | 4 | 4 |
+| M45 | Mutation Recovery | done | M44 | 6 | 6 |
+| M46 | Durable Domain Events | in-progress | M45 | 5 | 2 |
+| M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
+| M48 | Client Recovery | todo | M44 | 4 | 0 |
+| M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
+| M50 | Operational Truth | todo | M49 | 3 | 0 |
 
-**Total: 325 tasks across 37 milestones — 324 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+| M51 | UI Navigation and Layout | done | — | 7 | 7 |
+| M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
+
+**Total: 365 tasks across 46 milestones — 345 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

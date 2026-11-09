@@ -8,6 +8,7 @@ import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restor
 import { requireUser, getProjectOrgId, getTaskOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
 import { withIdempotency } from "../../lib/idempotency";
+import { transactionalOperation } from "../../db/access";
 import { getLatestHandoffNote, recordTaskNote } from "./task_notes.handler";
 import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal, terminalStatusSql } from "./taskActivity";
 import { purgeTaskCascade } from "../../lib/cascadePurge";
@@ -878,9 +879,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // claim below - only runs once per (principal, key). A replay skips
       // straight to the stored response, so a retried create cannot double
       // the project's task counter either.
+      // Cached outcomes never replace the caller's current permission.
+      const orgId = await getProjectOrgId(db, parsed.projectId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'tasks:write', permission: 'task:write' });
       return withIdempotency(db, isStandalone, principal, "createTask", parsed.idempotencyKey, parsed, async () => {
-        const orgId = await getProjectOrgId(db, parsed.projectId);
-        await authorizePrincipal(db, principal, orgId, { scope: 'tasks:write', permission: 'task:write' });
 
         if (parsed.taskTypeId) {
           const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
@@ -1302,9 +1304,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // retry would otherwise get FailedPrecondition for a claim it already
       // won on the first attempt, which is exactly the "did my own retry
       // just fail?" confusion idempotency exists to remove.
+      // Cached outcomes never replace the caller's current permission.
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
       return withIdempotency(db, isStandalone, principal, "claimTask", parsed.idempotencyKey, parsed, async () => {
-        const orgId = await getTaskOrgId(db, parsed.taskId);
-        await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
 
         // M30-T03: a finished task is not work. Checked before the insert
         // rather than inside it: a task finishing concurrently with its own
@@ -1332,9 +1335,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     async claimNextTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = ClaimNextTaskSchema.parse(req);
+      // Cached outcomes never replace the caller's current permission.
+      const orgId = await getProjectOrgId(db, parsed.projectId);
+      await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
       return withIdempotency(db, isStandalone, principal, "claimNextTask", parsed.idempotencyKey, parsed, async () => {
-        const orgId = await getProjectOrgId(db, parsed.projectId);
-        await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
 
         const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
         const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
@@ -1721,7 +1725,11 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
   };
   // M41 (ADR-0034): the digest is assembled from GetTask and ListInputRequests
   // themselves, so it reads exactly what those screens read.
-  return Object.assign(handlers, createDigestHandlers(db, nc, isStandalone, {
+  return Object.assign(handlers, {
+    createTask: transactionalOperation(db, handlers.createTask),
+    claimTask: transactionalOperation(db, handlers.claimTask),
+    claimNextTask: transactionalOperation(db, handlers.claimNextTask),
+  }, createDigestHandlers(db, nc, isStandalone, {
     getTask: (req, ctx) => handlers.getTask(req, ctx),
     listInputRequests: (req, ctx) => handlers.listInputRequests(req, ctx),
   }));

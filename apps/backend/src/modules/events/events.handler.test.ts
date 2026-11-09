@@ -438,3 +438,148 @@ describe('subscribeEvents at fleet scale (M30-T08)', () => {
     expect((await drain(iter)).map((m) => m.projectId)).toEqual(['mine']);
   });
 });
+
+describe('subscription credential lifetime (M44)', () => {
+  const agent = { kind: 'agent' as const, agentId: 'a', tokenId: 't', orgId: 'o', scopes: ['events:read', 'tasks:read'] };
+
+  it('closes an idle stream when its credential has been revoked', async () => {
+    const sub = fakeSubscription();
+    const { ctx } = ctxFor(agent);
+    let checks = 0;
+    const handler = createEventsHandler(fakeDb(), fakeNats(sub), {
+      heartbeatMs: 1_000, revalidateMs: 5,
+      reauthenticate: async () => { checks++; return null; },
+    });
+    const iter = handler.subscribeEvents({}, ctx);
+    expect((await iter.next()).value.subject).toBe('stream.ready');
+    await expect(iter.next()).rejects.toMatchObject({ code: Code.Unauthenticated });
+    expect(checks).toBe(1);
+    expect(sub.unsubscribed).toBe(true);
+  });
+
+  it('revalidates a busy stream before delivering the next event', async () => {
+    const sub = fakeSubscription();
+    const { ctx } = ctxFor(agent);
+    let now = 0;
+    const handler = createEventsHandler(fakeDb(), fakeNats(sub), {
+      revalidateMs: 30, now: () => now,
+      reauthenticate: async () => ({ ...agent, scopes: ['tasks:read'] }),
+    });
+    const iter = handler.subscribeEvents({}, ctx);
+    expect((await iter.next()).value.subject).toBe('stream.ready');
+    sub.push('domain.task.created', { orgId: 'o' });
+    expect((await iter.next()).value.subject).toBe('domain.task.created');
+    now = 31;
+    sub.push('domain.task.updated', { orgId: 'o' });
+    await expect(iter.next()).rejects.toMatchObject({ code: Code.PermissionDenied });
+    expect(sub.unsubscribed).toBe(true);
+  });
+
+  it('refreshes membership even when a removal event was missed', async () => {
+    const sub = fakeSubscription(), db = fakeDb(['o', 'keep']);
+    const human = { kind: 'user' as const, userId: 'u' };
+    const { ctx, controller } = ctxFor(human);
+    let now = 0;
+    const handler = createEventsHandler(db, fakeNats(sub), {
+      now: () => now, revalidateMs: 30, reauthenticate: async () => human,
+    });
+    const iter = handler.subscribeEvents({}, ctx);
+    await iter.next();
+    db.orgIds = ['keep'];
+    now = 31;
+    sub.push('domain.task.created', { orgId: 'o' });
+    sub.push('domain.task.created', { orgId: 'keep' });
+    expect((await iter.next()).value.orgId).toBe('keep');
+    expect(db.memberQueryCount).toBe(2);
+    controller.abort();
+    await iter.return(undefined);
+  });
+
+  it('refuses a resolver that changes the authenticated identity', async () => {
+    const sub = fakeSubscription();
+    const { ctx } = ctxFor(agent);
+    let now = 0;
+    const handler = createEventsHandler(fakeDb(), fakeNats(sub), {
+      now: () => now, revalidateMs: 30, reauthenticate: async () => ({ ...agent, agentId: 'other' }),
+    });
+    const iter = handler.subscribeEvents({}, ctx);
+    await iter.next();
+    now = 31;
+    await expect(iter.next()).rejects.toMatchObject({ code: Code.Unauthenticated });
+  });
+});
+
+describe('stream reauthentication uses the original credential', () => {
+  it('observes a real human session logout on an idle stream', async () => {
+    const { setupIntegrationTest, seedOrgWithAdmin } = await import('../../test/setup');
+    const { createSessionToken, verifySessionToken } = await import('../auth/session');
+    const { revokeSession } = await import('../../lib/sessionRevocation');
+    const { db } = await setupIntegrationTest();
+    await seedOrgWithAdmin(db, { orgId: 'o-stream', userId: 'u-stream' });
+    const token = createSessionToken('u-stream');
+    const { ctx } = ctxFor({ kind: 'user' as const, userId: 'u-stream' });
+    const requestContext = { ...ctx, requestHeader: new Headers({ cookie: `session=${token}` }) };
+    const sub = fakeSubscription();
+    const handler = createEventsHandler(db, fakeNats(sub), { revalidateMs: 5 });
+    const iter = handler.subscribeEvents({}, requestContext);
+    await iter.next();
+    await revokeSession(db, verifySessionToken(token)!.jti, 'u-stream');
+    await expect(iter.next()).rejects.toMatchObject({ code: Code.Unauthenticated });
+    expect(sub.unsubscribed).toBe(true);
+  });
+
+  it('keeps a valid agent stream alive with refreshed scopes', async () => {
+    const agent = { kind: 'agent' as const, agentId: 'a', tokenId: 't', orgId: 'o', scopes: ['events:read', 'tasks:read'] };
+    const sub = fakeSubscription();
+    const { ctx, controller } = ctxFor(agent);
+    let now = 0, checks = 0;
+    const handler = createEventsHandler(fakeDb(), fakeNats(sub), {
+      now: () => now, revalidateMs: 30,
+      reauthenticate: async () => { checks++; return agent; },
+    });
+    const iter = handler.subscribeEvents({}, ctx);
+    await iter.next();
+    now = 31;
+    sub.push('domain.task.created', { orgId: 'o' });
+    expect((await iter.next()).value.subject).toBe('domain.task.created');
+    expect(checks).toBe(1);
+    controller.abort();
+    expect((await iter.next()).done).toBe(true);
+    expect(sub.unsubscribed).toBe(true);
+  });
+});
+
+describe('persisted agent credential changes during subscription', () => {
+  it.each(['revoked', 'expired'] as const)('closes a stream whose real agent token is %s', async (change) => {
+    const { setupIntegrationTest, seedOrgWithAdmin } = await import('../../test/setup');
+    const S = await import('../../db/schema.sqlite');
+    const { mintToken } = await import('../../lib/agentToken');
+    const { resolvePrincipal } = await import('../../lib/authenticate');
+    const { eq } = await import('drizzle-orm');
+    const { db } = await setupIntegrationTest();
+    await seedOrgWithAdmin(db, { orgId: 'o-token-stream', userId: 'u-token-stream' });
+    await db.insert(S.agentRoles).values({ id: 'role-stream', orgId: 'o-token-stream', name: 'worker', systemPrompt: '', capabilities: '[]' });
+    await db.insert(S.agents).values({ id: 'a-stream', orgId: 'o-token-stream', agentRoleId: 'role-stream', name: 'worker' });
+    const token = mintToken();
+    await db.insert(S.apiTokens).values({
+      id: 'token-stream', orgId: 'o-token-stream', agentId: 'a-stream', name: 'worker',
+      tokenPrefix: token.tokenPrefix, tokenHash: token.tokenHash, scopes: JSON.stringify(['events:read', 'tasks:read']),
+      createdBy: 'u-token-stream', createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000),
+    });
+    const authorization = `Bearer ${token.plaintext}`;
+    const principal = await resolvePrincipal(db, { cookie: null, authorization });
+    expect(principal?.kind).toBe('agent');
+    const { ctx } = ctxFor(principal);
+    let now = 0;
+    const sub = fakeSubscription();
+    const iter = createEventsHandler(db, fakeNats(sub), { revalidateMs: 30, now: () => now })
+      .subscribeEvents({}, { ...ctx, requestHeader: new Headers({ authorization }) });
+    await iter.next();
+    await db.update(S.apiTokens).set(change === 'revoked'
+      ? { revokedAt: new Date() } : { expiresAt: new Date(Date.now() - 1000) }).where(eq(S.apiTokens.id, 'token-stream'));
+    now = 31;
+    sub.push('domain.task.created', { orgId: 'o-token-stream' });
+    await expect(iter.next()).rejects.toMatchObject({ code: Code.Unauthenticated });
+    expect(sub.unsubscribed).toBe(true);
+  });
+});
