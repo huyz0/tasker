@@ -128,7 +128,14 @@ submitted revision; newer typing remains dirty. Old A responses cannot clear B
 or a new account's drafts. Prevent a second per-task save while an earlier one
 is in flight, including after navigating away/back. Failed save preserves the
 latest text and exposes Retry through the ordinary Save action. Use TanStack
-mutation state rather than a second network-state implementation.
+mutation state rather than a second network-state implementation. Admission is
+per task across session generations and accounts because the server has one
+summary for a shared task. A foreign pending write exposes generic waiting copy;
+its private text cannot influence the new account's dirty comparison or error.
+Use canonical successful response text for the baseline, including server trim.
+An older same-account receipt may advance an existing newer draft's baseline,
+but only its exact generation/entry/revision may clear it; never recreate a
+cancelled entry or apply another account's receipt.
 
 Dirty means changed content relative to the edit baseline, not merely an open
 editor. Opening unchanged text or typing and reverting is clean.
@@ -138,7 +145,13 @@ draft exists, even when its task panel is closed. The listener is removed when
 clean. Choosing to leave discards in-memory drafts; this design does not persist
 content in local/session storage or guarantee recovery after browser/process
 termination. Logout/account change clears drafts and prevents old asynchronous
-callbacks from recreating them for another identity.
+callbacks from recreating them for another identity. Logout intent rotates the
+draft generation before awaiting the request; pending logout disables editing,
+and a failed logout reports Retry without claiming the session ended. A verified
+password-login/registration response establishes its returned identity before a
+held/failed session refresh can reuse the previous account. Cancel stale reads
+and clear read caches on account changes while retaining pending mutation fences.
+A transient session lookup failure is unknown, not confirmed logout.
 
 ## Layout, palette, typography and states
 

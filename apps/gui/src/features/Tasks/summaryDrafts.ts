@@ -23,7 +23,7 @@ interface SummaryDraftState extends SummaryScope {
   begin: (scope: SummaryScope, taskId: string, baseline: string) => void;
   edit: (scope: SummaryScope, taskId: string, entryId: string, text: string) => void;
   discard: (scope: SummaryScope, taskId: string, entryId: string) => void;
-  accept: (write: SummaryWrite) => void;
+  accept: (write: SummaryWrite, savedText: string) => void;
 }
 const matches = (a: SummaryScope, b: SummaryScope) => a.accountId === b.accountId && a.generation === b.generation;
 
@@ -45,14 +45,15 @@ export const useSummaryDrafts = create<SummaryDraftState>((set) => ({
     if (!matches(scope, current) || current.entries[taskId]?.id !== entryId) return current;
     const entries = { ...current.entries }; delete entries[taskId]; return { entries };
   }),
-  accept: write => set(current => {
+  accept: (write, savedText) => set(current => {
     const entry = current.entries[write.taskId];
-    if (!matches(write, current) || !entry) return current;
+    if (write.accountId !== current.accountId || !entry) return current;
     const entries = { ...current.entries };
-    if (entry.id === write.entryId && entry.revision === write.revision) delete entries[write.taskId];
+    if (matches(write, current) && entry.id === write.entryId && entry.revision === write.revision) delete entries[write.taskId];
     // A successful earlier version changes the baseline, never newer intent.
-    // A discarded/reopened entry keeps its distinct identity and text too.
-    else entries[write.taskId] = { ...entry, baseline: write.text };
+    // A discarded/reopened entry or later same-account generation keeps its
+    // identity/text; the receipt only advances the known server baseline.
+    else entries[write.taskId] = { ...entry, baseline: savedText };
     return { entries };
   }),
 }));
@@ -75,12 +76,15 @@ export function useSummaryWriteError(scope: SummaryScope, taskId: string, entryI
     && attempt.write.taskId === taskId && attempt.write.entryId === entryId).at(-1);
   return latest?.status === 'error' ? latest.error : null;
 }
-export function summaryWritePending(client: QueryClient, scope: SummaryScope, taskId: string) {
+function summaryWriteTargets(write: SummaryWrite, scope: SummaryScope, taskId: string) {
+  return write.accountId === scope.accountId && write.taskId === taskId;
+}
+export function summaryWritePending(client: QueryClient, taskId: string) {
   return client.getMutationCache().findAll({ mutationKey: SUMMARY_WRITES, status: 'pending' })
-    .some(mutation => { const write = mutation.state.variables as SummaryWrite; return matches(write, scope) && write.taskId === taskId; });
+    .some(mutation => (mutation.state.variables as SummaryWrite).taskId === taskId);
 }
 export function summaryDirty(entry: SummaryDraft, scope: SummaryScope, taskId: string, pending: SummaryWrite[]) {
-  return entry.text !== entry.baseline || pending.some(write => matches(write, scope) && write.taskId === taskId && write.text !== entry.text);
+  return entry.text !== entry.baseline || pending.some(write => summaryWriteTargets(write, scope, taskId) && write.text !== entry.text);
 }
 export function summarySubmission(scope: SummaryScope, taskId: string, text: string): SummaryWrite | undefined {
   const current = useSummaryDrafts.getState();

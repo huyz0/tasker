@@ -66,6 +66,19 @@ describe('summary intent across task lifetime', () => {
     expect(screen.getByText('Unsaved draft')).toBeInTheDocument();
   });
 
+  it('compares newer intent with the actual saved baseline after server normalization', async () => {
+    const pending = mockRpcPending(TaskService, 'SetTaskSummary');
+    renderScoped(<TaskSummaryPanel taskId="a" />);
+    await write('  Submitted version  ');
+    fireEvent.click(screen.getByRole('button', { name: 'Save summary' }));
+    await waitFor(() => expect(pending.requests).toHaveLength(1));
+    fireEvent.change(screen.getByLabelText('Summary'), { target: { value: 'Submitted version' } });
+    pending.resolve({ summary: { text: 'Submitted version', authorName: 'Ada', updatedAt: '' } });
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Saving…' })).toBeNull());
+    expect(screen.getByLabelText('Summary')).toHaveValue('Submitted version');
+    expect(screen.queryByText('Unsaved draft')).toBeNull();
+  });
+
   it('does not clear a cancelled and reopened entry when the previous save completes', async () => {
     const pending = mockRpcPending(TaskService, 'SetTaskSummary');
     renderScoped(<TaskSummaryPanel taskId="a" />);
@@ -77,6 +90,21 @@ describe('summary intent across task lifetime', () => {
     pending.resolve({ summary: { text: 'Old entry', authorName: 'Ada', updatedAt: '2026-11-09T11:00:00Z' } });
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Saving…' })).toBeNull());
     expect(screen.getByLabelText('Summary')).toHaveValue('Reopened entry');
+  });
+
+  it('keeps a newly opened editor while an earlier Clear completes', async () => {
+    const pending = mockRpcPending(TaskService, 'SetTaskSummary');
+    renderScoped(<TaskSummaryPanel taskId="a" summary={original} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    await waitFor(() => expect(pending.requests).toHaveLength(1));
+    expect(screen.getByRole('button', { name: 'Clearing…' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(screen.getByLabelText('Summary'), { target: { value: 'New writing while clearing' } });
+    expect(screen.getByRole('button', { name: 'Clearing…' })).toBeDisabled();
+    pending.resolve({});
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save summary' })).toBeEnabled());
+    expect(screen.getByLabelText('Summary')).toHaveValue('New writing while clearing');
+    expect(screen.getByText('Unsaved draft')).toBeInTheDocument();
   });
 
   it('admits only one per-task submission even before a disabled control rerenders', async () => {

@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { establishPasswordSession } from '../../lib/establishPasswordSession';
 import { Button } from '../../components/ui/button';
 import { registerLocalUser, PasswordAuthError } from '../../lib/passwordAuth';
 
@@ -38,8 +39,8 @@ export function RegisterForm() {
       password,
       email: email.trim() || undefined,
     }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['authSession'] });
+    onSuccess: async (result) => {
+      await establishPasswordSession(queryClient, result);
       navigate('/');
     },
   });

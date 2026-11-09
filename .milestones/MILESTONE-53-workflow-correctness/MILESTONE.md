@@ -53,7 +53,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Verify**: An old open question beyond 20 newer closed rows and approval beyond 10 remain visible; more than 50 organization pending rows are reachable by bounded paging; next-page errors retry without hiding earlier rows; source decisions reconcile both sections.
 
 - [ ] **M53-T05** — Protect task summary drafts through every dismissal path and failed save.
-  - **Files**: apps/gui/src/features/Tasks/TaskSummary.tsx; apps/gui/src/features/Tasks/index.tsx; apps/gui/tests/e2e/.
+  - **Files**: apps/gui/src/features/Tasks/TaskSummary.tsx; apps/gui/src/features/Tasks/summaryDrafts.ts; apps/gui/src/features/Tasks/SummaryDraftGuard.tsx; apps/gui/src/features/Tasks/TaskContext.tsx; apps/gui/src/features/Tasks/index.tsx; apps/gui/src/components/auth/ProtectedRoute.tsx; apps/gui/src/components/layout/AppShell.tsx; apps/gui/src/features/Auth/; apps/gui/src/lib/authSession.ts; apps/gui/src/lib/establishPasswordSession.ts; apps/gui/tests/e2e/.
   - **Verify**: Escape, backdrop, close, route navigation and task switch follow one discard/restoration policy; background refresh and failed save retain text; A draft never appears on B; explicit cancel discards; successful save clears dirty state.
 
 - [ ] **M53-T06** — Honor explicit empty MCP summaries and document actual workflow/template semantics.

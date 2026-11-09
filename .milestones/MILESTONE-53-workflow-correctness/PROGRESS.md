@@ -254,3 +254,27 @@ pass. No persistence/dependency/backend contract changes. Actual browser, storie
 deliberate final faults, full gates and independent implementation review remain
 pending. Draft PR #6 contains completed T01–T04; this T05 checkpoint is not ready
 to publish independently.
+
+T05 review revision: CODE-v6's verified-login, older-generation admission and
+canonical-baseline findings all have observed reds. Login/register validate their
+returned owner, synchronously change draft ownership, cancel stale reads and
+clear only QueryCache on account changes, preserving MutationCache sequencing.
+Pending admission is now global per task, including shared resources across
+accounts; foreign blockers expose only generic waiting copy. Dirty comparisons
+and error/receipt content stay account-owned. Canonical receipts advance an
+existing same-account baseline without clearing newer entry/revision intent.
+Independent reliability re-review approves the corrected source. Focused122 and
+TypeScript pass; the added native listener/privacy suite passes6 cases.
+
+Four actual browser journeys pass all supported modal exits, Back/Forward,
+sidebar-after-close, task/scope switches, old-success/newer-text preservation,
+failed-save remount, explicit Clear and native Stay/Leave with panels closed.
+The dark375px failed-save scan has0axe/overflow and its capture is curated and
+visually inspected. The canceled-reload test uses the actual Chromium reload
+command/prompt because Playwright's navigation waiter never finishes after Stay;
+no production timeout changes. Six deliberate faults (unconditional clear, live
+admission, foreign receipt, always-attached native listener, account-only
+admission and stale-login cache) fail and restore. Rendered strict audits catch
+a pre-existing drawer fixture mount race; the preview applies its initial open
+state after AppShell mounts, rather than accepting a hidden-drawer audit. Final
+rendered/full checks and final review remain pending.

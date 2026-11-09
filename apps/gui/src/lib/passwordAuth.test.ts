@@ -2,6 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BACKEND_URL } from './backendUrl';
 import { loginWithPassword, registerLocalUser, PasswordAuthError } from './passwordAuth';
 
+describe('verified password identity', () => {
+  it.each([null, '', 42])('rejects a malformed login/register owner (%s)', async userId => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ userId, mustChangePassword: false }) }));
+    await expect(loginWithPassword('alice', 'test-password')).rejects.toThrow(/verify/i);
+    await expect(registerLocalUser({ username: 'alice', password: 'test-password' })).rejects.toThrow(/verify/i);
+  });
+});
+
 describe('loginWithPassword', () => {
   it('hits the shared BACKEND_URL with credentials included, not a separately hardcoded one', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({

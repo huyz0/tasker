@@ -86,6 +86,10 @@ then success does not erase text2; a failed save retains latest text. Leaving
 A/opening B or changing account before response cannot clear B/new-identity
 state. Navigation away/back cannot start a second per-task save before completion.
 A fault clearing every successful save must fail the newer-text regression.
+Canonical server normalization advances only the baseline. Failed logout and
+account switches cannot bypass pending admission for the same shared task; other
+accounts see generic waiting copy and cannot derive dirty state from private
+submitted text. Same-account later-generation receipts retain current entry/text.
 
 ## TC-009 — Native exit and identity lifetime (T05/T07, exit4)
 
@@ -94,7 +98,12 @@ reload/tab exit is attempted, then a beforeunload warning protects it. Choosing
 stay preserves the draft; choosing leave may discard this session-memory state.
 Clean/saved/cancelled state removes the listener; opening unchanged content or
 typing and reverting is clean. Logout/account switch clears
-all drafts; an old callback cannot repopulate another identity's state. Do not
+all drafts; an old callback cannot repopulate another identity's state.
+Exercise actual password login/registration before a held/failed session refresh:
+verified returned identity must replace stale account/read caches while pending
+mutation fences remain. Temporary/malformed lookups are unknown, not logout.
+Native listeners attach only for dirty intent and remove the same handler when
+clean; StrictMode and closed/public-route panels do not clear retained drafts. Do not
 claim persistence after a process kill or mobile unload without a warning.
 
 ## TC-010 — MCP and workflow truth (T06/T07, exits4/5)

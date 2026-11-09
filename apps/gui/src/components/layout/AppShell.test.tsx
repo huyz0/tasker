@@ -46,6 +46,32 @@ test('logs out and clears the session cookie when the logout button is clicked',
 
 afterEach(() => useSummaryDrafts.getState().endSession());
 
+test('failed logout cannot admit another same-account/task write while its older-generation save is pending', async () => {
+  useSummaryDrafts.getState().setAccount('logout-user');
+  mockRpc(OrgService, 'ListOrgs', { organizations: [], page: {} });
+  mockRpc(AuthService, 'GetIdentity', { user: { id: 'logout-user', name: 'Logout user', email: '' } });
+  const write = mockRpcPending(TaskService, 'SetTaskSummary');
+  let fail!: (error: Error) => void;
+  vi.spyOn(authSession, 'logout').mockImplementation(() => new Promise<void>((_resolve, reject) => { fail = reject; }));
+  const view = renderScoped(<AppShell><TaskSummaryPanel taskId="logout-task" /></AppShell>, { initialEntry: '/tasks' });
+  fireEvent.click(screen.getByRole('button', { name: 'Write a summary' }));
+  fireEvent.change(screen.getByLabelText('Summary'), { target: { value: 'Older save' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save summary' }));
+  await waitFor(() => expect(write.requests).toHaveLength(1));
+  fireEvent.click(screen.getByLabelText('Log out'));
+  await waitFor(() => expect(fail).toBeTypeOf('function'));
+  await act(async () => fail(new Error('Logout did not finish')));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Write a summary' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Write a summary' }));
+  fireEvent.change(screen.getByLabelText('Summary'), { target: { value: 'New session intent' } });
+  expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+  fireEvent.submit(screen.getByLabelText('Summary').closest('form')!);
+  expect(write.requests).toHaveLength(1);
+  write.resolve({ summary: { text: 'Older save', authorName: 'Old', updatedAt: '' } });
+  await waitFor(() => expect(view.queryClient.isMutating()).toBe(0));
+  expect(screen.getByLabelText('Summary')).toHaveValue('New session intent');
+});
+
 test.each(['success', 'failure'])('discards summary intent synchronously before a delayed logout %s', async outcome => {
   useSummaryDrafts.getState().setAccount('logout-user');
   mockRpc(OrgService, 'ListOrgs', { organizations: [], page: {} });
