@@ -103,7 +103,7 @@ publication; T03 opt-in digest and T04/T05 UI/live handoff are not implemented.
 
 ## M54-T03 — Opt-in bounded artifact metadata in task digests
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Reproduce missing opt-in evidence and missing scope enforcement before optional contract fields and a capped metadata-only digest read.
 - **Verified**: T02 committed/pushed as6ef19d7 after all35 source/closure checks, both-dialect/old-link/wire/fault evidence and CODE-v2 approval.
@@ -124,3 +124,12 @@ JSON/six protobuf decodes, including digest messages. Seven restored faults fail
 for authority/default widening/source cap/both truncation families/MCP forwarding/
 metadata body alias. CODE-v3 approves corrected source with no findings; final
 full35 checks remain pending and T03 stays in-progress.
+
+T03 full verification passes35 checks (9cached): GUI1475/95.43% branches,
+backend2270/59environment-gated skips/zero failures,95.84% functions/96.75%
+lines; CLI93.8%, generated contract/wire and standalone gates. CODE-v3 approves
+the64 focused cases,62 real MySQL assertions, seven restored faults and eighteen
+old-client decodes with442 messages/1241 existing fields preserved. T03 is
+complete:3/5 M54 tasks,368 done/28 pending overall. T04 next moves the single
+Evidence surface after Summary, with actual previews/browser proof; PR #7 stays
+draft until T04/T05 and applicable final-head CI.

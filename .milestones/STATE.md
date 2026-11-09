@@ -1,8 +1,8 @@
 ---
 active_milestone: M54
-active_task: M54-T03
+active_task: null
 last_updated: 2026-11-09
-last_commit: 6ef19d7
+last_commit: 8e757f1
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54-T03 verified:3/5 tasks.** Optional digest metadata preserves ordinary task-only/no-artifact-query behavior, checks current artifact authority, caps source21→metadata20 and combines truncation.64 focused cases, real MySQL62assertions, seven faults and eighteen old-client decodes pass; CODE-v3 approves. All35 gates pass (GUI1475/95.43%, backend2270/zero failures). T04 next implements one Evidence surface after Summary, current-reference provenance, paging/freshness and protected intent; final T04/T05/head CI still gate draft PR #7. Overall28 tasks remain.
 
 **2026-11-09 — M54-T03 in progress.** T02 is committed/pushed as6ef19d7 with all35 gates and reviewed bounded adapters/provenance. Drive optional digest evidence through task-only/no-artifact-query, denied opt-in and SQL-cap regressions before implementation. Reuse authorized metadata and combine truncation; no bodies/new authority. PR #7 stays draft;2/5 M54 tasks complete and29 tasks remain.
 
@@ -1939,13 +1941,13 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
-| M54 | Completion Evidence | in-progress | M46, M53 | 5 | 2 |
+| M54 | Completion Evidence | in-progress | M46, M53 | 5 | 3 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 367 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 368 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

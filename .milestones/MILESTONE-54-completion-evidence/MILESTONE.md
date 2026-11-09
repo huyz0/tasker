@@ -43,7 +43,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/backend/src/modules/mcp/tools.ts; apps/backend/src/modules/artifacts/artifacts.handler.ts; packages/shared-contract/; apps/cli/gen/.
   - **Verify**: Exactly one RPC per tool; folder discovery is possible; link list pagination precedes name lookups; body prefix is bounded in SQL, truncated is explicit, create input is bounded; wrong org/missing scope denied; unlink remains human-only.
 
-- [ ] **M54-T03** — Expose opt-in bounded artifact metadata in task digests without reading bodies.
+- [x] **M54-T03** — Expose opt-in bounded artifact metadata in task digests without reading bodies.
   - **Files**: apps/backend/src/modules/tasks/digest.ts; apps/backend/src/modules/artifacts/; packages/shared-contract/; apps/backend/src/modules/mcp/.
   - **Verify**: Existing digest contract remains compatible; includeArtifacts requires artifacts:read; cap links before metadata lookup and propagate truncation; assert body columns are not selected; fresh generated TS/Go and wire checks pass.
 
