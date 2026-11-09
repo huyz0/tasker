@@ -15,7 +15,7 @@ blocker: null
 
 ## Now
 
-**2026-11-09 — M52 candidate readiness complete; publication in PR #1.** Integration history/cache inputs are repaired; JavaScript high/critical audit and Go 1.26.10 govulncheck pass. All 35 forced local gates and seven forced CLI tasks pass. The latest GitHub workflows must pass before merging [PR #1](https://github.com/huyz0/tasker/pull/1) to main. Unfinished relay work remains separate.
+**2026-11-09 — Review delivery planned; published fixes are on main.** [PR #1](https://github.com/huyz0/tasker/pull/1) merged as `579860f` after both workflows passed. M46–M50 retain reliability ownership; M46-T06 adds webhook fencing/total timeout. M53–M58 track workflow correctness, evidence, attention, connection, claim receipts and views. See [delivery map](DELIVERY-PLAN-2026-11-09.md) for acceptance, sequencing, boundaries and publication. Original relay WIP remains preserved in the original worktree until its validated port.
 
 **2026-11-08 — M51 complete: 7/7 tasks, 5/5 exit criteria.** Responsive task reading/toolbars, grouped navigation, visible mobile project context, shared visual roles, purposeful automation screens and bounded density are delivered on `feature/m51-ui-navigation-and-layout` in the isolated UI worktree. All 35 local gates, 1338 GUI tests and 48 browser journeys pass; 48 application captures and 70 selected Storybook checks are recorded with the independent review. See [UI review](MILESTONE-51-ui-navigation-and-layout/design/UI-UX-REVIEW.md). M46–M50 remain unfinished and independently tracked; the original working tree still owns its in-progress relay work.
 
@@ -1843,16 +1843,21 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
-| M46 | Durable Domain Events | in-progress | M45 | 5 | 2 |
+| M46 | Durable Domain Events | in-progress | M45 | 6 | 2 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
 | M48 | Client Recovery | todo | M44 | 4 | 0 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
-
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
+| M53 | Workflow Correctness | todo | M28, M51 | 7 | 0 |
+| M54 | Completion Evidence | todo | M46, M53 | 5 | 0 |
+| M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
+| M56 | Agent Connection | todo | M54 | 4 | 0 |
+| M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
+| M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 365 tasks across 46 milestones — 345 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 396 tasks across 52 milestones — 345 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
@@ -1898,6 +1903,29 @@ graph LR
   M40 --> M41
   M35 --> M42[M42 Workflow Templates]
   M42 --> M43[M43 Recurring Work]
+  M44[M44 Authorization] --> M45[M45 Mutation Recovery]
+  M45 --> M46[M46 Durable Events]
+  M45 --> M47[M47 Schedules]
+  M46 --> M47
+  M44 --> M48[M48 Client Recovery]
+  M46 --> M49[M49 Production Evidence]
+  M47 --> M49
+  M48 --> M49
+  M49 --> M50[M50 Operational Truth]
+  M44 --> M52[M52 Release Validation]
+  M45 --> M52
+  M51[M51 UI Navigation] --> M52
+  M28[M28 Addressable Screens] --> M53[M53 Workflow Correctness]
+  M51 --> M53
+  M46 --> M54[M54 Evidence]
+  M53 --> M54
+  M48 --> M55[M55 Attention]
+  M53 --> M55
+  M54 --> M55
+  M54 --> M56[M56 Connection]
+  M46 --> M57[M57 Claim Receipts]
+  M54 --> M57
+  M53 --> M58[M58 Views]
 ```
 
 Milestones with no dependency edge between them may run in parallel on separate
