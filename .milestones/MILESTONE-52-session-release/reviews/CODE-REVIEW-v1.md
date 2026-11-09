@@ -19,7 +19,7 @@ The lockfile refresh targets Storybook, Vite and Zod plus their patch resolution
 
 ## Security
 
-Neither the scanner threshold nor the empty accepted-advisory list changes. Integrity-locked versions and existing package dependencies remain the supply boundary. Constraints should be reviewed during future dependency refreshes, rather than preserving obsolete patches indefinitely. No credentials, production data or unfinished relay activation is included.
+Neither the scanner threshold nor the empty accepted-advisory list changes. Integrity-locked versions and existing package dependencies remain the supply boundary. Constraints should be reviewed during future dependency refreshes, rather than preserving obsolete patches indefinitely. No credentials, production data or unfinished relay activation is included. The newly unblocked Go scanner also found ten reachable standard-library vulnerabilities; raising the matching module/proto pins to 1.26.10 eliminates those findings. Seven forced CLI tasks and the 94.7% coverage gate pass on that toolchain; no Go module dependency changes.
 
 ```yaml
 findings: []

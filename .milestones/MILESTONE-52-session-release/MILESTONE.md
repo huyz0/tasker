@@ -4,7 +4,7 @@ title: Verified Session Release
 status: in-progress
 goal: The completed session fixes have reproducible green release checks and can be published to main.
 depends_on: [M44, M45, M51]
-surfaces: [infra, specs]
+surfaces: [cli, infra, specs]
 exit_criteria_met: false
 started_at: 2026-11-09
 completed_at: null
@@ -36,7 +36,7 @@ Include release configuration and security patch refreshes within existing depen
   - **Files**: .github/workflows/integration.yml; knip.json; moon.yml
   - **Verify**: Reproduce the original unused-file finding; integration checkout fetches full history and uncached knip passes.
 - [ ] **M52-T02** — Refresh vulnerable dependencies and prove the publication candidate passes release checks.
-  - **Files**: bun.lock; package.json if required; PROGRESS.md; .milestones/STATE.md
+  - **Files**: bun.lock; package.json; apps/cli/go.mod; .prototools; PROGRESS.md; .milestones/STATE.md
   - **Verify**: Dependency audit, full local gates, and remote integration/build/browser checks pass without weakening gates.
 
 ## 6. Verification
