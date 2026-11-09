@@ -19,7 +19,7 @@ or mistaken scope-switch close must fail the observable route/content assertions
 
 Given artifact B outside loaded A folders, when GetArtifact succeeds, then
 optional org/project response metadata resolves B with bounded reads, no body
-SELECT and no project/folder scan. GetTask orgId uses fresh field3; GetArtifact
+SELECT and no project/folder scan. GetTask orgId uses fresh field 3; GetArtifact
 orgId2/projectId3 survive TS/Go wire round trips and old-client unknown fields.
 Absent metadata never causes guessed ownership; denied/not-found exposes no
 owner metadata. Test both SQLite/MySQL authorized/foreign reads and GUI errors.
@@ -48,10 +48,10 @@ Run GUI/browser and actual SQLite/MySQL requested-type search cases.
 
 ## TC-005 — Old pending work is never history-capped (T04/T07, exit3)
 
-Given an open question behind more than20 closed questions and a pending approval
-behind more than10 decisions, when a task opens, then both remain actionable
+Given an open question behind more than 20 closed questions and a pending approval
+behind more than 10 decisions, when a task opens, then both remain actionable
 before History opens. More than one pending/history page remains reachable in
-each task; organization fixtures exceed50 pending across projects. Verify SQL
+each task; organization fixtures exceed 50 pending across projects. Verify SQL
 closed predicates/counts/cursor separation on both dialects and actual browser.
 Existing status defaults/values remain unchanged; unknown selectors still fail.
 MCP publishes and forwards closed in both list tools. Cross-status/task/org/order
@@ -108,7 +108,7 @@ project-wide claim-next deterministically selects one ready step.
 ## TC-011 — Accessible operational states (T02–T07, exit5)
 
 Given long realistic content and every loading/empty/denied/error/page-error/draft
-state, when rendered at375/768/1280 in both themes and used by keyboard, then
+state, when rendered at 375/768/1280 in both themes and used by keyboard, then
 content/actions/focus remain reachable, no document clipping/overflow occurs,
 and WCAG A/AA contrast/status semantics pass. M47's error-token misuse is a
 representative deliberate contrast fault. Do not revive the disproved masking

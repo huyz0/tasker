@@ -36,7 +36,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
 
 ## 5. Task Breakdown
 
-- [ ] **M53-T01** — Design canonical entity navigation and the pending/history interaction contract.
+- [x] **M53-T01** — Design canonical entity navigation and the pending/history interaction contract.
   - **Files**: .specs/adr/ADR-0047-authorized-navigation-and-bounded-history.md; .milestones/MILESTONE-53-workflow-correctness/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0053-workflow-correctness/.
   - **Verify**: Review cross-project queues, direct task/artifact/Memory links, Back/reload, org Memory tier, inaccessible entities and every loading/empty/error state; record acceptance fixtures before code.
 

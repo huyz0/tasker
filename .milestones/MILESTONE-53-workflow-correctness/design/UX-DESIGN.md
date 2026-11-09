@@ -12,7 +12,7 @@ pending questions/approvals; unkeyed summary state and unconditional save succes
 can discard or misattribute newer typing. Global search also drops belief hits
 and turns failed queries into an apparent empty result.
 
-Read2026-11-09: [MDN replaceState](https://developer.mozilla.org/en-US/docs/Web/API/History/replaceState),
+Read 2026-11-09: [MDN replaceState](https://developer.mozilla.org/en-US/docs/Web/API/History/replaceState),
 [MDN beforeunload](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event),
 and [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html).
 Use replace for normalization, attach unload warnings only while dirty, and
@@ -77,7 +77,7 @@ pages and keeps PageResponse. Pending is never gated on opening History. Empty
 pending says no one is waiting; existing history remains reachable without
 pretending the task never had questions. Closed-only history uses SQL selectors
 from ADR-0047, not filtering one all-status page. Page sizes remain20 questions,
-10 approvals; organization pending pages use50 rows across all projects.
+10 approvals; organization pending pages use 50 rows across all projects.
 
 Use counts that say what they mean: Showing X of N pending where N is the
 server's current total, not the number in a loaded preview. Load more, its

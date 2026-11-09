@@ -1,8 +1,8 @@
 ---
 active_milestone: M53
-active_task: M53-T01
+active_task: null
 last_updated: 2026-11-09
-last_commit: e34924e
+last_commit: 886856c
 blocked: false
 blocker: null
 ---
@@ -15,8 +15,9 @@ blocker: null
 
 ## Now
 
-**2026-11-09 — M53-T01 in progress.** Design authorized canonical entity scope, complete pending/history paging and retained summary intent. M28/M51 are published; this isolated branch starts from final M47 candidatee34924e while PR #5 final-head CI runs. Reconcile against published main before M53 publication. Frontend/security standards, existing tokens/fonts and independent UX judgment apply. Overall38 tasks remain.
+**2026-11-09 — M53-T01 verified.** ADR-0047, UX and11 acceptance scenarios receive corrected independent approval. Fresh35 local checks pass after a ledger blank-line correction; source remains the verified M47 candidate. Canonical metadata, projectless switcher behavior, bound pending/history cursors and all-exit version-safe summary drafts are explicit. M53-T02 is next. PR #5 still awaits final remote GUI/backend completion; reconcile M53 onto published main before publication. Overall37 tasks remain.
 
+**2026-11-09 — M53-T01 in progress.** Design authorized canonical entity scope, complete pending/history paging and retained summary intent. M28/M51 are published; this isolated branch starts from final M47 candidatee34924e while PR #5 final-head CI runs. Reconcile against published main before M53 publication. Frontend/security standards, existing tokens/fonts and independent UX judgment apply. Overall38 tasks remain.
 
 **2026-11-09 — M47 complete:4/4 tasks and4/4 exit criteria.** All35 local gates pass with unchanged coverage floors; both-dialect process/upgrade153 assertions and four actual browser journeys pass, including dark alert contrast. Durable occurrence/history and locked current-eligibility purge semantics are documented. PR #5 still requires complete final-head CI before merge. Next M53-T01 may start independently during that wait (M28/M51 published), with base/ledger reconciliation before publication. Overall38 tasks remain.
 
@@ -1897,14 +1898,14 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
-| M53 | Workflow Correctness | in-progress | M28, M51 | 7 | 0 |
+| M53 | Workflow Correctness | in-progress | M28, M51 | 7 | 1 |
 | M54 | Completion Evidence | todo | M46, M53 | 5 | 0 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 358 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 359 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

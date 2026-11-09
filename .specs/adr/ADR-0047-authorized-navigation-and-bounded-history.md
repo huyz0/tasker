@@ -14,7 +14,7 @@ project or no scope. Existing scope-switch effects then close a resolving entity
 GetTask returns projectId but not organization; GetArtifact returns only folderId,
 so canonical ownership cannot be recovered with a bounded existing folder read.
 Task question/approval panels sort only one capped all-status page. Older open
-items disappear, and organization queues discard the next cursor after50 rows.
+items disappear, and organization queues discard the next cursor after 50 rows.
 
 ## Options
 
@@ -28,7 +28,7 @@ items disappear, and organization queues discard the next cursor after50 rows.
 
 ## Decision
 
-Choose3. Keep existing routes, ADR-0025 URL state and the single scoped stream.
+Choose option 3. Keep existing routes, ADR-0025 URL state and the single scoped stream.
 After successful current authorization, resource ownership normalizes the same
 navigation entry with replace; initial user navigation is a push. Resolution
 must not be mistaken for a deliberate selector change or close the resource.
@@ -36,7 +36,7 @@ Failed/stale resolutions never rewrite a newer route or expose owner metadata.
 
 Compatible response additions, rechecked against current numbered fields:
 
-- GetTaskResponse optional orgId at fresh field3 (field2 is latestHandoffNote).
+- GetTaskResponse optional orgId at fresh field 3 (field 2 is latestHandoffNote).
   Task.projectId remains authoritative. Return metadata after tasks:read checks.
 - GetArtifactResponse optional orgId2/projectId3, derived from the authorized
   artifact's actual folder/project. Do not return artifact bodies or require an

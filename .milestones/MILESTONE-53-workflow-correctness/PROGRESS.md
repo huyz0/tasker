@@ -2,7 +2,7 @@
 
 ## M53-T01 — Design canonical navigation and pending/history interaction
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Define authorized resource scope, one-entry navigation normalization, complete pending/history paging and all-exit task-keyed summary drafts before implementation.
 - **Verified**: M28/M51 dependencies are published. Isolated worktree starts at final M47 candidatee34924e while PR #5 CI runs; no M53 publication until M47 base/ledger reconciliation. Existing source and independent preliminary human-workflow review expose concrete scope-close, tier, paging and draft/save races.
@@ -24,3 +24,13 @@ Corrected design receives independent v2 approval from human, reliability and
 agent-workflow reviewers. ADR-0047 and11 executable acceptance scenarios are
 accepted; no implementation has begun. Fresh-source full gates run before T01
 closure; M47 final-head real integration is green while remaining CI jobs wait.
+
+Fresh-worktree GUI 1360/95.34% branches passes. Initial full check stops at a
+new extra blank line in STATE.md; the ledger formatting is corrected and full
+gates rerun without changing production source or coverage thresholds.
+
+T01 final checks pass all35 tasks (33 cached after the fresh full run): baseline
+backend2175/zero failures, GUI1360/95.34% branches and CLI gate93.8%. Design
+acceptance is reviewed against current readers/switcher/pagination/mutation
+boundaries; no runtime implementation is claimed. Next M53-T02 writes the
+canonical ownership regressions before API/GUI changes. Overall37 tasks remain.
