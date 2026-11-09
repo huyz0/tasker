@@ -25,7 +25,7 @@ Existing system typography, violet primary and semantic error pair are retained.
 
 [Dark mobile retained draft](../design/evidence/summary-draft-error-mobile-dark.png)
 
-This is implementation/rendered evidence, not a usability-study claim. Full gates,
+This is implementation/rendered evidence, not a usability-study claim. All35 local checks pass.
 T06/T07 and final-head remote CI remain before M53 publication.
 
 ```yaml

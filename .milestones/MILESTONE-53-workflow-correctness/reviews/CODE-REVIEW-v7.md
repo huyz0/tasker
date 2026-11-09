@@ -52,7 +52,9 @@ Verification before full-gate closure:
   approves heartbeat/credential deadlines, domain wake and abort cleanup.
 
 No dependency, persistence, wire contract, font or palette-family addition.
-Full-gate closure and final-head remote CI are still required for publication.
+All35 local checks pass (GUI1473/95.45% branches, backend2196/zero failures,
+CLI gate93.8% and standalone packaging). Final-head remote CI still gates
+publication.
 
 ```yaml
 findings: []

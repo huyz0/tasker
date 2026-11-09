@@ -227,7 +227,7 @@ M53 publication still awaits T05–T07 and final-head remote CI.
 
 ## M53-T05 — Preserve summary drafts through every exit and save race
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Reproduce cross-task/local-unmount draft loss and unconditional save-success clearing before introducing account/generation/entry/revision-bound session-memory intent.
 - **Verified**: T04 committed/pushed as6feb920; all35 closure checks pass with1440 GUI tests/95.45% branches,2194 backend tests and standalone build.
@@ -304,3 +304,16 @@ deadlines, immediate domain/scope wakes and abort/iterator cleanup. This narrow
 backend scheduling repair is recorded here because it resolves T04 remote CI
 while the same session's T05 candidate is being verified. API/security standards
 apply to that repair; no contract/authz policy or timeout is changed.
+
+T05 completed: all35 local checks pass (25cached), GUI1473/95.45% branches,
+backend2196/57 prerequisite-gated skips/zero failures with95.80% functions and
+96.70% lines, CLI gate93.8%, standalone packaging. The successful full GUI run
+is retained in cache while test-stub TypeScript corrections are checked; backend
+TSC and44 stream tests/108 assertions pass before the final full run. The serial
+coverage diagnosis passes172 cases after narrowing only two native button
+lookups in the50-form fixture; coverage floors and test timeouts stay unchanged.
+Four browser journeys,68 settled story audits/17 overflow checks, six restored
+intent faults and both timer reds support CODE-v7/UX-v5 approval. Final task
+closure checks follow the ledger update. Next T06 narrows explicit empty MCP
+summary handling and corrects workflow claims. M53/PR #6 still need T06/T07 and
+final-head remote CI. Overall33 tasks remain.

@@ -592,7 +592,7 @@ describe('subscription credential lifetime (M44)', () => {
     const timer = spyOn(globalThis, 'setTimeout').mockImplementation(((callback: () => void, delay: number) => {
       timers.push({ callback, delay });
       return 0;
-    }) as typeof setTimeout);
+    }) as unknown as typeof setTimeout);
     const flush = () => new Promise<void>(resolve => realSetTimeout(resolve, 0));
     const handler = createEventsHandler(fakeDb(), fakeNats(sub), {
       heartbeatMs: 1_000, revalidateMs: 5, now: () => now,
@@ -604,13 +604,15 @@ describe('subscription credential lifetime (M44)', () => {
       const next = iter.next();
       void next.then(() => { settled = true; }, () => { settled = true; });
       await flush();
-      expect(timers[0].delay).toBe(5);
+      expect(timers).toHaveLength(1);
+      expect(timers[0]!.delay).toBe(5);
       now = 4;
       timers.shift()!.callback();
       await flush();
       expect(settled).toBe(false);
       expect(checks).toBe(0);
-      expect(timers[0].delay).toBe(1);
+      expect(timers).toHaveLength(1);
+      expect(timers[0]!.delay).toBe(1);
       now = 5;
       timers.shift()!.callback();
       await expect(next).rejects.toMatchObject({ code: Code.Unauthenticated });
@@ -632,7 +634,7 @@ describe('subscription credential lifetime (M44)', () => {
     const timer = spyOn(globalThis, 'setTimeout').mockImplementation(((callback: () => void, delay: number) => {
       timers.push({ callback, delay });
       return 0;
-    }) as typeof setTimeout);
+    }) as unknown as typeof setTimeout);
     const flush = () => new Promise<void>(resolve => realSetTimeout(resolve, 0));
     const iter = createEventsHandler(fakeDb(), fakeNats(sub), {
       heartbeatMs: 5, revalidateMs: 1_000, now: () => now,
@@ -642,12 +644,14 @@ describe('subscription credential lifetime (M44)', () => {
       const next = iter.next();
       void next.then(() => { settled = true; }, () => { settled = true; });
       await flush();
-      expect(timers[0].delay).toBe(5);
+      expect(timers).toHaveLength(1);
+      expect(timers[0]!.delay).toBe(5);
       now = 4;
       timers.shift()!.callback();
       await flush();
       expect(settled).toBe(false);
-      expect(timers[0].delay).toBe(1);
+      expect(timers).toHaveLength(1);
+      expect(timers[0]!.delay).toBe(1);
       now = 5;
       timers.shift()!.callback();
       expect((await next).value.subject).toBe('stream.heartbeat');
