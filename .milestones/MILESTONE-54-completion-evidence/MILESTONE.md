@@ -39,7 +39,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: .specs/adr/ADR-0042-completion-evidence.md; .milestones/MILESTONE-54-completion-evidence/design/UX-DESIGN.md; packages/shared-contract/main.tsp.
   - **Verify**: Specify fresh optional field numbers, stored-representation prefixes, server-side limits, metadata-only digest opt-in and retry semantics; ordinary tasks:read digests remain valid without artifacts:read; no implicit completion enforcement.
 
-- [ ] **M54-T02** — Add thin MCP artifact discovery/create/link/read tools backed by bounded existing RPCs.
+- [x] **M54-T02** — Add thin MCP artifact discovery/create/link/read tools backed by bounded existing RPCs.
   - **Files**: apps/backend/src/modules/mcp/tools.ts; apps/backend/src/modules/artifacts/artifacts.handler.ts; packages/shared-contract/; apps/cli/gen/.
   - **Verify**: Exactly one RPC per tool; folder discovery is possible; link list pagination precedes name lookups; body prefix is bounded in SQL, truncated is explicit, create input is bounded; wrong org/missing scope denied; unlink remains human-only.
 

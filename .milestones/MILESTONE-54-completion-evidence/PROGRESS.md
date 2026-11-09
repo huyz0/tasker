@@ -35,7 +35,7 @@ observed bounded-read/paging/tool/provenance regressions after branch reconcilia
 
 ## M54-T02 — Implement bounded artifact adapters and provenance
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Reproduce unbounded content/link reads and absent MCP mappings before additive contract generation, binary SQL prefixes, paged metadata and forward-only link actor/time storage.
 - **Verified**: T01 committed/pushed as6a62b3b on published main53b47d6; all35 baseline checks and35/32cached closure checks pass. Draft PR #7 is attached.
@@ -84,3 +84,19 @@ local variable collision was rejected by Bun before execution and corrected.
 A separate schema inventory confirmed no orphan main-test schema existed. The
 final combined own-schema MySQL/SQLite run is in progress, followed by all35
 workspace gates. T02 remains in-progress and PR #7 remains draft.
+
+Final combined disposable-schema checks pass3 cases/68 assertions, covering both
+dialects' literal content and old-link upgrade/reopen. Old-client compatibility
+checks preserve442 messages/1241 fields and pass four old TS protobuf decodes
+plus four old Go JSON/four protobuf decodes. CODE-v2 approves corrected source
+and observed boundary proofs; full35 checks remain in progress. Implementation
+checkpoint is committed/pushed asfb0b578; T02 remains unchecked pending full gate.
+
+T02 final full verification passes35 checks (8cached): GUI1475/95.43% branches,
+backend2255/59environment-gated skips/zero failures with95.84% functions and
+96.75% lines, CLI93.8%, contract/wire and standalone gates. Actual checkpoint
+CI42696236198 passes all eight jobs including full GUI E2E and rendered story
+checks. Both-dialect/legacy upgrade proofs, six restored faults and old-client
+compatibility remain as recorded. CODE-v2 approves; T02 is complete,2/5 M54
+tasks and367 done/29 pending overall. Final milestone/head CI still gates PR #7
+publication; T03 opt-in digest and T04/T05 UI/live handoff are not implemented.
