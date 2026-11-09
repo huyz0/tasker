@@ -1,8 +1,8 @@
 ---
 active_milestone: M54
-active_task: null
+active_task: M54-T03
 last_updated: 2026-11-09
-last_commit: fb0b578
+last_commit: 6ef19d7
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54-T03 in progress.** T02 is committed/pushed as6ef19d7 with all35 gates and reviewed bounded adapters/provenance. Drive optional digest evidence through task-only/no-artifact-query, denied opt-in and SQL-cap regressions before implementation. Reuse authorized metadata and combine truncation; no bodies/new authority. PR #7 stays draft;2/5 M54 tasks complete and29 tasks remain.
 
 **2026-11-09 — M54-T02 verified:2/5 tasks.** Bounded artifact MCP adapters, SQL prefixes, paged metadata and forward link provenance pass138 focused cases, three real SQLite/MySQL upgrade/content cases (68assertions), six restored faults and old-client checks preserving442 messages/1241 fields. All35 local gates pass (GUI1475/95.43%, backend2255/zero failures); CODE-v2 approves and checkpointfb0b578 passes all eight CI jobs. T03 next adds opt-in metadata without widening ordinary digest scope; PR #7 stays draft until T03–T05/final-head CI. Overall29 tasks remain.
 

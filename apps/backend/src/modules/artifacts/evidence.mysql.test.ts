@@ -6,6 +6,8 @@ import { setupDatabase } from '../../db/db';
 import * as S from '../../db/schema.mysql';
 import { makeAuthContext } from '../../test/setup';
 import { createArtifactsHandler } from './artifacts.handler';
+import { createTaskManagementHandler } from '../tasks/tasks.handler';
+import { currentPrincipalKey } from '../auth/session';
 
 const enabled = process.env.TASKER_MYSQL_INTEGRATION === '1';
 (enabled ? it : it.skip)('MySQL evidence bounds/paging/provenance use real UTF-8 binary SQL and current authorization', async () => {
@@ -80,6 +82,19 @@ const enabled = process.env.TASKER_MYSQL_INTEGRATION === '1';
     expect(first.page.totalCount).toBe(25);
     expect(new Set([...first.links, ...next.links].map((link: any) => link.id)).size).toBe(25);
     expect([...first.evidence, ...next.evidence].every((item: any) => item.availability === 'available' && !('content' in item))).toBe(true);
+    const tasks = createTaskManagementHandler(db), reader = makeAuthContext(null);
+    const principal = { kind: 'agent' as const, agentId: 'digest-reader', orgId, tokenId: 'fixture-token', scopes: ['tasks:read'] };
+    reader.values.set(currentPrincipalKey, principal);
+    const ordinary: any = await tasks.getTaskDigest({ taskId }, reader);
+    expect(ordinary.digest).not.toHaveProperty('artifacts');
+    const optedOut: any = await tasks.getTaskDigest({ taskId, includeArtifacts: false }, reader);
+    expect(optedOut.digest).not.toHaveProperty('artifacts');
+    await expect(tasks.getTaskDigest({ taskId, includeArtifacts: true }, reader)).rejects.toMatchObject({ code: Code.PermissionDenied });
+    reader.values.set(currentPrincipalKey, { ...principal, scopes: ['tasks:read', 'artifacts:read'] });
+    const enriched: any = await tasks.getTaskDigest({ taskId, includeArtifacts: true }, reader);
+    expect(enriched.digest.artifacts).toHaveLength(20);
+    expect(enriched.digest.truncated).toBe(true);
+    expect(enriched.digest.artifacts.every((item: any) => item.availability === 'available' && !('content' in item))).toBe(true);
     const metadata = [...first.evidence, ...next.evidence].find((item: any) => item.link.artifactId === artifactId);
     expect(metadata.storedBytes).toBe(BigInt(Buffer.byteLength(literal)));
     await expect(handler.listTaskArtifactLinks({ taskId, page: { limit: 20 } }, makeAuthContext('foreign-user')))

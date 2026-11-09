@@ -100,3 +100,27 @@ checks. Both-dialect/legacy upgrade proofs, six restored faults and old-client
 compatibility remain as recorded. CODE-v2 approves; T02 is complete,2/5 M54
 tasks and367 done/29 pending overall. Final milestone/head CI still gates PR #7
 publication; T03 opt-in digest and T04/T05 UI/live handoff are not implemented.
+
+## M54-T03 — Opt-in bounded artifact metadata in task digests
+
+- **Status**: in-progress
+- **Date**: 2026-11-09
+- **Changed**: Reproduce missing opt-in evidence and missing scope enforcement before optional contract fields and a capped metadata-only digest read.
+- **Verified**: T02 committed/pushed as6ef19d7 after all35 source/closure checks, both-dialect/old-link/wire/fault evidence and CODE-v2 approval.
+- **Notes**: API/security standards plus TDD selected. Accepted ADR0042/TC004/TC008 govern this authorization boundary; no new ADR/UI design. Omitted/false includeArtifacts must retain tasks-only reads and perform no artifact query. True requires current artifact-read authority, caps raw links before lookup and combines truncation without selecting bodies. Reuse T02 metadata logic and preserve old clients; no new dependency or persisted digest.
+- **Next**: Observe ordinary/no-query, denied-opt-in, capped metadata/truncation and MCP input reds; add fresh fields/generate, then both-dialect/full/compatibility review.
+
+Initial T03 red run observes10 failures/4 passes: ordinary/false task-only reads
+and foreign-task refusal already hold; requested metadata/scope refusal/cap and
+MCP opt-in are absent. Fresh TaskDigest field7 and request field2 are verified
+free against6ef19d7 before additive TSP/proto generation. T02 raw-result tracing
+is extracted unchanged into a private test helper for reuse by digest bounds.
+
+T03 source checkpoint passes64 focused cases/1054 assertions and backend TSC.
+Real owned-schema MySQL digest/content proof passes62 assertions: ordinary/false
+tasks-only calls, refused opt-in and authorized20-entry evidence. Fresh additions
+preserve442 legacy messages/1241 fields and six old TS protobuf plus six old Go
+JSON/six protobuf decodes, including digest messages. Seven restored faults fail
+for authority/default widening/source cap/both truncation families/MCP forwarding/
+metadata body alias. CODE-v3 approves corrected source with no findings; final
+full35 checks remain pending and T03 stays in-progress.

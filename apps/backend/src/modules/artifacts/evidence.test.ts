@@ -5,6 +5,7 @@ import * as S from '../../db/schema.sqlite';
 import { setupIntegrationTest, seedOrgWithAdmin, seedProject, makeAuthContext } from '../../test/setup';
 import { createArtifactsHandler } from './artifacts.handler';
 import { currentPrincipalKey } from '../auth/session';
+import { traceRows } from '../../test/traceRows';
 
 async function fixture(contents = ['A😀\0éZ']) {
   const { db } = await setupIntegrationTest();
@@ -21,21 +22,6 @@ async function fixture(contents = ['A😀\0éZ']) {
     artifactIds.push(id);
   }
   return { db, orgId, userId, projectId, templateId: `template-${suffix}`, folderId, taskId, artifactIds, ctx: makeAuthContext(userId), handler: createArtifactsHandler(db) };
-}
-
-/** Observe actual DB results before handler decoding/response shaping. */
-function traceRows(builder: any, inspect: (rows: any[]) => void): any {
-  return new Proxy(builder, { get(target, key) {
-    const value = Reflect.get(target, key, target);
-    if (key === 'then') return (resolve: (rows: any[]) => void, reject: (error: unknown) => void) => value.call(target, (rows: any[]) => {
-      try { inspect(rows); resolve(rows); } catch (error) { reject(error); }
-    }, reject);
-    if (typeof value !== 'function') return value;
-    return (...args: any[]) => {
-      const next = value.apply(target, args);
-      return next && typeof next.toSQL === 'function' ? traceRows(next, inspect) : next;
-    };
-  } });
 }
 
 describe('explicit bounded evidence content (M54)', () => {

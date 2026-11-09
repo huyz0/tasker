@@ -931,9 +931,13 @@ model TaskDigest {
   @field(4) relations: ListTaskLinksResponse;
   @field(5) finishedAt?: string;
   @field(6) truncated: boolean;
+
+  // Opt-in current artifact metadata only; omitted requests need no artifact scope.
+  @field(7) artifacts: TaskArtifactEvidence[];
 }
 model GetTaskDigestRequest {
   @field(1) taskId: string;
+  @field(2) includeArtifacts?: boolean;
 }
 model GetTaskDigestResponse {
   @field(1) digest: TaskDigest;

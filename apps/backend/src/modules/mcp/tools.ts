@@ -369,10 +369,10 @@ export const TOOL_SPECS: ToolSpec[] = [
   },
   {
     name: "get_task_digest", title: "Get a task digest",
-    description: "One bounded read of a task's context: the task with its summary, plan and usage, the latest handoff note, " +
-      "answered questions and relations. Prefer it to reading a long or old task's whole history.",
-    inputSchema: schema({ task_id: str("Task id") }, ["task_id"]), annotations: readOnly,
-    service: TaskService, method: "GetTaskDigest", request: (a) => ({ taskId: a.task_id }),
+    description: "One read of a task's context: the task with its summary, plan and usage, the latest handoff note, " +
+      "answered questions and relations. Optional include_artifacts adds at most20 current artifact metadata entries, requires artifacts:read and never reads stored bodies.",
+    inputSchema: schema({ task_id: str("Task id"), include_artifacts: bool("Include bounded artifact metadata; requires artifacts:read") }, ["task_id"]), annotations: readOnly,
+    service: TaskService, method: "GetTaskDigest", request: (a) => defined({ taskId: a.task_id, includeArtifacts: a.include_artifacts }),
   },
   {
     name: "list_compaction_candidates", title: "List tasks needing a summary",

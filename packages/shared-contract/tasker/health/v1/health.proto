@@ -1072,9 +1072,11 @@ message TaskDigest {
   ListTaskLinksResponse relations = 4;
   optional string finishedAt = 5;
   bool truncated = 6;
+  repeated TaskArtifactEvidence artifacts = 7;
 }
 message GetTaskDigestRequest {
   string taskId = 1;
+  optional bool includeArtifacts = 2;
 }
 message GetTaskDigestResponse {
   TaskDigest digest = 1;
