@@ -8,13 +8,19 @@ test.beforeEach(async ({ page, context }) => {
     const url = new URL(route.request().url());
     try {
       const response = await route.fetch({ url: new URL(url.pathname + url.search, privateBackend).href });
-      await route.fulfill({ response });
+      await route.fulfill({ response, body: await response.body() });
     } catch (error) {
       // Context shutdown can dispose an in-flight background response.
       if (!route.request().frame().page().isClosed()) throw error;
     }
   });
   await controlLiveFeed(page);
+});
+
+test.afterEach(async ({ context }) => {
+  // Assertions are complete; handlers cancelled by optional proxy teardown
+  // must not turn a finished task-detail read into a fixture-disposal failure.
+  await context.unrouteAll({ behavior: 'ignoreErrors' });
 });
 
 /**

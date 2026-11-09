@@ -2,7 +2,7 @@
 active_milestone: M47
 active_task: M47-T04
 last_updated: 2026-11-09
-last_commit: 49830ea
+last_commit: b59d565
 blocked: false
 blocker: null
 ---
@@ -15,7 +15,7 @@ blocker: null
 
 ## Now
 
-**2026-11-09 — M47-T04 in progress.** WIP49830ea preserves history/contract/UI and graph takeover proof. Independent review additionally corrects atomic project/org purge and restore-versus-retention ownership (41 focused cases/170 assertions; re-review approves), plus CLI/MCP help/reference. Final browser/173-story/coverage and both-dialect process checks are running; deliberate purge fault remains. T04 stays unchecked; overall39 tasks remain.
+**2026-11-09 — M47-T04 in progress.** Final source/reviews cover compatible history, scope-safe15s refresh, draft preservation/contrast, atomic purge and truthful CLI/MCP guidance. Both-dialect process/upgrade153assertions, restored fault92assertions, four actual browser journeys and rendered states pass. Independent reviewers approve; final35 local gates remain running. T04 stays unchecked; overall39 tasks remain.
 
 **2026-11-09 — M47-T03 verified.** Leased recovery consumes frozen inputs, revalidates original authority, and commits work/receipt/events atomically. Four behavioral faults plus a real orphan-after-SIGKILL fault fail; restored SQLite/MySQL process proofs pass 54 assertions beyond key expiry. Manual failure summaries, scan conflicts, finite expiry and occurrence-local event context are corrected. Independent v6 approves; all 35 local checks pass (backend2165/zero failures). T04 still owns populated MySQL upgrade, full graph/SIGSTOP matrix, bounded history UI refresh and docs. Draft PR #5 remains unmergeable until then and final-head CI. Overall 39 tasks remain.
 

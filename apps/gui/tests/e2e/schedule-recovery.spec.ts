@@ -1,6 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 import { selectSeededOrg } from './selectSeededOrg';
 import { controlLiveFeed, currentFeed } from './controlledLiveFeed';
+import axe from 'axe-core';
+
+declare global { interface Window { axe: typeof axe; } }
 
 test.beforeEach(async ({ page, context }) => {
   const privateBackend = process.env.TASKER_E2E_BACKEND_URL;
@@ -8,7 +11,7 @@ test.beforeEach(async ({ page, context }) => {
     const url = new URL(route.request().url());
     try {
       const response = await route.fetch({ url: new URL(url.pathname + url.search, privateBackend).href });
-      await route.fulfill({ response });
+      await route.fulfill({ response, body: await response.body() });
     } catch (error) {
       // Context shutdown can dispose an in-flight background response.
       if (!route.request().frame().page().isClosed()) throw error;
@@ -17,6 +20,12 @@ test.beforeEach(async ({ page, context }) => {
   // Keep one healthy, project-narrowed stream. No schedule event is injected;
   // source reads must reconcile work outside that feed's scope on their own.
   await controlLiveFeed(page);
+});
+
+test.afterEach(async ({ context }) => {
+  // Assertions are complete; handlers cancelled by optional proxy teardown
+  // must not turn a finished task-detail read into a fixture-disposal failure.
+  await context.unrouteAll({ behavior: 'ignoreErrors' });
 });
 
 async function createOutsideFeed(page: Page) {
@@ -106,6 +115,13 @@ test('a failed off-feed refresh keeps the unsaved editor through retry and recov
   await page.setViewportSize({ width: 375, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: info.outputPath('draft-refresh-error-375.png'), fullPage: true, animations: 'disabled' });
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+  await page.addScriptTag({ content: axe.source });
+  const violations = await page.evaluate(async () => (await window.axe.run(document.querySelector('[role="alert"]')!, {
+    runOnly: ['color-contrast'],
+  })).violations.map(rule => ({ id: rule.id, impact: rule.impact, nodes: rule.nodes.map(node => node.failureSummary) })));
+  expect(violations).toEqual([]);
+  await page.screenshot({ path: info.outputPath('draft-refresh-error-dark-375.png'), fullPage: true, animations: 'disabled' });
   unavailable = false;
   await page.getByRole('button', { name: 'Try again', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);

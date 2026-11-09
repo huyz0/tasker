@@ -109,3 +109,28 @@ Bun 1.3.11 experimentally mutates a received property used with
 `toMatchObject({taskId: expect.any(String)})` into a matcher object. The process
 proof now asserts primitive type/nonempty ID separately and compares the actual
 ID across storage and later process replay; it does not reuse matcher-mutated data.
+
+The final expanded matrix (including independent purge contention) passes both
+dialects plus the populated MySQL upgrade:3 tests /153 assertions. Removing the
+common project unit fails rollback (existing work disappears) and the real SQLite
+process proof (a concurrent admission incorrectly returns1). The exact source is
+restored; positive rollback/process checks rerun afterward. Restore-wins tests
+cover current project and organization retention eligibility. Independent
+reliability and agent-workflow re-reviews approve corrected source/help.
+
+All173 rendered Storybook stories pass axe with zero violations and the375px
+overflow gate. Four375/1280 light/dark history screenshots receive independent
+rendered approval; final editor/browser verification remains separate. Concurrent
+full coverage and browser runs caused existing GUI timing failures. Final suites
+are serialized, with VITEST_MAX_WORKERS=2 limiting local worker contention while
+retaining every test, timeout and95% coverage threshold. No interrupted or failed
+interim run is counted as a pass.
+
+Final browser verification passes4/4 journeys after the optional local proxy
+awaits/cancels its teardown handlers separately from source-data assertions.
+An independent dark editor review catches1.93:1 contrast in the new refresh alert.
+The real-browser axe red rejects that text; the corrected semantic surface/text
+pair passes while preserving draft/retry behavior. The added alert story passes
+light/dark375/1280 WCAG/overflow checks; Storybook rebuild contains174 stories.
+The prior173-story complete checks remain recorded separately from this targeted
+new-state proof and mandatory final-head CI. Final full gates are still pending.

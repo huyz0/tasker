@@ -10,6 +10,7 @@ import { ListState } from '../../components/ui/ListState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { formatDateTime } from '../../lib/format';
 import { RunHistory, creationResultLabel } from './RunHistory';
+import { ScheduleRefreshAlert } from './RefreshAlert';
 import { ScheduleForm, cadenceText, draftFromSchedule, type ScheduleDraft } from './ScheduleForm';
 
 const scheduleClient = createClient(ScheduleService, transport);
@@ -194,10 +195,7 @@ export function SchedulesScreen() {
             <ListState isLoading={detail.isLoading} error={detail.error} isEmpty={false} loadingMessage="Loading this schedule…" emptyMessage="" onRetry={() => detail.refetch()} />
           ) : editing ? (
             <div className="flex flex-col gap-3">
-              {detail.error && <p className="type-body text-destructive" role="alert">
-                Could not refresh this schedule. Your draft is kept.{' '}
-                <button type="button" onClick={() => detail.refetch()} className="type-label text-primary underline">Try again</button>
-              </p>}
+              {detail.error && <ScheduleRefreshAlert onRetry={() => detail.refetch()} />}
               {form(draftFromSchedule(detail.data, detail.data.projectId), () => setEditing(false), true)}
             </div>
           ) : (

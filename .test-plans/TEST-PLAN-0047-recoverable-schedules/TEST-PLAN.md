@@ -169,3 +169,5 @@ moon check --all and actual final-head CI must pass before merge.
 - **Then**: The editor stays mounted with the same draft; a clear refresh error
   offers Retry and recovery removes that error without replacing user text.
   No save or additional manual creation request is submitted automatically.
+  The refresh alert remains readable in light/dark at375/1280; actual dark
+  browser axe rejects low-contrast text on the page background.
