@@ -317,3 +317,40 @@ intent faults and both timer reds support CODE-v7/UX-v5 approval. Final task
 closure checks follow the ledger update. Next T06 narrows explicit empty MCP
 summary handling and corrects workflow claims. M53/PR #6 still need T06/T07 and
 final-head remote CI. Overall33 tasks remain.
+
+## M53-T06 — Honor explicit empty MCP summaries and truthful workflow examples
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Reproduce explicit-empty summary rejection and unbounded advertised text before narrowing schema validation; document actual parent claimability, project-wide selection and template visibility.
+- **Verified**: T05 committed/pushed asb6afcd6 after35 closure checks (32cached); GUI1473/95.45% branches and backend2196 pass.
+- **Notes**: API/security standards selected, plus TDD. Existing ADR-0047 and TC-010 bind this narrow adapter change; no new ADR, wire contract, authorization or UI design is needed. Static workflow prose has no runtime behavior; compare each claim with current handler/claim implementation and tests. Only required summary text may explicitly allow length0; missing/null/non-string text, empty IDs and other required strings remain invalid. The existing RPC remains the sole authority and exactly one call per accepted tool.
+- **Next**: Observe protocol/catalogue reds, enforce advertised string bounds, run focused/full suites and review agent-facing examples before completion.
+
+T06 observed reds: JSON-RPC rejects explicit empty text, the4000-character
+advertised schema lacks its bounds, and4001 characters reach the adapter's RPC.
+The schema now explicitly opts only summary text into minLength0/maxLength4000;
+validation retains presence/type/nonempty checks and enforces declared bounds.
+Protocol→catalogue→loopback tests assert exactly one existing SetTaskSummary RPC
+at0/4000, no RPC for malformed/oversized text or empty ID, and every other
+required string remains nonempty. Focused42 cases/542 assertions and backend
+TypeScript pass. Three faults (empty rejected, all required empties accepted,
+oversize accepted) fail; restored42 pass. Existing real SQLite summary and
+workflow tests support the documentation audit: parent tasks remain ordinary,
+project-wide claim-next does not promise a named step, project-scoped lists
+include shared/own templates, and only the matching project can start its own
+template. No SQL/wire/authz change; full gates and independent review pending.
+
+Independent agent-workflow review approves MCP/security boundaries and confirms
+template/parent semantics. It identifies one guidance gap: named ClaimTask checks
+open/unassigned state but does not enforce blockers. Both examples now explicitly
+require inspecting readiness before a named claim; claim-next remains the
+readiness-enforcing project-wide operation. No domain behavior is changed.
+
+T06 complete: all35 local checks pass (23cached), backend2207/57 gated skips/
+zero failures with95.80% functions/96.70% lines; GUI1473/95.45% branches and
+CLI gate93.8% stay verified; standalone packaging passes. Independent CODE-v8
+approves the bounded adapter and source-audited workflow examples. Three restored
+faults and42 focused cases support the explicit empty/invalid-input contract.
+Next T07 closes existing human-flow/browser/review coverage and requires actual
+final-head remote CI before publishing M53. Overall32 tasks remain.

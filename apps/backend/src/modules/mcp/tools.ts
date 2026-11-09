@@ -55,11 +55,13 @@ function schema(properties: Args, required: string[] = []): Tool["inputSchema"] 
  */
 function validate(tool: Tool, args: Args): void {
   const props = tool.inputSchema.properties as Record<string, {
-    type: string; enum?: readonly string[]; minimum?: number; maximum?: number;
+    type: string; enum?: readonly string[]; minimum?: number; maximum?: number; minLength?: number; maxLength?: number;
     items?: { type: string; properties?: Record<string, { type: string; enum?: readonly string[] }>; required?: string[] };
   }>;
   for (const key of tool.inputSchema.required ?? []) {
-    if (args[key] === undefined || args[key] === null || args[key] === "") throw new InvalidToolArguments(`${key} is required`);
+    if (args[key] === undefined || args[key] === null || (args[key] === "" && props[key]?.minLength !== 0)) {
+      throw new InvalidToolArguments(`${key} is required`);
+    }
   }
   for (const [key, value] of Object.entries(args)) {
     const p = props[key];
@@ -77,6 +79,10 @@ function validate(tool: Tool, args: Args): void {
         : p.items?.type === "object" ? `an array of {${Object.entries(p.items.properties ?? {}).map(([k, v]) => `${k}: ${v.enum ? v.enum.join("|") : v.type}`).join(", ")}}`
         : `a ${p.type}`;
       throw new InvalidToolArguments(`${key} must be ${shape}`);
+    }
+    if (typeof value === "string") {
+      if (p.minLength !== undefined && value.length < p.minLength) throw new InvalidToolArguments(`${key} must contain at least ${p.minLength} characters`);
+      if (p.maxLength !== undefined && value.length > p.maxLength) throw new InvalidToolArguments(`${key} must contain at most ${p.maxLength} characters`);
     }
     if (p.enum && !p.enum.includes(value as string)) throw new InvalidToolArguments(`${key} must be one of: ${p.enum.join(", ")}`);
   }
@@ -314,7 +320,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     name: "set_task_summary", title: "Set a task's summary",
     description: "Records what a task came to - outcome, decisions, gotchas - in at most 4,000 characters, for whoever reads it later. " +
       "Write it when you finish a task. Replaces the previous summary; empty text clears it. History is never deleted.",
-    inputSchema: schema({ task_id: str("Task id"), text: str("The summary, plain text or Markdown") }, ["task_id", "text"]),
+    inputSchema: schema({ task_id: str("Task id"), text: str("The summary, plain text or Markdown; empty text clears it", { minLength: 0, maxLength: 4000 }) }, ["task_id", "text"]),
     service: TaskService, method: "SetTaskSummary", request: (a) => ({ taskId: a.task_id, text: a.text }),
   },
   {

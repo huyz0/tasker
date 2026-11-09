@@ -56,7 +56,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/gui/src/features/Tasks/TaskSummary.tsx; apps/gui/src/features/Tasks/summaryDrafts.ts; apps/gui/src/features/Tasks/SummaryDraftGuard.tsx; apps/gui/src/features/Tasks/TaskContext.tsx; apps/gui/src/features/Tasks/index.tsx; apps/gui/src/components/auth/ProtectedRoute.tsx; apps/gui/src/components/layout/AppShell.tsx; apps/gui/src/features/Auth/; apps/gui/src/lib/authSession.ts; apps/gui/src/lib/establishPasswordSession.ts; apps/gui/tests/e2e/; apps/backend/src/modules/events/events.handler.ts; apps/backend/src/modules/events/events.handler.test.ts (session CI repair).
   - **Verify**: Escape, backdrop, close, route navigation and task switch follow one discard/restoration policy; background refresh and failed save retain text; A draft never appears on B; explicit cancel discards; successful save clears dirty state.
 
-- [ ] **M53-T06** — Honor explicit empty MCP summaries and document actual workflow/template semantics.
+- [x] **M53-T06** — Honor explicit empty MCP summaries and document actual workflow/template semantics.
   - **Files**: apps/backend/src/modules/mcp/tools.ts; apps/backend/src/modules/mcp/tools.test.ts; docs/agent-integration.md; docs/mcp.md.
   - **Verify**: Empty summary reaches exactly one existing RPC; missing/null/non-string text, empty IDs and oversized text still fail; example never promises project-wide claim-next selects one step; template org/project visibility and ordinary parent claimability are accurate.
 

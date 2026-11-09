@@ -553,8 +553,9 @@ tasker tasks compaction-candidates --older-than-days 30
 ```
 
 - **A summary** is at most 4,000 characters, records who wrote it, and is
-  replaced whole (`tasks summary clear` removes it). It appears in `GetTask`
-  and the task dialog, where people can write or edit it too.
+  replaced whole (`tasks summary clear` removes it). MCP `set_task_summary`
+  clears it with an explicit `text: ""`; `text` is still required. It appears
+  in `GetTask` and the task dialog, where people can write or edit it too.
 - **A digest** (`GetTaskDigest`, MCP `get_task_digest`) is the task with its
   summary, plan, usage and waiting counts, the latest handoff note, up to 20
   answered questions, relations (50 per kind) and when it finished.
@@ -569,12 +570,13 @@ tasker tasks compaction-candidates --older-than-days 30
 
 A workflow template is a named set of steps where some steps wait on others
 (M42, ADR-0035). Starting one creates a parent task and one subtask per step,
-each blocked by the steps it waits for - so `claim-next` hands the steps out
-in order, with no extra coordination.
+each blocked by the steps it waits for. Dependencies control when a step is
+ready; project-wide `claim-next` chooses from all eligible work in that project.
+It does not select a particular workflow or guarantee the next named step.
 
 ```bash
 # People define the template (or use Workflows in the GUI).
-tasker workflows create --name "Security review" \
+tasker workflows create --org "$O" --name "Security review" \
   --step "scan:Run the dependency scan" \
   --step "triage:Triage findings:scan" \
   --step "report:Write the report:triage"
@@ -582,7 +584,12 @@ tasker workflows create --name "Security review" \
 # Anyone - an agent included - starts it in a project.
 tasker workflows start "$WF" --project "$P" --title "Q4 security review" --idempotency-key q4
 
-tasker tasks claim-next --project "$P"   # the scan step; triage once scan is done
+# From the start result, inspect the scan step and confirm it is ready.
+# Named claims do not enforce blockers; check them before taking a specific step.
+tasker tasks claim "$SCAN_TASK_ID"
+
+# Alternatively, take any eligible work in the project; inspect the returned task.
+tasker tasks claim-next --project "$P"
 ```
 
 - Steps can also come from a JSON file (`--file`, `-` for stdin): an array
@@ -592,6 +599,13 @@ tasker tasks claim-next --project "$P"   # the scan step; triage once scan is do
   cycles, at most 50 steps. Agents read and start templates (`tasks:read`,
   `tasks:write`; MCP `list_workflow_templates`, `get_workflow_template`,
   `start_workflow`); only people define or delete them.
+- Organization templates can start in any project of that organization. A
+  project-specific template can start only in its own project. Listing with
+  `--org` includes every template in that organization; `--project` includes
+  organization-wide templates and that project's own, excluding other projects.
+- The parent is an ordinary open task. It can be claimed alongside ready steps;
+  it has no automatic roll-up or special exclusion from `claim-next`. Assign or
+  manage the parent deliberately if workers should not claim it.
 - Starting is all or nothing, and idempotent by key. The result is ordinary
   tasks: editing the template later does not change a running instance.
 - `task.workflow_started` reaches the event feed and [webhooks](webhooks.md).

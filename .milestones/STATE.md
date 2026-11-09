@@ -1,8 +1,8 @@
 ---
 active_milestone: M53
-active_task: M53-T06
+active_task: M53-T07
 last_updated: 2026-11-09
-last_commit: 994837b
+last_commit: b6afcd6
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,10 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M53-T06 verified:6/7 tasks.** Explicit empty MCP summaries now reach one existing RPC while malformed/oversized text, empty IDs and other required strings remain invalid. Source-audited docs describe template visibility, ordinary parents, project-wide claim-next and caller-checked readiness for named claims. CODE-v8 approves;42 focused cases/three restored faults and all35 local checks pass (backend2207/zero failures, GUI1473/95.45% branches). Next T07 verifies existing human workflows/notification/dialog behavior, closes M53 and requires final-head remote CI before merge. Overall32 tasks remain.
+
+**2026-11-09 — M53-T06 in progress.** T05 is committed/pushed asb6afcd6. Drive explicit-empty MCP summary support through the advertised schema while preserving all other required-string boundaries; correct workflow parent/claim/template prose against actual handlers. Overall33 tasks remain; final milestone publication still requires T06/T07 and final-head CI.
 
 **2026-11-09 — M53-T05 verified:5/7 tasks.** Session-memory summary intent, task-wide pending write fences, verified account transitions and route-global native warnings pass all35 local checks; GUI1473/95.45% branches, backend2196/zero failures, four browser journeys and68 settled audits. Independent CODE-v7/UX-v5 approve. Two controlled idle-timer reds also correct T04 remote CI's early-wake scheduler assumption;44 stream tests pass with fixed heartbeat/credential deadlines. Next T06 honors explicit empty MCP summary text and documents ordinary workflow parents/project-wide claims/template scope. Overall33 tasks remain; draft PR #6 still awaits T06/T07 and final-head CI.
 
@@ -1916,14 +1920,14 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
-| M53 | Workflow Correctness | in-progress | M28, M51 | 7 | 5 |
+| M53 | Workflow Correctness | in-progress | M28, M51 | 7 | 6 |
 | M54 | Completion Evidence | todo | M46, M53 | 5 | 0 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 363 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 364 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
