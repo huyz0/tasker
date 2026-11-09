@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { userEvent } from 'storybook/test';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
@@ -16,8 +17,8 @@ vi.mock('react-router-dom', async () => ({
 
 // The real debounce is intentional: old results must stop accepting Enter
 // immediately when typing changes, before the next request starts.
-function renderSearch() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderSearch(providedClient?: QueryClient) {
+  const client = providedClient ?? new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const view = render(<QueryClientProvider client={client}>
     <MemoryRouter initialEntries={['/tasks?org=o1&project=p1&view=table']}><GlobalSearch /></MemoryRouter>
   </QueryClientProvider>);
@@ -191,5 +192,69 @@ describe('search races and refresh authority', () => {
     expect(requests).toEqual([]);
     expect(screen.getByText(/Search across tasks/)).toBeInTheDocument();
     expect(screen.queryByRole('option')).not.toBeInTheDocument();
+  });
+});
+
+describe('combobox focus ownership', () => {
+  it('keeps result options out of Tab order while input arrows own selection', async () => {
+    mockRpc(SearchService, 'UniversalSearch', { results: [task('Keyboard match')] });
+    renderSearch(); const input = type('keyboard');
+    await screen.findByRole('option', { name: 'Keyboard match' });
+    const user = userEvent.setup();
+    expect(input).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Close search' })).toHaveFocus();
+    await user.tab();
+    expect(input).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'Close search' })).toHaveFocus();
+  });
+
+  it('hands focus to the input before Retry unmounts its button', async () => {
+    mockRpcError(SearchService, 'UniversalSearch', 'unavailable', 'Retry this query');
+    renderSearch(); const input = type('retry');
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    const pending = mockRpcPending(SearchService, 'UniversalSearch');
+    try {
+      await userEvent.setup().click(retry);
+      expect(input).toHaveFocus();
+      pending.resolve({ results: [task('Recovered keyboard match')] });
+      await screen.findByRole('option', { name: 'Recovered keyboard match' });
+      expect(input).toHaveFocus();
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(navigate).toHaveBeenCalledWith('/tasks/task-b');
+    } finally { pending.resolve({ results: [] }); }
+  });
+});
+
+describe('search response clarity under application defaults', () => {
+  it('does not repeat a short Memory statement as its own snippet', async () => {
+    mockRpc(SearchService, 'UniversalSearch', { results: [{ id: 'belief-b', type: 'belief', title: 'Known convention', snippet: 'Known convention' }] });
+    renderSearch(); type('known');
+    const option = await screen.findByRole('option');
+    expect(option).toHaveAccessibleName('Known convention');
+  });
+
+  it('offers explicit retry after one failed request even when the app retries other queries', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: 3, retryDelay: 1000 } } });
+    let requests = 0;
+    server.use(http.post(`${BACKEND_URL}/${SearchService.typeName}/UniversalSearch`, () => {
+      requests++;
+      return HttpResponse.json({ code: 'unavailable', message: 'Search failed promptly' }, { status: 503 });
+    }));
+    renderSearch(client); type('failed');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Search failed promptly');
+    expect(requests).toBe(1);
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+});
+
+describe('organization-only source context', () => {
+  it('opens an agent list without inventing a project for organization Memory', async () => {
+    useLayoutStore.setState({ activeProjectId: '' });
+    mockRpc(SearchService, 'UniversalSearch', { results: [{ id: 'agent-b', type: 'agent', title: 'Organization agent', snippet: '' }] });
+    renderSearch(); type('agent');
+    fireEvent.click(await screen.findByRole('option', { name: 'Organization agent' }));
+    expect(navigate).toHaveBeenCalledWith('/agents?org=o1');
   });
 });

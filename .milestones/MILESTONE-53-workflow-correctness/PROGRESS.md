@@ -150,3 +150,17 @@ attempt timed out during cold schema bootstrap and then hit overlapping DDL;
 preparing the owned schema before timed cases passes without timeout changes.
 Deterministic search stories are added; actual rendered/browser/fault/full-gate
 verification remains pending. No backend search behavior or contract changed.
+
+T03 interaction revision: native/real-debounce coverage passes45 tests after
+reproducing and correcting two focus defects (options in Tab order and Retry
+losing input focus). Real browser tests expose duplicate short Memory snippets
+and application-default hidden retry backoff; exact duplicate snippets are
+omitted and interactive search now reports one failed attempt with explicit
+Retry. After project/agent mouse navigation, keyboard reopening no longer lets a
+stationary pointer override selection: actual movement controls hover selection.
+A bounded scroll owner includes the sticky input, preserving keyboard access
+without extra option Tab stops. Three real RPC/SQL browser journeys pass all six
+groups, scoped project/agent/Memory destinations, Tab/arrows/scroll, debounce,
+subsequent failure and dark-mobile Retry/axe. Four deliberate current-data,
+query/org-key, missing-org and whitespace faults fail their regressions. Restored
+rendered/final full gates and independent final review remain pending.

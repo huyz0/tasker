@@ -30,9 +30,19 @@ export function SearchPreview({ state }: { state: PreviewState }) {
       void cache.fetchQuery({ queryKey, queryFn: () => new Promise<never>(() => {}) });
     }
     if (state === 'error') {
-      // A fresh cached value keeps deliberate fixture failure from retrying
-      // a live URL when the real input changes to this key.
-      void cache.fetchQuery({ queryKey, staleTime: 0, queryFn: () => Promise.reject(new Error('Search is temporarily unavailable. Try again.')) }).catch(() => undefined);
+      cache.removeQueries({ queryKey, exact: true });
+      let fail!: (reason: Error) => void;
+      const response = new Promise<never>((_resolve, reject) => { fail = reject; });
+      void cache.fetchQuery({ queryKey, queryFn: () => response }).catch(() => undefined);
+      // Fail only after the real input observes its query. This exercises an
+      // actual Query error transition without a timer or a live data service.
+      const unsubscribe = cache.getQueryCache().subscribe(event => {
+        if (event.type === 'observerAdded' && event.query.queryKey[0] === queryKey[0]
+          && event.query.queryKey[1] === queryKey[1]) {
+          unsubscribe();
+          fail(new Error('Search is temporarily unavailable. Try again.'));
+        }
+      });
     }
     return cache;
   });

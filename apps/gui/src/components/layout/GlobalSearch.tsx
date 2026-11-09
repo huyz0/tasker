@@ -143,6 +143,7 @@ export function GlobalSearch() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const waitingForQuery = normalizedQuery !== debouncedQuery;
   const currentQuery = !!activeOrgId && !!normalizedQuery && !waitingForQuery && isOpen;
   // The result the keyboard (or a mouse hover, which shares this state rather
@@ -174,6 +175,8 @@ export function GlobalSearch() {
       return resp.results.filter((r) => resultRoute(r) !== null);
     },
     enabled: currentQuery,
+    // Interactive search exposes failures immediately and retries on request.
+    retry: false,
   });
 
   const isLoading = !!activeOrgId && !!normalizedQuery && (waitingForQuery || isPending || isFetching);
@@ -245,8 +248,8 @@ export function GlobalSearch() {
       hideTitle
       className="w-full max-w-lg self-start mt-[10vh]"
     >
-      <div>
-        <div className="flex items-center border-b px-3">
+      <div className="max-h-[min(348px,calc(90dvh-2rem))] overflow-y-auto scrollbar-thin scroll-pt-12 scroll-pb-2">
+        <div className="sticky top-0 z-10 flex items-center border-b bg-surface-raised px-3">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           {/* No autoFocus: `Dialog` focuses the first control itself, and an
               autoFocus here beat it to the punch — it also stole the capture of
@@ -255,6 +258,7 @@ export function GlobalSearch() {
           <input
             role="combobox"
             aria-label="Search workspace"
+            ref={inputRef}
             aria-expanded={hasResults}
             aria-controls="global-search-listbox"
             aria-autocomplete="list"
@@ -271,14 +275,9 @@ export function GlobalSearch() {
         </div>
 
         <div
-          // Roughly five rows of the tallest result (one with a snippet,
-          // measured at 52px) before scrolling kicks in. Grouped headings and
-          // a mix of one- and two-line rows mean no fixed height lands on a
-          // row boundary for every possible result set — `scrollbar-thin`
-          // says "more below, scroll for it", and `fade-bottom` keeps
-          // whichever row the boundary happens to land on from reading as an
-          // error rather than a normal, deliberate scroll edge.
-          className="max-h-[296px] min-h-[52px] overflow-y-auto scrollbar-thin fade-bottom p-2"
+          // The bounded scroll owner includes the sticky input above, keeping
+          // keyboard access inside it without adding popup options to Tab order.
+          className="min-h-[52px] p-2"
         >
           {activeOrgId && normalizedQuery.length === 0 && (
             <div className="p-3 text-sm text-muted-foreground" role="presentation">
@@ -302,7 +301,7 @@ export function GlobalSearch() {
           )}
           {!activeOrgId && <p role="status" className="p-4 text-center text-sm text-muted-foreground">Select an organization to search its work and knowledge.</p>}
           {isLoading && <p role="status" className="p-4 text-center text-sm text-muted-foreground">Searching…</p>}
-          {currentError && !isLoading && <ListState isLoading={false} error={currentError} isEmpty={false} emptyMessage="" errorLabel="Could not search this workspace" onRetry={() => refetch()} />}
+          {currentError && !isLoading && <ListState isLoading={false} error={currentError} isEmpty={false} emptyMessage="" errorLabel="Could not search this workspace" onRetry={() => { inputRef.current?.focus(); refetch(); }} />}
           {!isLoading && !currentError && data && data.length === 0 && normalizedQuery && (
             <p role="status" className="p-4 text-center text-sm text-muted-foreground">No results found.</p>
           )}
@@ -325,8 +324,9 @@ export function GlobalSearch() {
                       key={result.id}
                       id={`search-result-${flatIndex}`}
                       role="option"
+                      tabIndex={-1}
                       aria-selected={flatIndex === activeIndex}
-                      onMouseEnter={() => setHighlighted(flatIndex)}
+                      onMouseMove={() => setHighlighted(flatIndex)}
                       onClick={() => openResult(result)}
                       className={`flex w-full items-start gap-3 rounded-md p-2 text-left ${
                         flatIndex === activeIndex ? 'bg-accent text-accent-foreground' : ''
@@ -344,7 +344,7 @@ export function GlobalSearch() {
                       </div>
                       <div className="flex flex-col overflow-hidden">
                         <span className="font-medium text-sm truncate">{result.title}</span>
-                        {result.snippet && (
+                        {result.snippet && result.snippet !== result.title && (
                           <span className="text-xs text-muted-foreground truncate">
                             <HighlightedSnippet text={result.snippet} matches={result.snippetMatches ?? []} />
                           </span>

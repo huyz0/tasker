@@ -227,7 +227,7 @@ describe('GlobalSearch', () => {
     fireEvent.change(screen.getByPlaceholderText('Search tasks, artifacts, projects, agents…'), { target: { value: 'query' } });
     await waitFor(() => expect(screen.getByText('Second result')).toBeInTheDocument());
 
-    fireEvent.mouseEnter(screen.getByRole('option', { name: /Second result/ }));
+    fireEvent.mouseMove(screen.getByRole('option', { name: /Second result/ }));
     expect(screen.getByRole('option', { name: /Second result/ })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('option', { name: /First result/ })).toHaveAttribute('aria-selected', 'false');
   });
