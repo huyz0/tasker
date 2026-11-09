@@ -994,6 +994,7 @@ export const webhookDeliveries = sqliteTable("webhook_deliveries", {
   attempts: integer("attempts").notNull().default(0),
   nextAttemptAt: integer("next_attempt_at", { mode: "timestamp" }).notNull(),
   claimedUntil: integer("claimed_until", { mode: "timestamp" }),
+  leaseToken: text("lease_token"),
   lastStatusCode: integer("last_status_code"),
   lastError: text("last_error"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),

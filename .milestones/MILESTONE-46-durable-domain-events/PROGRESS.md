@@ -35,3 +35,12 @@
 - **Verified**: Red→green regression evidence covers projection, external transaction boundaries, stalled rollback, schedule context, late admission and telemetry privacy. Final `moon check --all`: 35 completed (25 cached); backend 2111 pass / 40 explicitly gated skip / 0 fail. Real sockets: 11 pass, including authenticated broker feed logout. Real MySQL: four pass in fresh owned schemas; populated upgrades preserve legacy rows. Retained-sequence-index faults fail SQLite and MySQL. Independent v3 rejection and v4 approval record corrected drain/privacy findings.
 - **Notes**: Implements and clarifies ADR-0040 and TEST-PLAN-0046; no new public contract or UX. Load API/security standards for transactional authorization and retained tenant routing. Unknown unary writes default to a unit; repository remote preparation and manual schedule fire own narrower units.
 - **Next**: M46-T06 then T05 crash/operating closure.
+
+## M46-T06 — Fence webhook owners and bound outbound attempts
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Add nullable delivery lease tokens in both dialects, fence result/counter writes atomically and enforce a total HTTP deadline including trickling bodies.
+- **Verified**: Initial red: all six fencing/rollback/drain cases and trickling deadline failed. Restored implementation passes focused suites, real DNS/trickling HTTP, real MySQL fencing/counter rollback, and all 35 local gates (23 cached): backend 2120 pass / 41 explicitly gated skip / 0 fail. Removing tokens fails SQLite/MySQL; early-return worker and omitted-total-timer faults fail their regressions. Independent CODE-REVIEW-v5 approved.
+- **Notes**: Deliver before T05 closure as planned. ADR-0040 already establishes fenced ownership; add the webhook-specific timeout/fanout boundaries. Keep signing, SSRF filtering and retry/disable policy. Admin notifications retain existing best-effort persistence; atomic guarantee covers result and endpoint state. No public contract/UX change.
+- **Next**: M46-T05 real process/crash evidence and operating procedures.

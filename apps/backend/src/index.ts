@@ -127,6 +127,7 @@ const eventRuntime = createDomainEventRuntime(db, isStandalone);
 const brokerRequired = !isStandalone || Boolean(process.env.NATS_URL);
 setDurableDomainEventCapture((tx, standalone, event) => captureDomainEvent(tx, standalone, event, { brokerRequired }));
 const backgroundWorkers: ReturnType<typeof createBackgroundWorker>[] = [];
+const backgroundAbort = new AbortController();
 function every(name: string, intervalMs: number, operation: () => Promise<unknown>) {
   const worker = createBackgroundWorker(name, intervalMs, operation, err => reportError({ message: `${name}.failed`, err, severity: 'error' }));
   backgroundWorkers.push(worker);
@@ -436,6 +437,7 @@ async function shutdown(signal: string): Promise<void> {
   // last in-flight request finishes. The delay runs *alongside* it, not
   // before, so the two overlap rather than adding up.
   eventRuntime.stopLeasing();
+  backgroundAbort.abort();
   const workersDraining = Promise.all(backgroundWorkers.map(worker => worker.stop()));
   const draining = lifecycle.drain(Number(process.env.SHUTDOWN_DRAIN_TIMEOUT_MS ?? DEFAULT_DRAIN_TIMEOUT_MS));
   const preDrainMs = Number(process.env.SHUTDOWN_PRE_DRAIN_MS ?? DEFAULT_PRE_DRAIN_DELAY_MS);
@@ -474,7 +476,7 @@ every('metrics_summary', 5 * 60 * 1000, async () => {
 
 const webhookSender = httpSender(allowPrivateTargets());
 every('webhook_sweep', 5000, () => runWebhookSweep(db, isStandalone, {
-  send: webhookSender,
+  send: webhookSender, signal: backgroundAbort.signal,
   onError: err => reportError({ message: 'webhook_sweep.delivery_failed', err, severity: 'error' }),
 }));
 const runDueSchedules = createScheduleSweep(db, nc);

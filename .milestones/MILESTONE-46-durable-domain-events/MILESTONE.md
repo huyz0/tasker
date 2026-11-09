@@ -55,7 +55,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: docs/webhooks.md; docs/standalone.md; .milestones/MILESTONE-46-durable-domain-events/reviews/.
   - **Verify**: Run real NATS outage/recovery and process-kill scenarios, both-dialect tests and full backend gates; document backlog inspection, retention and replay.
 
-- [ ] **M46-T06** — Fence webhook delivery completion/retry and enforce a total outbound attempt deadline.
+- [x] **M46-T06** — Fence webhook delivery completion/retry and enforce a total outbound attempt deadline.
   - **Files**: apps/backend/src/modules/webhooks/delivery.ts; apps/backend/src/modules/webhooks/httpSender.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/.
   - **Verify**: Reproduce an expired owner failing after its successor delivered; stale success/failure cannot change delivery or endpoint counters; trickling response bodies hit a bounded total deadline; both dialect migrations and real HTTP tests pass. Deliver before T05 closure; retain existing task IDs.
 

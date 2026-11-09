@@ -12,7 +12,7 @@ it('SQLite populated audit upgrade preserves legacy rows and removes sequence un
   const raw = new Database(':memory:');
   try {
     raw.exec('CREATE VIRTUAL TABLE search_index USING fts5(title, body, content="")');
-    await applyEmbeddedMigrations(sqliteRunner(raw), EMBEDDED_SQLITE_MIGRATIONS.slice(0, -1));
+    await applyEmbeddedMigrations(sqliteRunner(raw), EMBEDDED_SQLITE_MIGRATIONS.slice(0, EMBEDDED_SQLITE_MIGRATIONS.findIndex(m => m.tag === '0061_audit_event_identity')));
     raw.exec("INSERT INTO audit_log (id,subject,actor_type,payload,stream_seq,occurred_at) VALUES ('old','domain.task.created','system','{\"title\":\"legacy\"}',7,1794096000)");
     await applyEmbeddedMigrations(sqliteRunner(raw), EMBEDDED_SQLITE_MIGRATIONS);
     expect(raw.query('SELECT event_id, payload, occurred_at FROM audit_log').get()).toEqual({ event_id: 'legacy:7', payload: '{"title":"legacy"}', occurred_at: 1794096000 });
@@ -33,7 +33,7 @@ mysqlTest('MySQL populated audit upgrade preserves legacy replay and accepts a n
     connection = await mysql.createConnection({ ...config, database: name });
     const db = drizzle(connection, { schema: S, mode: 'default' });
     const runner = mysqlRunner(db, sql.raw.bind(sql));
-    await applyEmbeddedMigrations(runner, EMBEDDED_MYSQL_MIGRATIONS.slice(0, -1));
+    await applyEmbeddedMigrations(runner, EMBEDDED_MYSQL_MIGRATIONS.slice(0, EMBEDDED_MYSQL_MIGRATIONS.findIndex(m => m.tag === '0049_audit_event_identity')));
     await connection.query("INSERT INTO audit_log (id,subject,actor_type,payload,stream_seq,occurred_at) VALUES ('old','domain.task.created','system','{\"title\":\"legacy\"}',7,'2026-11-08 00:00:00')");
     await applyEmbeddedMigrations(runner, EMBEDDED_MYSQL_MIGRATIONS);
     const [old] = await db.select().from(S.auditLog);

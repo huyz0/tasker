@@ -86,3 +86,27 @@ Configure DB_HOST/DB_USER/DB_PASSWORD and DB_NAME for a newly created disposable
 MySQL database before the last command. Upgrade/relay tests create their own
 additional owned schemas; capture uses the configured disposable database. No
 existing database should be reset. Required CI provisioning is owned by M49.
+
+## Webhook ownership and total deadline (T06)
+
+- Given sender A pauses past its lease and B records success or failure, then A's
+  later success or failure changes neither B's delivery result nor endpoint
+  counters/disablement. Run all four combinations on SQLite and fenced failure
+  plus counter rollback on real MySQL.
+- Given endpoint-counter persistence fails after the delivery update, then the
+  whole result unit rolls back and the pending lease can be recovered later.
+- Given drain while a sender is active, then it finishes but no further lease
+  starts. Given one error reporter throws, then other active sends still settle
+  before the sweep returns its error.
+- Given a continuously trickling response or stalled DNS, then the total deadline
+  rejects the attempt even without an inactivity timeout. Existing redirect,
+  connection-time SSRF, body/header and signature tests remain green.
+
+```sh
+bun test apps/backend/src/modules/webhooks/delivery.test.ts apps/backend/src/modules/webhooks/delivery.fencing.test.ts apps/backend/src/modules/webhooks/httpSender.test.ts
+TASKER_MYSQL_INTEGRATION=1 bun test apps/backend/src/modules/webhooks/delivery.mysql.test.ts
+```
+
+The MySQL case creates/removes only a generated disposable schema. Deliberately
+remove the token predicate (SQLite/MySQL), replace worker allSettled with all,
+or remove the sender total timer; each corresponding regression must fail.

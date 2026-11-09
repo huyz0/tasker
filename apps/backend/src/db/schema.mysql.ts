@@ -773,6 +773,7 @@ export const webhookDeliveries = mysqlTable("webhook_deliveries", {
   attempts: int("attempts").notNull().default(0),
   nextAttemptAt: timestamp("next_attempt_at").notNull(),
   claimedUntil: timestamp("claimed_until"),
+  leaseToken: varchar("lease_token", { length: 64 }),
   lastStatusCode: int("last_status_code"),
   lastError: text("last_error"),
   createdAt: timestamp("created_at").notNull(),

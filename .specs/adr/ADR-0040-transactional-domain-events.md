@@ -134,3 +134,23 @@ rollback must use a projector that understands producer IDs or restore a tested
 pre-migration backup; blindly re-adding sequence uniqueness is unsafe once two
 new producers legitimately share a sequence. Ambiguous conflicting legacy
 identities fail visibly rather than silently dropping a different payload.
+
+## Webhook delivery ownership (M46-T06)
+
+Each delivery claim also receives a nullable lease token. The winning token and
+pending status fence every result; row result, endpoint failure counters and
+auto-disable state commit in one post-send unit. The claim compare-and-swap
+rechecks the stored due time, so a stale candidate cannot bypass a newer backoff.
+Admin notification insertion retains its existing best-effort behavior; do not
+infer notification durability from the endpoint/result transaction.
+
+The sender imposes a ten-second total attempt ceiling as well as inactivity
+handling. The ceiling covers DNS, connection/handshake, headers and a continuously
+trickling body. Reject before destroying the request because Bun may emit response
+end during destruction. Drain aborts new leases and waits for active bounded
+sends; callback/storage errors settle all active workers before returning.
+
+Lease-column migrations are additive and preserve old rows/leases. Drain old
+webhook workers before rollout: an old binary cannot enforce the new token
+fence. Retry remains at least once; receivers must deduplicate delivery/event
+identity because an expired sender may already have reached the receiver.
