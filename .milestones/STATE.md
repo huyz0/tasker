@@ -2,7 +2,7 @@
 active_milestone: M54
 active_task: M54-T05
 last_updated: 2026-11-09
-last_commit: 90a3965
+last_commit: f702e2a
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54-T05 in progress.** T04 committed/pushed asf702e2a after all35 source/closure checks, approved UI/source review,234-story matrices and isolated browser repeats. Commit real HTTP MCP handoff/ambiguous-response/refusal coverage and precise bounded-content/permissions/retry documentation. Existing ADR0042/TC001–010 apply; no new product boundary or dependency. API/security standards plus TDD selected.115-assertion owned-runtime probe passes with revoked memory-only credentials.27 tasks remain; PR #7 stays draft until closure and applicable final-head CI.
 
 **2026-11-09 — M54-T04 verified:4/5 tasks.** One Evidence surface after Summary, current policy controls, paged/fresh metadata, protected query/mutation intent and separate recorded PR signals pass all35 final checks. GUI1498/95.13% branches; backend2275/zero failures.37 focused UI cases,70 MySQL assertions,9 behavioral faults,18 old-client decodes,9 browser journeys plus4 repeat cases and234-story936/468 rendered matrices pass; independent source/UX review approves after denial/cancellation corrections. Checkpoint90a3965 passes all8 CI jobs. T05 next commits live handoff coverage/docs and gates milestone publication/final-head CI. Overall27 tasks remain.
 

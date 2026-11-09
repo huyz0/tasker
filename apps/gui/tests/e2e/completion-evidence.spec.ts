@@ -103,3 +103,64 @@ test('an evidence access failure hides accepted rows through a later offline ret
   await section.getByRole('button', { name: 'Try again', exact: true }).click();
   await expect(section.getByText(/loaded/)).toBeVisible();
 });
+
+test('a real MCP worker output appears on the open human review surface without losing writing', async ({ page }) => {
+  test.setTimeout(45_000); // Includes the documented 15-second visible metadata poll.
+  const { taskId, projectId } = await openWork(page);
+  const section = page.getByRole('region', { name: 'Evidence', exact: true });
+  await expect(section.getByText('No evidence linked', { exact: true })).toBeVisible();
+  const scope = new URL(page.url());
+  const summary = page.getByRole('dialog').locator('details').filter({ has: page.getByRole('heading', { name: 'Summary', exact: true }) });
+  await summary.locator('summary').click();
+  await page.getByRole('button', { name: 'Write a summary', exact: true }).click();
+  const draft = 'Human review writing remains while the worker attaches output.';
+  await page.getByRole('textbox', { name: 'Summary', exact: true }).fill(draft);
+  let browserBodyReads = 0;
+  page.on('request', request => { if (/ArtifactService\/GetArtifactContent$/.test(request.url())) browserBodyReads++; });
+
+  // Native fetch stays outside Playwright tracing; never pass the minted secret
+  // through page.evaluate, APIRequestContext, attachments, logs or assertions.
+  const base = backend || 'http://localhost:8080';
+  const login = await fetch(`${base}/api/auth/test/inject?userId=dev-user`);
+  const cookie = login.headers.get('set-cookie')?.split(';')[0];
+  expect(!!cookie).toBe(true);
+  async function nativeRpc<T>(service: string, method: string, body: object): Promise<T> {
+    const response = await fetch(`${base}/tasker.health.v1.${service}/${method}`, { method: 'POST',
+      headers: { cookie: cookie!, 'content-type': 'application/json', 'connect-protocol-version': '1' }, body: JSON.stringify(body) });
+    expect(response.ok).toBe(true); return response.json();
+  }
+  const agents = await nativeRpc<{ agents: { id: string; name: string }[] }>('AgentService', 'ListAgents', { orgId: scope.searchParams.get('org'), page: { limit: 1 } });
+  const issued = await nativeRpc<{ token: { id: string }; plaintext: string }>('AgentService', 'CreateAgentToken', {
+    agentId: agents.agents[0].id, name: 'Owned human-handoff browser proof', expiresInDays: 1, scopes: ['tasks:read', 'artifacts:read', 'artifacts:write'],
+  });
+  try {
+    let id = 0;
+    async function worker<T>(name: string, args: object): Promise<T> {
+      const response = await fetch(`${base}/mcp`, { method: 'POST', headers: { authorization: `Bearer ${issued.plaintext}`,
+        'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method: 'tools/call', params: { name, arguments: args } }) });
+      expect(response.ok).toBe(true);
+      const body = await response.json() as { error?: object; result: { isError?: boolean; structuredContent: T } };
+      expect(body.error).toBeUndefined(); expect(body.result.isError).toBeUndefined(); return body.result.structuredContent;
+    }
+    const folders = await worker<{ folders: { id: string }[] }>('list_folders', { project_id: projectId });
+    const name = `worker-verification-${Date.now()}.txt`, content = '\uFEFFWorker output 😀\0'.repeat(400);
+    const output = await worker<{ artifact: { id: string } }>('create_artifact', { folder_id: folders.folders[0].id, name, content, content_type: 'text/plain' });
+    await worker('link_task_artifact', { task_id: taskId, artifact_id: output.artifact.id });
+    const source = section.getByRole('link', { name, exact: true });
+    await expect(source).toBeVisible({ timeout: 20_000 }); // No refresh click or client invalidation.
+    await expect(section.getByText(`Linked by Agent ${agents.agents[0].name}`, { exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Summary', exact: true })).toHaveValue(draft);
+    expect(browserBodyReads).toBe(0);
+    const read = await worker<{ content: string; truncated?: boolean }>('get_artifact_content', { artifact_id: output.artifact.id });
+    expect(read.content).toBe(Array.from(content).slice(0, 4000).join('')); expect(read.truncated).toBe(true);
+    await source.focus(); await source.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`/artifacts/${output.artifact.id}`));
+    await page.goBack();
+    await expect(page.getByRole('textbox', { name: 'Summary', exact: true })).toHaveValue(draft);
+    await page.getByRole('button', { name: 'Cancel', exact: true }).first().click();
+  } finally {
+    const revoked = await nativeRpc<{ success: boolean }>('AgentService', 'RevokeAgentToken', { tokenId: issued.token.id });
+    expect(revoked.success).toBe(true);
+  }
+});

@@ -260,3 +260,42 @@ T04 is complete:4/5 M54 tasks,369 done/27 pending overall. T05 next commits the
 real HTTP worker handoff coverage and precise docs, then closes/publishes M54.
 The115-assertion owned-runtime probe already passes with all temporary credentials
 revoked, but does not substitute for committed T05 coverage or publication gates.
+
+
+## M54-T05 — Verify and document worker-to-human handoff
+
+- **Status**: in-progress
+- **Date**: 2026-11-09
+- **Changed**: Commit real MCP→loopback→current authorization→database handoff coverage and exact integration examples, including ambiguous create discovery and bounded stored representations.
+- **Verified**: T04 committed/pushed asf702e2a after final35 checks and closure35/32cached;1498 GUI/2275 backend cases, rendered234-story matrices, reviewed captures, real MySQL70 assertions,18 old-client decodes and checkpoint90a3965 all8 CI jobs pass.
+- **Notes**: API/security standards plus TDD selected. ADR0042/UX/TC001–010 remain accepted; this is verification/documentation, with no new architectural or UX boundary and no new dependency. Static prose is exempt from runtime TDD; already-implemented behavior that passes new integration cases requires controlled production faults. Temporary credentials stay memory-only and are revoked finally, including failed proof attempts. Full both-dialect/source/browser/standalone and final-head CI remain publication gates.
+- **Next**: Add live HTTP handoff, real refusals and dropped-create-response recovery proof; validate controlled faults, human review and exact docs before final gates/review/closure.
+
+T05 checkpoint: new real-socket MCP handoff suite passes7 cases/134 assertions on
+SQLite and the identical7/134 on an owned random MySQL schema, with schema/drop,
+environment restoration, server closure and token revocation in finally. It
+observes actual loopback paths (one RPC/tool), literal/encoded creation and bounded
+reads, current agent provenance, task status remaining todo, metadata-only opt-in,
+tasks-only defaults/false, real foreign resources, read-only writes, human-only
+unlink RPC refusal, malformed zero-RPC inputs and uncertain create recovery.
+
+Six cases first pass already-implemented T02/T03 behavior; four restored production
+faults fail end to end (lost default bound, missing digest opt-in, wrong create
+RPC and consumed BOM). The response-loss test initially assumes a rejected fetch;
+the pinned Bun HTTP bridge instead yields an empty JSON response after destruction.
+An instrumented probe confirms exactly one CreateArtifact RPC, so this is not a
+retry. The client helper now rejects a missing JSON-RPC object; discovery finds
+one committed output and verifies literal content without another create. This
+is a harness correction, with no production behavior changed.61 focused MCP
+cases/740 assertions pass before dialect-harness parameterization; TSC is clean.
+
+Current-source actual human browser proof passes: native fetch mints one scoped
+temporary token outside Playwright tracing, worker creates/links output, an open
+pane's15-second metadata poll reveals authenticated agent provenance without a
+Refresh click/body fetch, summary writing survives, and keyboard source activation/
+Back returns the draft. Credential is revoked finally; minted test credentials
+now expire within one day as well. The owned-runtime115-assertion probe remains
+valid separate process proof. Documentation adds all6 tools, exact page/prefix/
+UTF-16-create bounds, explicit opt-in, stored representation, mutable references,
+human unlink boundary and discovery-before-create retry examples. Independent
+four-lens review and final source/both-dialect/browser/head CI remain pending.
