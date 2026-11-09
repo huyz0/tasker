@@ -110,3 +110,37 @@ TASKER_MYSQL_INTEGRATION=1 bun test apps/backend/src/modules/webhooks/delivery.m
 The MySQL case creates/removes only a generated disposable schema. Deliberately
 remove the token predicate (SQLite/MySQL), replace worker allSettled with all,
 or remove the sender total timer; each corresponding regression must fail.
+
+## Real process and broker recovery (T05)
+
+`src/test/wire/domainEventRecovery.integration.test.ts` runs the same scenario
+for SQLite and MySQL, with independent child processes and a private JetStream
+container. It kills the producer after SQL commit, kills the relay after broker
+ACK but before completion, publishes a duplicate reference under a fresh
+transport ID, projects a 1.1 MB SQL payload, pauses an HTTP sender while a
+successor completes, and stops/restarts the broker while committed work waits.
+It asserts stable identities, one audit row per source, signed requests,
+unchanged successor state and graceful worker shutdown.
+
+Lease expiry uses a controlled clock advanced by 61 seconds, rather than a
+real one-minute wait. Broker outage and process signals are real. The fixture
+does not establish production throughput or the 1,000-agent target.
+
+Prerequisites: the local Docker socket `/var/run/docker.sock`, an already
+available `nats:2.10-alpine` image, and MySQL credentials able to create/drop
+generated `tasker_recovery_*` schemas. The test never resets a configured
+application database; it cleans only its own schema, container and directory.
+It uses `--pull=never` so a missing broker image fails explicitly. Both flags
+are required for both dialects:
+
+```sh
+TASKER_REAL_INTEGRATION=1 TASKER_MYSQL_INTEGRATION=1 \
+  bun test apps/backend/src/test/wire/domainEventRecovery.integration.test.ts
+```
+
+Set DB_HOST/DB_USER/DB_PASSWORD without printing secrets. With only the first
+flag, SQLite runs and MySQL skips; without either, both explicitly skip.
+Required automated CI provisioning remains M49. The test first failed because
+the actual audit consumer ignored custom DB_PATH; restoring the old setup
+reproduces the missing SQL projection. T03/T04/T06 fault checks separately
+prove the lease, identity and timeout guards.

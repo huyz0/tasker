@@ -85,7 +85,7 @@ async function main(): Promise<void> {
   // `setupDatabase` takes the driver as an argument and defaults to mysql —
   // it does not read STANDALONE itself — so the consumer has to make the same
   // choice src/index.ts does, or it silently writes to the wrong database.
-  const db = await setupDatabase(process.env.STANDALONE === 'true' ? 'sqlite' : 'mysql');
+  const db = await setupDatabase(process.env.STANDALONE === 'true' ? 'sqlite' : 'mysql', process.env.DB_PATH || '.data/local.sqlite');
 
   const jsm = await nc.jetstreamManager();
   const setup = await ensureStreamAndConsumer(jsm);

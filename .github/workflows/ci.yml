@@ -19,9 +19,7 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
         uses: ./.github/actions/setup-moon
       - name: Install dependencies
@@ -45,9 +43,7 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
         uses: ./.github/actions/setup-moon
       - name: Unused code and dependencies
@@ -70,9 +66,7 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
         uses: ./.github/actions/setup-moon
       - name: Install dependencies
@@ -108,9 +102,7 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
         uses: ./.github/actions/setup-moon
       - name: Install dependencies
@@ -158,9 +150,7 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
         uses: ./.github/actions/setup-moon
       - name: Install dependencies
@@ -176,9 +166,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Install dependencies
         run: bun install
       # A ratchet: fails on any high or critical advisory that is not on the
@@ -214,9 +202,7 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
         uses: ./.github/actions/setup-moon
       - name: Install dependencies
@@ -255,9 +241,7 @@ jobs:
           go-version-file: apps/cli/go.mod
           cache-dependency-path: apps/cli/go.sum
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
         uses: ./.github/actions/setup-moon
       - name: Setup Shared Contract

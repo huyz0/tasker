@@ -1,0 +1,16 @@
+name: Setup pinned Bun
+description: Install the Bun version recorded in the repository toolchain file.
+runs:
+  using: composite
+  steps:
+    - name: Read repository Bun pin
+      id: pin
+      shell: bash
+      run: |
+        bun_version=$(sed -nE 's/^bun[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$GITHUB_WORKSPACE/.prototools")
+        [[ "$bun_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+        printf 'version=%s\n' "$bun_version" >> "$GITHUB_OUTPUT"
+    - name: Install pinned Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ steps.pin.outputs.version }}

@@ -2,6 +2,7 @@ import { and, asc, count, eq, inArray, isNull, lt, lte, or, sql } from 'drizzle-
 import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
 import { logger } from './logger';
+import { databaseErrorDetails } from './databaseErrorDetails';
 
 export const EVENT_LEASE_MS = 60_000;
 export const EVENT_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
@@ -71,9 +72,15 @@ export async function runDomainEventSweep(db: any, standalone: boolean, options:
       if (affected(completed)) result.delivered++; else result.stale++;
     } catch (error) {
       const delay = Math.min(300_000, 5_000 * 2 ** Math.min(16, Math.max(0, event.attempts - 1)));
+      const databaseFailure = databaseErrorDetails(error);
+      // Driver and arbitrary publisher messages may embed event bodies. Persist
+      // only fixed phase descriptions and a validated driver code.
+      const failure = databaseFailure
+        ? [databaseFailure.message, databaseFailure.code].filter(Boolean).join(': ')
+        : event.brokerRequired ? 'broker publication failed' : 'local audit projection failed';
       const retried = await db.update(events).set({
         leaseToken: null, claimedUntil: null, nextAttemptAt: new Date(now() + delay),
-        lastError: String(error instanceof Error ? error.message : error).slice(0, 1000),
+        lastError: failure,
       }).where(owns);
       if (affected(retried)) result.retried++; else result.stale++;
       try { options.onError?.(error, id); }

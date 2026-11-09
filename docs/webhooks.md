@@ -25,7 +25,8 @@ tasker webhooks create --org "$ORG" \
 - `--project <id>` limits it to one project's events. The default is the
   whole organization.
 - **Store the secret now.** It is shown once. `tasker webhooks rotate-secret
-  <id>` replaces it, and the old secret stops signing immediately.
+  <id>` replaces it for subsequent batches. A request already in flight can
+  still carry a signature from the previous secret.
 - `tasker webhooks ping <id>` sends a `ping` event to test the receiver.
   `tasker webhooks deliveries <id>` shows what was sent and what came back.
 
@@ -108,16 +109,88 @@ def verify(secret: str, raw_body: bytes, headers) -> bool:
 - **At least once.** A receiver may see the same delivery twice, for example
   after a timeout where its reply was lost. De-duplicate on
   `X-Tasker-Delivery`.
-- **Roughly in order, not strictly.** Order by `occurredAt` if it matters.
-- Any `2xx` within 10 seconds is success. Anything else is a failure,
+- **No strict ordering.** Retries and concurrent workers can arrive out of
+  order. `occurredAt` is the producer's timestamp, not an ordering guarantee.
+- A completed `2xx` response within the total 10-second attempt is success.
+  The deadline includes DNS, connection setup and reading the response.
+  Anything else is a failure,
   including a redirect, which is never followed. A failure is retried after
-  30 s, 1 min, 2 min, … for 8 attempts (about two hours), then marked
+  30 s, 1 min, 2 min, … for 8 attempts (about an hour plus processing delays), then marked
   `failed`.
 - After **20 consecutive failed attempts** the webhook is disabled, and the
-  organization's admins get an in-app notification. Fix the receiver, then
+  an in-app notification to the organization's admins is attempted. The delivery
+  result and disablement commit together; notification persistence remains
+  best effort. Fix the receiver, then
   `tasker webhooks update <id> --enable`; re-enabling clears the count.
   Events from while it was paused or disabled are not sent later.
-- Delivery history is kept for seven days.
+- Settled delivery rows are removed seven days after their creation. Pending
+  deliveries are never removed by this age-based cleanup.
+- The task change, source event and matching webhook delivery rows commit in
+  one database transaction. A committed change survives a producer crash or
+  broker outage. This also works in standalone mode without NATS. A failed
+  transaction commits none of those rows.
+
+## Recovery and operations
+
+The source event ID in the body and `X-Tasker-Delivery` stay stable across
+retries. A lease token prevents an expired worker from changing its successor's
+result, but cannot undo a request the receiver already accepted. Keep receiver
+deduplication even when only one Tasker instance runs.
+
+Inspect pending source events without selecting their potentially sensitive
+payloads:
+
+```sql
+SELECT COUNT(*) AS pending FROM domain_events WHERE delivered_at IS NULL;
+SELECT id, subject, org_id, project_id, occurred_at, attempts,
+       next_attempt_at, claimed_until, last_error
+FROM domain_events WHERE delivered_at IS NULL
+ORDER BY next_attempt_at, id LIMIT 50;
+```
+
+SQLite stores these timestamps as Unix seconds; MySQL uses datetime values.
+Do not log event payloads, signing secrets or webhook URLs while investigating.
+`last_error` contains a bounded failure classification, rather than the event
+body. Source events and webhook deliveries have separate queues: successful
+broker publication does not mean the receiver accepted its delivery.
+
+After a process or broker outage, restart with the same database and broker
+configuration. Pending source events retry with a five-second to five-minute
+backoff. A crashed owner's lease expires after 60 seconds. Do not clear live
+leases or rewrite stored payloads to force progress. Graceful shutdown stops
+new leases, drains active work and leaves pending rows for restart. The API's
+broker connection recovers without restarting the API.
+
+Without an explicit `NATS_URL`, standalone mode projects audit rows directly
+from the durable source. With a broker configured, run the audit consumer
+against the **same database**, including `DB_PATH` for SQLite. References on
+the broker contain routing and identity; the consumer loads the original body
+from SQL. A missing source or mismatched reference is rejected, never silently
+converted into an empty audit entry.
+
+Pending source events have no age limit. Delivered source events are retained
+for 14 days, while the broker retains messages for seven days. This is a
+recovery window, not an indefinite event archive. The audit consumer stops
+automatic redelivery after five failed deliveries. Fix the underlying database
+or reference problem before replaying an affected event.
+
+To replay an existing source event during that window, use the backend's
+`brokerEventReference(source)` helper from `src/lib/domainEventRelay.ts` and
+publish the reference to the stored subject with a **fresh transport message
+ID**, keeping the source event's ID and routing unchanged. Wait for the
+JetStream acknowledgement. This creates a new consumer delivery window;
+producer-ID deduplication leaves an existing audit entry unchanged. It does
+not enqueue new webhook deliveries or send historical events to newly created
+subscriptions. The process recovery test exercises this exact duplicate
+reference path. Never publish a fabricated source identity or copy a payload
+into the broker to bypass a missing SQL row.
+
+For this upgrade, stop old API, audit and webhook workers before starting the
+new version. Older webhook workers cannot enforce the new lease-token fence.
+Back up the database first. The audit migration replaces broker-sequence
+uniqueness with producer-event uniqueness; rolling back requires a compatible
+producer-aware projector or a tested backup restore. Do not blindly restore
+the old unique index over data written by the new version.
 
 ## Security
 
@@ -132,7 +205,3 @@ def verify(secret: str, raw_body: bytes, headers) -> bool:
 - The secret is stored encrypted and never returned after it is first shown.
   Management events in the audit log record which webhook changed but not its
   URL, because a URL can carry a token in its query string.
-- Events are offered to webhooks by the process that published them, so
-  webhooks work on a standalone deployment without NATS. An event published
-  while the database is unreachable is lost to webhooks, as it is to the
-  event feed.

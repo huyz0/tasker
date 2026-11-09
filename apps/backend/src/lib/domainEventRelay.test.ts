@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { eq, sql } from 'drizzle-orm';
+import { DrizzleQueryError } from 'drizzle-orm/errors';
 import { setupIntegrationTest } from '../test/setup';
 import * as S from '../db/schema.sqlite';
 import { runDomainEventSweep, brokerEventReference, EVENT_LEASE_MS, EVENT_RETENTION_MS, countPendingDomainEvents } from './domainEventRelay';
@@ -33,7 +34,7 @@ describe('durable domain event relay', () => {
     expect(await runDomainEventSweep(db, true, { now, publish, projectLocally: noLocal })).toMatchObject({ retried: 1 });
     const failed = await row();
     expect(await countPendingDomainEvents(db, true)).toBe(1);
-    expect(failed).toMatchObject({ attempts: 1, deliveredAt: null, leaseToken: null, lastError: 'broker unavailable' });
+    expect(failed).toMatchObject({ attempts: 1, deliveredAt: null, leaseToken: null, lastError: 'broker publication failed' });
     expect(failed.nextAttemptAt.getTime()).toBeGreaterThan(clock);
     clock = failed.nextAttemptAt.getTime() - 1000;
     expect(await runDomainEventSweep(db, true, { now, publish, projectLocally: noLocal })).toMatchObject({ claimed: 0 });
@@ -51,6 +52,21 @@ describe('durable domain event relay', () => {
     await Promise.all([runDomainEventSweep(db, true, options), runDomainEventSweep(db, true, options)]);
     expect(sent).toEqual(['event']);
     expect((await row()).attempts).toBe(1);
+  });
+
+  it.each([false, true])('stores body-free retry diagnostics (broker required: %s)', async brokerRequired => {
+    const privateBody = 'private-artifact-body-fixture';
+    await event('event', { brokerRequired });
+    const failWithBody = async () => {
+      throw new DrizzleQueryError('INSERT INTO audit_log (payload) VALUES (?)', [privateBody], new Error('projection unavailable'));
+    };
+    expect(await runDomainEventSweep(db, true, { now, publish: failWithBody, projectLocally: failWithBody })).toMatchObject({ retried: 1 });
+    expect((await row()).lastError).toContain('database operation failed');
+    expect((await row()).lastError).not.toContain(privateBody);
+    clock = (await row()).nextAttemptAt.getTime();
+    const failUnknown = async () => { throw new Error(privateBody); };
+    await runDomainEventSweep(db, true, { now, publish: failUnknown, projectLocally: failUnknown });
+    expect((await row()).lastError).toBe(brokerRequired ? 'broker publication failed' : 'local audit projection failed');
   });
 
   it.each([false, true])('fences an expired owner after a successor completes (old publish fails: %s)', async oldFails => {
