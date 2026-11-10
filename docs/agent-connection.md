@@ -109,4 +109,6 @@ sanitized configuration error. Runtime origin validation uses the same rules.
 For separate GUI/API origins, include the GUI's exact origin in the backend's
 `CORS_ALLOWED_ORIGINS`. The API permits the `Authorization` preflight header for
 those already-allowed origins. Use an HTTPS API with an HTTPS GUI to avoid browser
-mixed-content blocking. Rebuild the GUI when changing its destination.
+mixed-content blocking. Rebuild the GUI when changing its destination. The Moon build tracks the endpoint
+environment value and standard production Vite environment files, so cached
+assets cannot silently retain a previous destination.

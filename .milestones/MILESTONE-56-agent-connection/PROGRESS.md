@@ -328,3 +328,16 @@ now). Removing the hook makes that gate fail; restore source. App/node/E2E types
 and knip pass; final Storybook build succeeds. The remaining source review,
 current affected previews, full36, final production/CLI browser and actual
 final-head CI still gate completion/publication.
+
+ARCH-v3 approves shared pre-emission validation; CODE-v7 identifies that Moon's
+GUI build cache omits endpoint environment/file inputs. A real two-destination
+probe reproduces it: A is emitted, changing only the environment to B reports
+success from cache but still emits A. Add the endpoint/NODE_ENV/GIT_SHA and
+explicit optional standard Vite production environment files as build inputs,
+using the official Moon v2 input syntax. Two environment-only builds now emit
+their corresponding destinations. Through the same cached build path, invalid
+credential-bearing settings fail without reflection/emission; changing only
+.env.production.local from A to B emits each current endpoint. The owned probe
+file is removed and the ordinary default build is restored. These are observed
+output proofs, not assertions over YAML text. Updated source review and final
+current previews/full36/production worker/head CI remain pending.

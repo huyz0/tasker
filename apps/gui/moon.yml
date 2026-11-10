@@ -164,6 +164,14 @@ tasks:
       - api-destination-config
     command: 'bun run build'
     inputs:
+      # Vite's deployment settings must invalidate a previously cached dist.
+      - '$VITE_BACKEND_URL'
+      - '$NODE_ENV'
+      - '$GIT_SHA'
+      - 'file://.env?optional'
+      - 'file://.env.local?optional'
+      - 'file://.env.production?optional'
+      - 'file://.env.production.local?optional'
       - 'src/**/*'
       - 'index.html'
       - 'vite.config.*'
