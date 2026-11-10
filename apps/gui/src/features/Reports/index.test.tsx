@@ -107,6 +107,11 @@ function renderPage(entry = '/reports', history = false) {
 }
 
 describe('ReportsScreen', () => {
+  it('offers named views beside report settings in a resolved URL project', async () => {
+    renderPage('/reports?org=org-1&project=proj-1&days=90');
+    expect(await screen.findByRole('button', { name: 'Saved views' })).toBeEnabled();
+  });
+
   beforeEach(() => {
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';

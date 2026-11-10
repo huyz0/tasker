@@ -32,3 +32,7 @@ export const ChooseOrganization: Story = { render: () => <ReportsPreview scope="
   play: async ({ canvasElement }) => { await expect(within(canvasElement).findByText('Select an organization to see project reports.')).resolves.toBeVisible(); } };
 export const ChooseProject: Story = { render: () => <ReportsPreview scope="organization" initialEntry="/reports?org=org-story"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => { await expect(within(canvasElement).findByText('Select a project to see its reports.')).resolves.toBeVisible(); } };
+
+
+export const NamedViewEntry: Story = { render: () => <ReportsPreview><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('button', { name: 'Saved views' })).resolves.toBeEnabled(); } };

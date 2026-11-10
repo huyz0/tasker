@@ -64,10 +64,10 @@ export function createSavedViewsHandler(db: any) {
     await assertCan(db, principal(userId), screen === 'tasks' ? orgScope(orgId) : projectScope(projectId), screen === 'tasks' ? 'task:read' : 'dashboard:read');
   }
 
-  async function metadata(rows: any[], userId: string, orgId: string, exactProjectPermission = false) {
+  async function metadata(rows: any[], userId: string, orgId: string, exactProjectPermission = false, administration?: boolean) {
     if (!rows.length) return [];
     const [admin, orgProjectNames] = await Promise.all([
-      can(db, principal(userId), orgScope(orgId), 'org:admin'),
+      administration ?? can(db, principal(userId), orgScope(orgId), 'org:admin'),
       can(db, principal(userId), orgScope(orgId), 'project:read'),
     ]);
     // An organization-level project-read grant reaches every project. Otherwise
@@ -125,13 +125,13 @@ export function createSavedViewsHandler(db: any) {
       const visible = and(eq(table.orgId, parsed.orgId), eq(table.screen, parsed.screen),
         or(and(eq(table.visibility, 'personal'), eq(table.ownerUserId, userId)), eq(table.visibility, 'organization')),
         parsed.visibility ? eq(table.visibility, parsed.visibility) : undefined);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, table, visible, parsed.page, {
+      const [{ items, nextCursor, totalCount }, canCreateShared] = await Promise.all([executePaginatedQuery(db, table, visible, parsed.page, {
         filterColumn: table.name, sortableColumns: { name: table.name, createdAt: table.createdAt },
         cursorScope: JSON.stringify(['savedViews', userId, parsed.orgId, parsed.screen, parsed.visibility ?? 'all']),
         select: { id: table.id, orgId: table.orgId, projectId: table.projectId, ownerUserId: table.ownerUserId,
           name: table.name, screen: table.screen, visibility: table.visibility, createdAt: table.createdAt, updatedAt: table.updatedAt, definitionJson: table.definitionJson },
-      });
-      return { views: await metadata(items, userId, parsed.orgId), page: { nextCursor, totalCount } };
+      }), can(db, principal(userId), orgScope(parsed.orgId), 'org:admin')]);
+      return { views: await metadata(items, userId, parsed.orgId, false, canCreateShared), page: { nextCursor, totalCount }, canCreateShared };
     },
     async renameSavedView(req: unknown, { values }: { values: any }) {
       const userId = requireUser(values), parsed = RenameSchema.parse(req), row = await authorized(parsed.viewId, userId, true);

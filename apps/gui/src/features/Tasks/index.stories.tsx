@@ -62,3 +62,7 @@ export const DeniedTable: Story = {
     await expect(bounds.right).toBeLessThanOrEqual(document.documentElement.clientWidth);
   },
 };
+
+
+export const NamedViewEntry: Story = { render: () => <WorkbenchPreview><TasksWorkbench /></WorkbenchPreview>,
+  play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('button', { name: 'Saved views' })).resolves.toBeEnabled(); } };

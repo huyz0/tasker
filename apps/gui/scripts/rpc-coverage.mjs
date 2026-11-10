@@ -25,11 +25,6 @@ export const GUI_SRC = process.env.RPC_COVERAGE_SRC ?? join(HERE, '../src');
  * visible in review.
  */
 export const EXCEPTIONS = {
-  'SavedViewService.createSavedView': 'M58-T02 adds checked persistence; M58-T03 supplies the real saved-view controls and removes this staged exception.',
-  'SavedViewService.getSavedView': 'M58-T02 adds checked persistence; M58-T03 supplies the real saved-view controls and removes this staged exception.',
-  'SavedViewService.listSavedViews': 'M58-T02 adds checked persistence; M58-T03 supplies the real saved-view controls and removes this staged exception.',
-  'SavedViewService.renameSavedView': 'M58-T02 adds checked persistence; M58-T03 supplies the real saved-view controls and removes this staged exception.',
-  'SavedViewService.deleteSavedView': 'M58-T02 adds checked persistence; M58-T03 supplies the real saved-view controls and removes this staged exception.',
 
   'TaskService.getTaskDigest':
     'An agent\'s one-read context for a task (M41, ADR-0034). The task dialog ' +

@@ -148,3 +148,49 @@ confirmation patterns. On a phone, each row wraps name/context above actions;
 use ordinary vertical scrolling, visible keyboard focus and named controls.
 Verify empty/loading/error/denied/read-only/editable/duplicate/obsolete and
 pending states in both themes, with keyboard/focus and375px overflow checks.
+
+### T03 concrete controls and empty-catalog authority
+
+One Saved views button in the existing wrapping toolbar/header opens the shared
+Dialog. A Save current view action opens its name/audience form without adding
+a second persistent screen toolbar action. Personal and Organization sections
+keep separate bounded page/filter/error state, while the current form and name
+remain mounted. Labels identify each row's audience and authorized project
+context; Open, Rename and Delete are native named buttons. Delete uses an
+explicit confirmation with its consequence and permanence text.
+
+Organization audience is offered only after fresh catalog metadata explicitly
+reports canCreateShared true from current org:admin. Empty catalogs still carry
+that policy fact; older servers with no hint keep Personal. It is never a client
+role guess or a grant, and submit always earns the server policy again. Read
+failure/denial cannot present a stale previous-account permission. All pending
+Open callbacks capture the live account/org/screen/URL intent and dialog lifetime.
+A typed filter or navigation after Open makes that response obsolete, even if
+its original screen remains mounted or a request ignores abort.
+
+A permission denial from either audience's catalog is an organization-read loss,
+so latch it for that dialog generation. Hide both catalogs, block an already
+pending Open and disable remote writes while preserving the naming draft.
+Refresh lists starts new bounded reads in a new generation; old sibling results
+cannot reopen the denied generation. A source-specific Get refusal stays local
+and does not infer lost org metadata access. Session check failures have Retry
+session rather than claiming sign-out. An empty page with a positive count, or
+without a PageResponse, offers Previous/Refresh instead of claiming an empty
+collection. Present-page legacy totalCount is an int32 scalar with a zero default;
+do not claim absence detection that its checked-in wire format cannot express.
+
+Confirmation identifies the name, audience and currently authorized project
+context. Keep its action heading fixed and wrap the name at operational body
+size, including128-character names, so identity remains readable without a huge
+heading or horizontal scrolling. Neutral/primary/destructive controls retain
+their corresponding semantic foreground/background pairs during native hover.
+
+Starting access retry does not restore authority. A revoked dialog keeps writes
+blocked through unavailable/pending reads until both current-generation audience
+reads succeed. An explicit refusal invalidates all administrative reads already
+in flight; only a later fresh proof can reenable a retained shared edit/delete.
+Legacy shared-row canEdit remains sufficient for editing that immutable shared
+audience, while missing creation hints still keep new saves Personal. Check
+editing access rereads bounded metadata without requiring the obsolete project's
+source data or discarding a naming draft. The vertical body remains keyboard
+focusable when pending controls are disabled.

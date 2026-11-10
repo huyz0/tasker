@@ -42,6 +42,8 @@ testIf('MySQL checks ownership/current administration/references, normalized rac
   const definition = { version: 1, screen: 'tasks', tasks: { viewMode: 'table', priority: 0, ready: false, search: 'release', sort: 'title:asc' } };
   const create = (extra: object = {}, userId = member) => views.createSavedView({ projectId, name: 'Native review', definition, ...extra }, ctx(userId));
   const list = (extra: object = {}, userId = member) => views.listSavedViews({ orgId, screen: 'tasks', ...extra }, ctx(userId));
+  expect((await list({}, admin)).canCreateShared).toBe(true);
+  expect((await list({}, member)).canCreateShared).toBe(false);
   const { view } = await create({ ownerUserId: admin, orgId: 'forged' });
   expect(view).toMatchObject({ ownerUserId: member, orgId, projectId, visibility: 'personal' });
   expect((await views.getSavedView({ viewId: view.id }, ctx())).definition).toEqual(definition);
