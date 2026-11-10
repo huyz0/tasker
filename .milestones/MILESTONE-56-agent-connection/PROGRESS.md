@@ -1,0 +1,369 @@
+# M56 Agent Connection progress
+
+## M56-T01 — Registration-to-verification design
+
+- **Status**: done
+- **Date**: 2026-11-10
+- **Changed**: Define truthful registration, role guidance, scoped external configuration, exact issued-token verification and one-time secret lifetimes before implementation.
+- **Verified**: M55 is published as81d2ab6 in PR #8 after final9bb70d5 passes all eight CI jobs42772975221; final/main trees match. Post-merge real integration42773867345 passes.375 done/21 pending overall.
+- **Notes**: Frontend/security standards plus TDD selected. This task produces static ADR/UX/test-plan artifacts, so runtime red/green does not apply until T02/T03. Reuse existing AuthService.GetIdentity agent identity; no new API, scope, migration or hosted runtime. Current labels promise deployment, token creation retains response memory, the API base is hardcoded and the shared GUI transport includes the human cookie. Exact-token verification needs a separate credential-only transport and lifetime guards. Existing ADR0008/authorization decisions and independently researched UX guidance govern judgement; repository design skills are not treated as design evidence.
+- **Next**: Record actual registration/configuration/verification alternatives, explicit role/no-token/no-role/denial/offline/loss states and account/org/agent-bound secret/async behavior. Obtain independent architecture/UX review, then static/full checks before marking design complete.
+
+Proposed ADR0049/UX/TC001–009 now define exact-credential identity proof through
+existing GetIdentity, cookie-free redirect-rejecting transport, scoped lifetime
+retirement, zero inactive issuance-response retention and sanitized metadata-only
+verification state. One connection section outside virtualized rows makes the
+newly created agent reachable beyond loaded pages. Trusted optional deployment
+API configuration unifies actual requests and safe external examples. No new RPC
+or hosted process is proposed. Official GitHub token guidance, Carbon progress
+semantics, MDN credentials and WCAG focus guidance are read and applied critically;
+copying a snippet does not complete an observable installation stage. Existing
+fonts and semantic palette remain coherent. Architecture/UX review pending.
+
+Independent ARCH-v1/UX-v1 approve the static design with no blockers. ADR0049
+is accepted. The dedicated identity request and all local lifetime/configuration
+boundaries are explicit; runtime implementation remains T02/T03 and real-client
+proof T04. Source preflight confirms existing token scopes must be selected
+explicitly, and the current font aliases use installed system sans/monospace.
+Both post-merge real integration jobs for published M55 pass. Fresh-worktree
+full35 remains running before design completion.
+
+T01 completes with accepted ADR0049/UX/TC001–009 and independent ARCH-v1/UX-v1
+approvals. All35 fresh-worktree checks pass (13 cached,4m21s), including
+GUI1551/95.14% branches, backend2302/zero failures/95.85% functions/96.80% lines,
+contracts/CLI/standalone. The first run catches only an extra blank in STATE;
+correct it, run static lint first, then full2 passes. Static design has no runtime
+behavior to drive; no registration/configuration/verification feature is yet
+implemented. Both post-merge integration jobs and all eight main CI jobs for
+M55 now pass.
+
+M56 is1/4 tasks complete;376 done/20 pending overall. T02 next drives truthful
+registration labels, role guidance, scoped non-secret intent and one reachable
+connection section through actual native-transport UI regressions before code.
+No new endpoint, scope, dependency or hosted runtime is introduced.
+
+## M56-T02 — Truthful registration, roles and next-step flow
+
+- **Status**: done
+- **Date**: 2026-11-10
+- **Changed**: Replace deployment claims with identity registration, guide role creation and open one reachable connection section with scoped non-secret intent and native focus behavior.
+- **Verified**: T01 committed/pushed as52abf71 after accepted ADR0049/UX/TC001–009, ARCH-v1/UX-v1 and all35 source/closure gates. Draft PR #9 is attached.1/4 tasks complete;20 tasks remain.
+- **Notes**: Frontend/security standards and TDD selected. Reuse the existing role/agent/token APIs and UI primitives. Registration/role mutations freeze their actual scope; confirmed account/org changes retire local intent and separate cached reads. The connection section sits outside virtualized rows so a returned created identity is reachable even beyond loaded pages. Current token configuration/verification implementation remains T03.
+- **Next**: Observe registration labels, role guidance/late-choice, pending cancel/scope and shared-panel/focus regressions red before the minimum implementation. Update deterministic previews, run controlled faults, actual browser and independent review/full gates.
+
+Eleven registration/role/scope/next-step cases and two session-lifetime cases
+are observed red before implementation. The screen now names registration,
+labels name/role, explains external runtime and role-versus-scope meaning,
+keys workspace/read caches by confirmed account/org and exposes one shared
+connection section outside virtualized rows. Frozen mutation scope and local
+intent revisions protect cancel/reopen, later choices and old-scope completion.
+
+The first green attempt exposes two harness problems: an empty-state assertion
+runs before its response, and mockRpc serializes Promise values rather than
+awaiting deferred results. Replace deferred fixtures with the existing real
+mockRpcPending helper before accepting race evidence. Correct unsupported
+Testing Library role exact options and the renamed legacy error selector.
+Two further actual regressions are observed red with genuine delayed replies:
+old role success clears a reopened role draft, and archive closes setup onto a
+soon-removed origin instead of a stable heading. Role-form generation and
+archive-specific origin retirement fix both. The current native set passes49
+cases (15 new registration cases plus34 existing). Add explicit later-connection
+and role-writing focus cases, then controlled faults, accurate previews, browser/
+independent review and full gates remain pending. Token config/verification is
+still T03 work;20 tasks remain.
+
+The no-role success path also reproduces lost keyboard focus; return to the
+current registration Role control only while its creation intent still owns
+focus. All74 affected agent cases pass, then CODE-v1 identifies still-editable
+role fields being cleared by delayed success in the same form. The actual
+pending-field regression is observed red, then those fields are frozen like
+registration fields; cancel/reopen retires the old request intent.75 cases pass.
+
+Four current-source reconciliation cases are observed red: registration leaves
+activity empty, edits leave a shared connection's label/recorded activity stale,
+archive leaves old activity, and an actual agent-update Connect frame refreshes
+only roster data. Add bounded affected dashboard invalidations to the existing
+mutations/agent event roots and derive selected names from current loaded rows.
+The native set now passes98 cases, including four fresh source/stream cases,
+without invalidation spies. Existing token configuration/verification remains
+T03. Nineteen deterministic agent/role/registration/connection previews are now
+authored; the long-name fixture is refined to a legal unbroken name rather than
+only naturally wrapping hyphenated words. Type/build/rendered/fault/browser and
+review amendments remain pending; T02 stays in-progress.
+
+Actual populated previews reproduce two visual defects: a legal unbroken agent
+name overflows the connection heading to2101px, and the quietest-agent footer's
+Dashboard link relies on color alone. A shrinkable wrapping heading and a
+persistent underline correct them. Four role previews initially fail only because
+userEvent interprets literal JSON brackets as keyboard descriptors; escape the
+opening bracket before accepting their rendered evidence. All19 final affected
+previews now pass76 WCAG/38 mobile checks in both themes. Explicit GUI types pass.
+
+The owned M56 backend8097/Vite5185 fixture is ready, with no shared broker or
+original-service changes. Actual registration journey passes29.2s: create the
+first role, preserve/name/select it, return visible keyboard focus, register an
+identity, show fresh roster/activity and one connection section, switch real
+theme controls, settle375/1280 layouts, then close/reopen with useful focus.
+Four captures contain no issued agent secret. The first run exposes only a
+Node variable omitted from a browser-evaluate argument; correct the harness
+and rerun successfully. No credentials are minted by this journey.
+
+Current source is a recoverable in-progress checkpoint:98 affected native cases,
+19 rendered previews and the actual browser pass. CODE-v1's pending-field blocker
+is fixed under an observed regression; amendment review, controlled faults and
+full gates remain pending. T03 preflight must also reconcile the hardcoded API
+default with production/custom-port worker configuration, and real-token tests
+must clear secret DOM before automatic Playwright error-context snapshots as
+well as disabling trace/video. These are not implemented T02 claims.
+
+All twelve restored faults produce behavioral assertion failures: registration
+generation, account/org ownership, later role choice, role-form generation, later
+connection selection, ongoing writing focus, create activity, native agent-event
+activity, archive focus, pending role fields and return to registration. Source
+is restored. CODE-v2/UX-v2 approve, with low-severity polish for static roster
+name color and hidden role labels. Apply neutral foreground to data names and
+visible persistent role labels, retaining existing font/token roles. Refine the
+org-switch test fixture to return actual matching organization/role ownership
+rather than borrowing the original record's metadata. Current final checks
+follow these amendments; no secret/configuration verification is yet implemented.
+
+Final polished-source browser journey passes25.7s wall; all19 previews pass76
+WCAG/38 mobile checks. Design lint passes328 files/zero findings and27 gate
+regressions. The first full run passes1572/1573 GUI cases; one existing artifact
+picker test times out while evidence is still loading before its opener exists.
+The unchanged complete14-case artifact-link file immediately passes7.7s. No
+product/test timeout or assertion is relaxed; full2 reruns the required gate.
+T02 remains in-progress until all35 checks pass. ARCH-v2 separately approves
+the future T03 deployment-base amendment (development localhost, production
+page origin, trusted explicit override), with required endpoint/prefix/privacy
+proof. No T03 implementation or completed-task claim is introduced here.
+
+T02 completes with all35 required checks (32 cached,37.2s final run). Full2
+passes all1573 GUI tests/95.14% branches; its only remaining failure is a bare
+URL in newly added ARCH-v2. Format that URL as code; full3 passes without any
+assertion, timeout or coverage relaxation. Backend2302/zero failures and the
+remaining contract/CLI/standalone gates pass. Independent CODE-v2/UX-v2 approve;
+all98 focused cases,12 restored faults,19 previews/76 WCAG/38 overflow checks
+and the final actual registration browser journey pass. Four final captures
+show both themes at375/1280 without an issued credential.
+
+M56 is2/4 tasks complete;377 done/19 pending overall. T03 is already preparing
+observed exact-token/configuration/lifetime regressions in an isolated checkout
+based on2fb704e, so this source remains stable under its full checks. Reconcile
+T03 onto this closure before final PR #9 publication. Registration is complete
+locally; no new M56 merge/main or credential-setup completion is implied.
+
+## M56-T03 — Scoped configuration and exact credential verification
+
+- **Status**: done
+- **Date**: 2026-11-10
+- **Changed**: Implement one-time scoped token/configuration handling and a cookie-free identity probe using the exact issued credential.
+- **Verified**: Accepted ADR0049/UX/TC003–007 and ARCH-v2 endpoint amendment govern this task. T02 full gate is independently rerunning in its preserved source checkout; T02 is not claimed complete here.
+- **Notes**: Frontend/security standards plus TDD reselected. This isolated worktree allows the next task's tests/implementation without changing the source under T02's full run. No new dependency, API, permission or migration. Development defaults to localhost8080, production to the document origin, trusted override preserves prefixes. Mutations retain metadata only; secret lifetime remains local and exact-token verification omits cookies and rejects redirects.
+- **Next**: Observe endpoint/configuration/credential transport and issuance lifetime regressions before implementation, then rendered/browser/source/full gates. Reconcile this branch onto T02 closure before publication.
+
+The absent credential helper is observed red;24 native HTTP/configuration cases
+then pass. Thirteen actual issuance/one-time/identity/lifetime screen regressions
+are observed red before implementation and now pass. Two further observed reds
+identify missing useful reveal focus and stale recorded last-use after a verified
+request; those corrections and complete types/previews/review/full gates remain
+pending. The first test-authoring command used the wrong working directory and
+wrote no files; it is corrected before accepting the recorded source/test proof.
+No actual test credential is minted here; all fixture tokens are synthetic.
+
+T03 is rebased onto verified T02 closure3b22264. The added useful reveal-focus
+and actual last-use refresh regressions pass; the affected five-file suite
+passes119 cases, and the actual parent/session case additionally proves that a
+transient session failure retains the current secret but confirmed logout
+retires it and a late verification. A token-list network error first reproduces
+loss of the only secret; distinguish authority denial from transient metadata
+failure, preserve the credential and expose Retry. The initial assertion reads
+before query completion; wait for the actual error banner before checking the
+secret remains. All119 cases then pass. App types pass after correcting an
+unsupported confirmation-test helper argument. Final-source39 preview matrices
+are running; source review, controlled faults, real browser and full gates remain
+pending. No real test token has yet been minted.
+
+CODE-v3 identifies cached administration resurfacing after denied→unavailable
+reads, missing lost-secret guidance after remount and acceptance of empty token
+IDs. All three are reproduced red before corrections. Account/org metadata read
+receipts and a retained denial epoch fence cached sibling-agent data, cancellation
+and stale replies until actual fresh success; no server authority is added.
+Permanent metadata guidance and nonempty token identity checks correct the other
+two findings. An additional observed batched denial/recovery red reveals old
+issuance can outlive a skipped intermediate render; freeze/check its authority
+epoch and retire any prior credential whose epoch changed. All124 affected cases
+now pass. Both original matrices finish:39-preview overflow passes, accessibility
+reports one MCP play exception. An unchanged focused MCP browser probe passes;
+replace that immediate assertion with waiting for actual rendered MCP JSON before
+accepting final preview evidence. Final matrices/re-review/faults/browser/full
+gates remain pending.
+
+CODE-v4 approves the authority/missing-identity/lost-secret amendments; its P3
+metadata-only copy note is corrected. Real browser proof exposes a production
+boundary absent from unit fixtures: CORS omits Authorization, so cross-origin
+exact-token probes fail preflight. A real-socket preflight regression is observed
+red, then permit that header without widening allowed origins. All10 actual wire
+cases pass (one existing optional live-feed case remains explicitly skipped).
+
+The initial browser response waiter races an ordinary human identity read; narrow
+it to bearer requests. The subsequent CORS-induced timeout interrupts cleanup
+that fetched cookies from an already-closed Playwright context. Revoke the one
+remaining owned test token through the private8098 fixture (one repaired, no
+original service touched). Capture cleanup credentials before issuance and move
+independent Node revocation plus browser clearing into afterEach. The corrected
+actual journey passes10.4s: least-privilege issue, explicit MCP copy, exact bearer
+and no cookie, real identity match, no local/session/URL/cookie persistence, invalid
+bearer refusal while admin session exists, fresh retry and actual revocation.
+No real credential is captured in screenshots/trace/video or printed assertions.
+
+Deliberate actual browser assertion and timeout faults both fail as intended,
+leave no long-token pattern in automatic failure context and leave zero active
+owned test credentials after independent cleanup checks. Restore the test source.
+Eight additional source faults each produce behavioral failures and are restored:
+cookie omission, redirect rejection, token ID, exact scopes, deployment prefix,
+production origin, pending abort and secret cache retention. The affected native
+set now passes126 cases, including actual pending request cancellation and one
+shared prefixed API across normal session/RPC, exact probe and generated config.
+Final source types,39-preview matrices, updated backend/privacy source review and
+all35 local gates remain pending. T03/T04 are not complete.
+
+Final39 previews pass156 WCAG/78 mobile scans; eight settled synthetic credential
+captures show ready/configuration/verified/offline in both themes. CODE-v5
+approves the narrow CORS change but catches an earlier cleanup window: server
+creation can commit before the browser records its token ID. Capture owned agent,
+unique token name and administrator cookie before issuance, then discover/revoke
+only that matching metadata when response identity is unavailable. The unchanged
+normal browser journey passes9.0s. The first withheld-response fault sets its
+deadline before commitment and therefore does not exercise the intended case;
+move the timeout trigger after actual server200. The corrected withheld committed
+response times out as intended, cleanup discovers/revokes exactly one token, no
+long-token artifact appears, and an independent metadata scan leaves zero active
+owned credentials. The test source is restored. Full35 runs against final source;
+final E2E types/re-review and gates remain pending.
+
+CODE-v6/UX-v3 approve source and all eight synthetic captures with no remaining
+blockers. Full1 stops at two static design-lint findings caused by native Retry
+buttons nested on the same line as their div wrappers. Format those native
+elements on separate lines; all27 lint regressions and333-file design scan pass
+without suppressions. Full2 passes all1620 GUI cases/95.14% branches, then the
+backend passes2301 cases but exposes an older M47 expiry fixture tied to
+2026-11-11T10:00Z. Real idempotency keys are created at wall time; that fixed
+cutoff now precedes their expiry. Derive the test's future clock from the actual
+written key plus48h, retaining its purge/receipt assertions. All26 schedule
+execution cases pass; full3 reruns the complete required gate.
+
+The built production GUI also passes the complete real connection browser
+journey7.1s through an owned same-origin5190 gateway to8098. Its copied endpoint
+is the serving origin, not localhost8080; dev8098 and native prefixed-override
+proof remain intact. The production preview injects its owned test session
+explicitly because production correctly omits development auto-login. Exact
+CLI/MCP proof passes19 checks with a compiled real CLI: matching identity,
+first task read and attributed note, missing scopes/foreign org/invalid/wrong
+backend/offline/revoked refusal, no credential file. Both minted credentials are
+revoked. Two probe-only field/method guesses (taskNote and CreateTemplate) are
+corrected against generated contracts before accepting the successful proof;
+these were not product regressions. Permanent external-client coverage/docs
+remain T04 work. Full3/final E2E type results gate T03 completion.
+
+T03 completes with all35 source checks (25 cached,4m10.5s final run). GUI1620
+cases/95.14% branches and backend2302/zero failures/95.85% functions/96.80% lines
+pass, alongside contract/CLI/standalone and unchanged authority gates. Strict
+app/E2E types pass. CODE-v6/UX-v3 approve;126 focused cases, eight source faults,
+39 previews/156 WCAG/78 overflow checks, dev/production real browser, three
+privacy failure modes and19 real CLI/MCP checks support completion. No raw issued
+credential is persisted in the browser, test artifacts or logs; all owned test
+credentials are revoked. The existing stale schedule-clock fixture is fixed
+without changing product behavior or weakening an assertion.
+
+M56 is3/4 tasks and3/4 exit criteria complete;378 done/18 pending overall. T04
+next commits permanent external-client/first-activity proof and public setup/
+recovery/deployment guidance, fixes only any reproduced remaining problem, then
+requires final source/rendered/head CI and publication. PR #9 remains draft;
+local task completion is not main publication or broader goal completion.
+
+## M56-T04 — First external worker, failure recovery and public guidance
+
+- **Status**: done
+- **Date**: 2026-11-10
+- **Changed**: Commit a full UI-issued/copied-configuration MCP/optional CLI journey, current refusal/revocation proof and public registration/configuration/recovery guidance.
+- **Verified**: T03 closes as0a2e5a3 after all35 source/closure checks,126 affected cases,39 previews, actual development/production browser and19 real CLI/MCP checks. Draft PR #9 includes that source;18 tasks remain.
+- **Notes**: Frontend/security plus TDD reselected. Existing ADR0049/UX/TC008–009 bind this verification task; no new API, migration, scope or dependency. Extend the real browser's owned cleanup rather than introducing plaintext artifacts. Go CLI execution is explicitly enabled by a trusted binary path; ordinary CI still proves HTTP MCP without requiring a new Go toolchain in the browser job. Static public prose/copy and legal90-day preview expiry need no runtime TDD.
+- **Next**: Commit first task read/note attribution using the actual copied configuration, exercise the optional real CLI/stdio relay, keep secrets out of failures/stores, publish guidance and obtain final source/rendered/head gates before main.
+
+The permanent journey passes9.9s with the actual copied configuration and a real
+compiled CLI: create a project/task, issue only tasks:read/comments:write, read
+through HTTP MCP, author the first note as the returned agent, refuse task
+creation without tasks:write, then authenticate and read through CLI/MCP stdio.
+CI exercises the HTTP path without adding Go to its browser job; manual proof
+explicitly provides TASKER_CONNECTION_CLI_BINARY. A controlled wrong copied-token
+CLI fault fails at authentication, leaves no long-token artifact and zero active
+owned credentials; restore source. Strict E2E types pass after giving the child
+environment its standard ProcessEnv annotation. Keep parsed configuration/scope
+assertions boolean so unexpected sensitive field values are not printed.
+
+Public connection guidance is written and linked from README/agent/MCP guides;
+all490 Markdown files pass. One attempted standalone lint script path is stale,
+so use the actual Moon docs-lint gate. Static copy correctly points to the token
+above a failed Copy action; synthetic active expiry is90 days and expired rows
+use a past date. No product behavior/API changes are required. The final
+305-story full accessibility/mobile matrices are running, with source review,
+final production/CLI browser, full35 and actual final-head CI still pending.
+
+All305 baseline previews pass1220 WCAG/610 mobile scans. Final keyboard proof
+then reproduces lost focus when a revoked metadata action disappears. Preserve
+its origin and return to the stable New token control only while the old action
+or retiring credential section owns focus; later token-form writing stays put.
+The two native cases pass, and removing the ownership guard steals writing and
+fails the assertion. All128 affected cases pass; actual375px copied CLI/MCP
+journey passes13.3s with visible reveal focus and stable post-revoke focus.
+
+A build-boundary probe observes that invalid credential-bearing VITE_BACKEND_URL
+settings are rejected only at runtime, after a synthetic value is embedded in
+public JavaScript. Strengthen the accepted ADR: share the pure URL validator
+between runtime and Vite's pre-emission config hook. The same actual probe now
+fails before emission with no reflected value. Commit a permanent native build
+regression and make GUI build depend on its cheap Moon gate (36 required targets
+now). Removing the hook makes that gate fail; restore source. App/node/E2E types
+and knip pass; final Storybook build succeeds. The remaining source review,
+current affected previews, full36, final production/CLI browser and actual
+final-head CI still gate completion/publication.
+
+ARCH-v3 approves shared pre-emission validation; CODE-v7 identifies that Moon's
+GUI build cache omits endpoint environment/file inputs. A real two-destination
+probe reproduces it: A is emitted, changing only the environment to B reports
+success from cache but still emits A. Add the endpoint/NODE_ENV/GIT_SHA and
+explicit optional standard Vite production environment files as build inputs,
+using the official Moon v2 input syntax. Two environment-only builds now emit
+their corresponding destinations. Through the same cached build path, invalid
+credential-bearing settings fail without reflection/emission; changing only
+.env.production.local from A to B emits each current endpoint. The owned probe
+file is removed and the ordinary default build is restored. These are observed
+output proofs, not assertions over YAML text. Updated source review and final
+current previews/full36/production worker/head CI remain pending.
+
+CODE-v8 approves the cache amendments with no remaining source blocker. Current
+39 affected previews pass156 WCAG/78 overflow checks, supplementing the full305
+baseline. Final built-production375px journey passes10.0s using the real copied
+configuration through HTTP MCP and Go CLI/stdio, with visible reveal focus and
+stable post-revoke focus. The ordinary endpoint build has been restored after
+all configuration probes, and no owned environment file remains. Full36 is
+running before task closure; actual final-head CI/main publication still follows.
+
+T04 completes with all36 local checks (23 cached,6m2s). GUI1622 cases/95.13%
+branches, backend2302/zero failures/95.85% functions/96.80% lines, strict
+app/node/E2E types, contract/CLI/standalone and the new pre-emission regression
+pass. CODE-v8/ARCH-v3 approve; full305 baseline1220/610 rendered scans and final39
+affected156/78 scans pass. Real mobile development/production copied-config
+HTTP MCP and Go CLI/stdio journeys, first read/note attribution, missing-scope
+refusal and restored CLI/focus/build/cache/privacy faults pass. Public setup,
+least-privilege scope, recovery and endpoint guidance is linked. All minted owned
+test credentials are revoked; no one-time plaintext appears in captured failure
+artifacts or browser persistence. No API, scope, schema, migration or dependency
+is introduced.
+
+M56 closes locally:4/4 tasks and4/4 exit criteria.379 done/17 pending overall.
+Draft PR #9 still needs actual final-head CI and main publication; local closure
+is not a published milestone or full-goal completion. M57-T01 is next eligible
+for receipt/generation design, with branch reconciliation after M56 publication.
+Original worktrees/services and the initial user's WIP remain preserved.

@@ -9,6 +9,9 @@ This guide is enough on its own to get an autonomous worker authenticated and
 writing. It assumes you can reach a Tasker backend and that someone with admin
 rights in the organization can issue you a credential.
 
+For guided registration, one-time configuration and exact credential verification
+in the GUI, see [Register an agent and connect a worker](agent-connection.md).
+
 ## 1. Issue a token
 
 Tokens are issued by an **organization admin**, against a specific agent. Either

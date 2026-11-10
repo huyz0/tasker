@@ -17,6 +17,7 @@ import { confirmAction, cancelAction } from '../../test/confirm';
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  queryClient.setQueryData(['authSession'], { authenticated: true, userId: 'user-1' });
   const utils = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter><AgentsDashboard /></MemoryRouter>
@@ -180,30 +181,30 @@ describe('AgentsDashboard', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
-    fireEvent.click(screen.getByText('Deploy agent'));
+    await waitFor(() => expect(screen.getByText('No agents registered yet.')).toBeDefined());
+    fireEvent.click(screen.getByText('Register agent'));
 
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'role-1' } });
-    fireEvent.click(screen.getByText('Deploy'));
+    fireEvent.click(screen.getByText('Register'));
 
     await waitFor(() => expect(requests).toContainEqual({ orgId: 'org-1', agentRoleId: 'role-1', name: 'New Agent' }));
   });
 
-  it('shows an error message when deploying an agent fails', async () => {
+  it('shows an error message when registering an agent fails', async () => {
     withListAgents({ agents: [] });
     mockRpcError(AgentService, 'CreateAgent', 'unknown', 'role not found');
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
-    fireEvent.click(screen.getByText('Deploy agent'));
+    await waitFor(() => expect(screen.getByText('No agents registered yet.')).toBeDefined());
+    fireEvent.click(screen.getByText('Register agent'));
 
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'role-1' } });
-    fireEvent.click(screen.getByText('Deploy'));
+    fireEvent.click(screen.getByText('Register'));
 
-    await waitFor(() => expect(screen.getByText(/Failed to deploy agent:.*role not found/)).toBeDefined());
+    await waitFor(() => expect(screen.getByText(/Could not register agent:.*role not found/)).toBeDefined());
   });
 
   it('archives an agent after confirmation', async () => {
@@ -274,13 +275,13 @@ describe('AgentsDashboard', () => {
     const pending = mockRpcPending(AgentService, 'CreateAgent');
 
     renderPage();
-    await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
-    fireEvent.click(screen.getByText('Deploy agent'));
+    await waitFor(() => expect(screen.getByText('No agents registered yet.')).toBeDefined());
+    fireEvent.click(screen.getByText('Register agent'));
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'role-1' } });
-    fireEvent.click(screen.getByText('Deploy'));
+    fireEvent.click(screen.getByText('Register'));
 
-    await waitFor(() => expect(screen.getByText('Deploying…')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Registering…')).toBeInTheDocument());
     pending.resolve({ agent: { id: 'agent-2', name: 'New Agent', agentRoleId: 'role-1' } });
   });
 
@@ -289,8 +290,8 @@ describe('AgentsDashboard', () => {
     mockRpcPending(AgentService, 'ListAgentRoles');
 
     renderPage();
-    await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
-    fireEvent.click(screen.getByText('Deploy agent'));
+    await waitFor(() => expect(screen.getByText('No agents registered yet.')).toBeDefined());
+    fireEvent.click(screen.getByText('Register agent'));
 
     expect(screen.getByText('Select a role…')).toBeInTheDocument();
   });
@@ -299,8 +300,8 @@ describe('AgentsDashboard', () => {
     withListAgents({ agents: [] });
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('Deploy agent')).toBeDefined());
-    fireEvent.click(screen.getByText('Deploy agent'));
+    await waitFor(() => expect(screen.getByText('Register agent')).toBeDefined());
+    fireEvent.click(screen.getByText('Register agent'));
     expect(screen.getByPlaceholderText('Agent name')).toBeDefined();
 
     fireEvent.click(screen.getByText('Cancel'));
@@ -432,8 +433,8 @@ describe('AgentsDashboard', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('Deploy agent')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Deploy agent'));
+    await waitFor(() => expect(screen.getByText('Register agent')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Register agent'));
 
     await waitFor(() => expect(screen.getByRole('option', { name: 'Role 120' })).toBeInTheDocument());
     // The first page must still be there — paging should append, not replace.
@@ -583,7 +584,7 @@ describe('AgentsDashboard', () => {
     renderPage();
 
     expect(await screen.findByText(/unavailable/)).toBeInTheDocument();
-    expect(screen.getByText('No agent instances deployed yet.')).toBeInTheDocument();
+    expect(screen.getByText('No agents registered yet.')).toBeInTheDocument();
   });
 
   it('retries loading agent activity', async () => {

@@ -248,7 +248,7 @@ const server = http.createServer(async (req, res) => {
   }
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Connect-Protocol-Version, X-Request-Id");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Connect-Protocol-Version, X-Request-Id, Authorization");
   res.setHeader("Access-Control-Expose-Headers", "X-Request-Id");
 
   // M11-T05/T08. Ahead of everything else, and unauthenticated: a probe runs

@@ -80,6 +80,9 @@ the underlying task to inspect its context and use the existing actions.
 
 ### Integrating an agent
 
+[**Register and connect a worker**](docs/agent-connection.md) — guided identity,
+scoped configuration and exact-token verification.
+
 [**Authenticating an agent**](docs/agent-integration.md) — how an autonomous
 worker gets a token, what the eleven scopes grant, what no token can do, and how
 to rotate without downtime. Start here if you are wiring a worker to Tasker

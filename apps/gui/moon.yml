@@ -146,11 +146,32 @@ tasks:
       cache: false
       runInCI: true
 
+  # Configuration must be rejected before Vite embeds an invalid credential in JS.
+  api-destination-config:
+    deps:
+      - 'shared-contract:install-deps'
+    script: 'bun test --timeout=90000 scripts/api-destination.test.mjs'
+    inputs:
+      - 'scripts/api-destination.test.mjs'
+      - 'vite.config.ts'
+      - 'src/lib/apiDestination.ts'
+      - 'package.json'
+      - '/bun.lock'
+
   build:
     deps:
       - 'shared-contract:install-deps'
+      - api-destination-config
     command: 'bun run build'
     inputs:
+      # Vite's deployment settings must invalidate a previously cached dist.
+      - '$VITE_BACKEND_URL'
+      - '$NODE_ENV'
+      - '$GIT_SHA'
+      - 'file://.env?optional'
+      - 'file://.env.local?optional'
+      - 'file://.env.production?optional'
+      - 'file://.env.production.local?optional'
       - 'src/**/*'
       - 'index.html'
       - 'vite.config.*'

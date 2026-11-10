@@ -1,8 +1,8 @@
 ---
-active_milestone: M55
-active_task: null
+active_milestone: M57
+active_task: M57-T01
 last_updated: 2026-11-10
-last_commit: e195851
+last_commit: fd378da
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,20 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M56 complete locally:4/4 tasks,4/4 exit criteria.** Registration, scoped one-time configuration and exact bearer proof pass all36 gates (GUI1622/95.13% branches; backend2302/zero failures),128 focused cases, full305 baseline/final39 rendered matrices and real mobile development/production CLI/MCP journeys. CODE-v8/ARCH-v3 approve. Reproduced focus, pre-emission validation and cached-destination defects are fixed with restored behavioral faults; public connection guidance is linked. Draft PR #9 still requires actual final-head CI/main publication. M57-T01 is next eligible, with base reconciliation after M56 merge.379 done/17 pending overall; original user WIP/services remain preserved.
+
+**2026-11-10 — M56-T04 in progress.** Permanent copied-configuration MCP first read/note and optional real CLI proof, public guidance, owner-aware revoke focus and pre-emission build validation are implemented.128 affected cases, CLI/focus/build faults, real mobile development/production worker journeys, full305 baseline and final39 previews pass. CODE-v8/ARCH-v3 approve after an observed cached-endpoint bug is fixed/proved for environment values and Vite files; default build restored. Full36 runs before closure; final-head CI/main publication remain.18 tasks remain.
+
+**2026-11-10 — M56-T03 verified:3/4 tasks.** One-time scoped configuration, trusted endpoint defaults and exact bearer verification pass all35 checks (GUI1620/95.14% branches; backend2302/zero failures). CODE-v6/UX-v3 approve;126 affected cases/eight restored faults,39 previews/156 WCAG/78 mobile scans, real development/built-production browser journeys, privacy assertion/timeout/lost-response proof and19 CLI/MCP checks pass. An observed older schedule-expiry date fixture is corrected relative to its actual key; no assertion is relaxed. T04 next commits permanent worker/MCP activity proof and public docs, then requires final-head CI/main publication.378 done/18 pending overall; PR #9 remains draft.
+
+**2026-11-10 — M56-T03 in progress.** CODE-v6/UX-v3 approve.126 affected cases, eight source faults,39 previews/156 WCAG/78 mobile checks, real dev and built-production connection journeys, privacy assertion/timeout/lost-response faults and19 real CLI/MCP checks pass. Full2 passes GUI1620/95.14% branches, then catches an older schedule-expiry fixture whose fixed date has gone stale; its clock now follows the actual key, and all26 affected cases pass. Full3 runs; no gate or assertion is relaxed. T04 still owns permanent CLI/MCP coverage and public docs.19 tasks remain; PR #9 stays draft.
+
+**2026-11-10 — M56-T02 verified:2/4 tasks.** Truthful registration, role guidance, scoped drafts/callbacks, current source refresh and one reachable connection section pass all35 checks (GUI1573/95.14% branches; backend2302/zero failures).98 affected cases,12 restored faults,19 rendered previews and the actual375/1280 keyboard/theme journey pass; CODE-v2/UX-v2 approve. Full1 has one initial-read test timeout whose unchanged file passes; full2 passes GUI but catches ARCH-v2 bare-URL formatting, corrected in all-green full3. T03 prepares exact-credential configuration/lifetime work in an isolated checkout and must reconcile this closure before publication.377 done/19 pending overall; PR #9 remains draft.
+
+**2026-11-10 — M56-T02 in progress.** Registration/role/shared-connection changes pass98 focused cases, all12 restored faults,19 previews (76 WCAG/38 mobile checks) and the actual keyboard/theme/mobile browser journey. CODE-v2/UX-v2 approve; visible role labels and neutral static actor names are applied. Full1 passes1572/1573 GUI cases, with one existing artifact-picker initial-load timeout; its unchanged14-case file passes immediately. Full2 is running; T02 is not complete. ARCH-v2 approves the future T03 deployment endpoint amendment.20 tasks remain; M55 is published81d2ab6 and all main/integration checks pass.
+
+**2026-11-10 — M56-T01 verified:1/4 tasks.** Accepted ADR0049/UX/TC001–009 and ARCH-v1/UX-v1 define truthful registration, scoped one-time credentials and exact GetIdentity bearer proof, with one connection section outside virtualized rows and trusted API configuration. All35 fresh-worktree gates pass (GUI1551/95.14% branches; backend2302/zero failures). No M56 runtime feature exists yet. T02 next builds registration/role/next-step flow under observed regressions.376 done/20 pending overall. M55 is published81d2ab6; final PR CI, both post-merge integration jobs and all eight main jobs pass.
 
 **2026-11-10 — M55 complete locally:5/5 tasks,4/4 exit criteria.** T05 passes all35 checks (GUI1551/95.14% branches; backend2302/zero failures), both SQL dialects, actual HTTP denials/identity, seven browser journeys/two native observer failures, strict E2E types and restored stream/authority faults. CODE-v10 approves. Full268-story matrices and all eight jobs pass on unchanged-preview checkpoint7f559fa. Public Attention guide is linked. Draft PR #8 still needs actual final-head CI/main publication. M56-T01 is next eligible after publication; no registration/connection work is complete.375 done/21 pending overall. Original worktrees/services remain preserved.
 
@@ -1971,11 +1985,11 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
-| M56 | Agent Connection | todo | M54 | 4 | 0 |
+| M56 | Agent Connection | done | M54 | 4 | 4 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 375 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 379 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

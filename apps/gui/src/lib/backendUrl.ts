@@ -1,6 +1,3 @@
-// Single source of truth for the backend's base URL, imported by
-// connectTransport.ts, authSession.ts, and errorReporter.ts - kept in its
-// own module (rather than living in connectTransport.ts) so errorReporter.ts
-// can import it without creating a circular dependency
-// (connectTransport -> errorReporter -> connectTransport).
-export const BACKEND_URL = "http://localhost:8080";
+import { resolveBackendUrl } from './apiDestination';
+
+export const BACKEND_URL = resolveBackendUrl(import.meta.env.VITE_BACKEND_URL, import.meta.env.DEV, window.location.origin);

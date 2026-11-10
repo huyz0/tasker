@@ -1,13 +1,13 @@
 ---
 id: M56
 title: Agent Connection
-status: todo
+status: done
 goal: A person can register an agent, issue a least-privilege token, configure an external worker and verify that credential through an actual authenticated API request.
 depends_on: [M54]
 surfaces: [backend, gui, contract, cli, specs]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+exit_criteria_met: true
+started_at: 2026-11-10
+completed_at: 2026-11-10
 ---
 
 # M56 — Agent Connection
@@ -22,10 +22,10 @@ Identity registration currently looks like deployment and leaves the first succe
 
 ## 3. Exit Criteria
 
-- [ ] Registration and external runtime responsibilities are named accurately throughout the UI.
-- [ ] Scoped configuration can be copied without browser persistence of the secret.
-- [ ] Verified-at reflects a real request using that exact agent credential and its authorized identity.
-- [ ] Denied/revoked/offline states and full first-connection browser/MCP journeys pass.
+- [x] Registration and external runtime responsibilities are named accurately throughout the UI.
+- [x] Scoped configuration can be copied without browser persistence of the secret.
+- [x] Verified-at reflects a real request using that exact agent credential and its authorized identity.
+- [x] Denied/revoked/offline states and full first-connection browser/MCP journeys pass.
 
 ## 4. Scope
 
@@ -35,19 +35,19 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
 
 ## 5. Task Breakdown
 
-- [ ] **M56-T01** — Design registration-to-verification states and one-time secret handling.
+- [x] **M56-T01** — Design registration-to-verification states and one-time secret handling.
   - **Files**: .milestones/MILESTONE-56-agent-connection/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0056-agent-connection/.
   - **Verify**: Specify register, token issue, configuration and verified-at states; verification means one actual token-authenticated call, not runtime liveness; define loss/reissue/revocation and no-token/no-role/denied/error states.
 
-- [ ] **M56-T02** — Rename identity-only deployment actions and guide role/agent registration.
+- [x] **M56-T02** — Rename identity-only deployment actions and guide role/agent registration.
   - **Files**: apps/gui/src/features/Agents/; apps/gui/src/features/Agents/; apps/gui/src/components/; docs/.
   - **Verify**: Register accurately describes creation; role selection and permissions are clear; empty list leads to first registration; cancelling/returning preserves meaningful non-secret context; responsive keyboard stories pass.
 
-- [ ] **M56-T03** — Generate scoped external-worker configuration and verify the exact newly issued credential.
+- [x] **M56-T03** — Generate scoped external-worker configuration and verify the exact newly issued credential.
   - **Files**: apps/gui/src/features/Agents/; apps/backend/src/modules/agents/; apps/backend/src/lib/auth.ts; docs/mcp.md.
   - **Verify**: Scopes are explicit and least privilege; JSON/examples are correctly escaped; secret is shown once and copied explicitly; never stored in URL/localStorage/Zustand/logs; success requires an API request authenticated by that token and displays its real identity/org/scopes/time.
 
-- [ ] **M56-T04** — Verify registration, token failure/revocation and first MCP activity journeys.
+- [x] **M56-T04** — Verify registration, token failure/revocation and first MCP activity journeys.
   - **Files**: apps/gui/tests/e2e/; apps/backend/src/test/wire/; docs/agent-integration.md; .milestones/MILESTONE-56-agent-connection/reviews/.
   - **Verify**: A real new token connects via CLI/MCP; invalid/revoked/wrong-origin credentials fail accurately; admin session success never marks token verified; inspection finds no secret persistence; full security/browser/gates pass.
 

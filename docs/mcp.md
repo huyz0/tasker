@@ -10,6 +10,10 @@ You need an **agent token** — see [Authenticating an agent](agent-integration.
 Give it the scopes the agent's job needs; `tasks:read tasks:write comments:write`
 covers the work loop, plus `memory:read` / `memory:write` for shared memory.
 
+The GUI can generate scoped stdio configuration and verify its exact token; see
+[Register an agent and connect a worker](agent-connection.md). Verification tests
+API authentication, while the client process runs in your own environment.
+
 ## Over HTTP (preferred)
 
 The endpoint is `POST <backend>/mcp`, streamable HTTP in JSON-response mode,
