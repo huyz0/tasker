@@ -56,7 +56,10 @@ Given clipboard failure, then show actionable retry/manual token selection and
 never claim successful copy. No copy/download happens automatically. Given a
 trusted VITE_BACKEND_URL, then normal/verification/generated URLs agree and
 preserve an API path prefix; malformed or credential-bearing configuration fails
-clearly without leaking its value. The existing localhost default still works.
+clearly without leaking its value. The development localhost default still works. Production defaults to the serving
+HTTP(S) document origin, including custom ports; production without a usable origin
+fails clearly. A built production GUI must use that origin rather than the
+viewer's localhost, and explicit overrides work in both modes.
 
 ## TC-006 — Exact credential verification (T03/T04, exit3)
 

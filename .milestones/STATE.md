@@ -2,7 +2,7 @@
 active_milestone: M56
 active_task: M56-T03
 last_updated: 2026-11-10
-last_commit: 2fb704e
+last_commit: 3b22264
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M56-T03 in progress.** ADR0049 reflects ARCH-v2's approved endpoint policy.24 helper cases and13 screen cases pass after observed reds; two further focus/source-freshness regressions are observed red before correction. T02 closes as3b22264 after all35 source/closure gates; this branch is reconciled onto that closure. Types, previews, current source review, browser and full gates remain pending. Frontend/security plus TDD apply.19 tasks remain; no credential setup completion or main publication is claimed.
 
 **2026-11-10 — M56-T02 verified:2/4 tasks.** Truthful registration, role guidance, scoped drafts/callbacks, current source refresh and one reachable connection section pass all35 checks (GUI1573/95.14% branches; backend2302/zero failures).98 affected cases,12 restored faults,19 rendered previews and the actual375/1280 keyboard/theme journey pass; CODE-v2/UX-v2 approve. Full1 has one initial-read test timeout whose unchanged file passes; full2 passes GUI but catches ARCH-v2 bare-URL formatting, corrected in all-green full3. T03 prepares exact-credential configuration/lifetime work in an isolated checkout and must reconcile this closure before publication.377 done/19 pending overall; PR #9 remains draft.
 

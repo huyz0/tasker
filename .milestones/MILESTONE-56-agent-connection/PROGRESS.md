@@ -152,3 +152,21 @@ observed exact-token/configuration/lifetime regressions in an isolated checkout
 based on2fb704e, so this source remains stable under its full checks. Reconcile
 T03 onto this closure before final PR #9 publication. Registration is complete
 locally; no new M56 merge/main or credential-setup completion is implied.
+
+## M56-T03 — Scoped configuration and exact credential verification
+
+- **Status**: in-progress
+- **Date**: 2026-11-10
+- **Changed**: Implement one-time scoped token/configuration handling and a cookie-free identity probe using the exact issued credential.
+- **Verified**: Accepted ADR0049/UX/TC003–007 and ARCH-v2 endpoint amendment govern this task. T02 full gate is independently rerunning in its preserved source checkout; T02 is not claimed complete here.
+- **Notes**: Frontend/security standards plus TDD reselected. This isolated worktree allows the next task's tests/implementation without changing the source under T02's full run. No new dependency, API, permission or migration. Development defaults to localhost8080, production to the document origin, trusted override preserves prefixes. Mutations retain metadata only; secret lifetime remains local and exact-token verification omits cookies and rejects redirects.
+- **Next**: Observe endpoint/configuration/credential transport and issuance lifetime regressions before implementation, then rendered/browser/source/full gates. Reconcile this branch onto T02 closure before publication.
+
+The absent credential helper is observed red;24 native HTTP/configuration cases
+then pass. Thirteen actual issuance/one-time/identity/lifetime screen regressions
+are observed red before implementation and now pass. Two further observed reds
+identify missing useful reveal focus and stale recorded last-use after a verified
+request; those corrections and complete types/previews/review/full gates remain
+pending. The first test-authoring command used the wrong working directory and
+wrote no files; it is corrected before accepting the recorded source/test proof.
+No actual test credential is minted here; all fixture tokens are synthetic.

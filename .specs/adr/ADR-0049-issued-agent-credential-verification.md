@@ -44,9 +44,11 @@ GetIdentity request to the application's configured API, and show its successful
 identity and completion time only within that credential's current UI lifetime.
 
 The API destination comes from trusted deployment configuration, never an
-editable token-probe URL. Support optional VITE_BACKEND_URL with the existing
-localhost:8080 default, normalizing an absolute HTTP(S) URL and rejecting embedded
-credentials/query/fragment. The same configured base feeds ordinary transport,
+editable token-probe URL. Support optional VITE_BACKEND_URL, with localhost:8080 in development and the
+current document HTTP(S) origin in production. Normalize an absolute HTTP(S) URL
+and reject embedded credentials/query/fragment. Production without a usable
+HTTP(S) origin fails clearly; it never falls back to the viewer's localhost.
+Reverse proxies requiring an API path prefix set the trusted override explicitly. The same configured base feeds ordinary transport,
 credential verification and copied external configuration. An exported worker
 configuration must use an absolute endpoint and preserve any deployment path
 prefix. Configuration is intentionally a build-time deployment setting.
