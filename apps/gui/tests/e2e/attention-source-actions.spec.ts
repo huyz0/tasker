@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { eventStreamGate, observeOrgEvents } from './attention-stream-gate';
 
 const backend = process.env.TASKER_E2E_BACKEND_URL;
 test.beforeEach(async ({ context }) => {
@@ -99,4 +100,33 @@ test('separate-client questions reconcile over the configured broker and after a
     await expect(attention.getByText('Question committed during the network gap', { exact: true })).toBeVisible({ timeout: 5000 });
     expect(Date.now() - gapStarted).toBeLessThan(14_000);
   } finally { await context.setOffline(false); }
+});
+
+test('a question published during an actual severed event stream is reconciled on reconnect before polling', async ({ page, context }) => {
+  test.skip(process.env.TASKER_ATTENTION_LIVE_EVENTS !== '1', 'Requires the explicitly configured integration broker.');
+  const f = await fixture(page, 0), base = backend || 'http://localhost:8080';
+  const gate = await eventStreamGate(base);
+  let observer: Awaited<ReturnType<typeof observeOrgEvents>> | undefined;
+  try {
+    const login = await fetch(`${base}/api/auth/test/inject?userId=dev-user`);
+    const cookie = login.headers.get('set-cookie')?.split(';')[0]; expect(!!cookie).toBe(true);
+    observer = await observeOrgEvents(base, cookie!, f.orgId);
+    await context.route('http://localhost:8080/**', async route => {
+      const url = new URL(route.request().url()); await route.continue({ url: new URL(url.pathname + url.search, gate.url).href });
+    });
+    const openedAt = Date.now(); await page.goto(`/attention?org=${f.orgId}&kind=question`);
+    const attention = page.getByRole('region', { name: 'Questions', exact: true });
+    await expect(attention.getByText('0 loaded of 0')).toBeVisible();
+    await expect(page.getByTestId('live-status').first()).toHaveAttribute('data-status', 'live');
+    gate.cut(); await expect(page.getByTestId('live-status').first()).not.toHaveAttribute('data-status', 'live');
+    const response = await fetch(`${base}/tasker.health.v1.TaskService/RequestInput`, { method: 'POST', headers: { cookie: cookie!, 'content-type': 'application/json', 'connect-protocol-version': '1' }, body: JSON.stringify({ taskId: f.tasks[0]!.id, question: 'Published while the browser stream was cut', options: [] }) });
+    expect(response.status).toBe(200);
+    // The observer shares only this newly-owned organization. There are no
+    // other input requests: receipt proves publication before gate release.
+    await observer.waitFor('domain.task.input_requested');
+    await expect(attention.getByText('0 loaded of 0')).toBeVisible();
+    gate.release();
+    await expect(attention.getByText('Published while the browser stream was cut', { exact: true })).toBeVisible({ timeout: 5000 });
+    expect(Date.now() - openedAt).toBeLessThan(14_000);
+  } finally { gate.release(); try { await observer?.close(); } finally { await gate.close(); } }
 });

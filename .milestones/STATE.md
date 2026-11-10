@@ -1,8 +1,8 @@
 ---
 active_milestone: M55
-active_task: M55-T05
+active_task: null
 last_updated: 2026-11-10
-last_commit: 7f559fa
+last_commit: e195851
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M55 complete locally:5/5 tasks,4/4 exit criteria.** T05 passes all35 checks (GUI1551/95.14% branches; backend2302/zero failures), both SQL dialects, actual HTTP denials/identity, seven browser journeys/two native observer failures, strict E2E types and restored stream/authority faults. CODE-v10 approves. Full268-story matrices and all eight jobs pass on unchanged-preview checkpoint7f559fa. Public Attention guide is linked. Draft PR #8 still needs actual final-head CI/main publication. M56-T01 is next eligible after publication; no registration/connection work is complete.375 done/21 pending overall. Original worktrees/services remain preserved.
 
 **2026-11-10 — M55-T04 verified:4/5 tasks.** Existing contextual settlement, native event roots and combined assignment exact-pair payload pass all35 checks (GUI1551/95.14% branches; backend2302/zero failures),228 affected cases, nine restored faults and three real browser journeys. CODE-v8/UX-v5 approve. Newly populated comment preview exposes/fixes agent timestamp contrast; initial268 matrices fail only that, rebuilt affected11 pass44/22 scans. Final-head full preview CI still gates publication. T05 next proves actual stream-gap/all-source supervision and public docs.374 done/22 pending overall; PR #8 remains draft. Original services and memory-only credentials are preserved.
 
@@ -1968,12 +1970,12 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
-| M55 | Attention Center | in-progress | M48, M53, M54 | 5 | 4 |
+| M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 374 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 375 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

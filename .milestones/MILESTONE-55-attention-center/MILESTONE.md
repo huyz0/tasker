@@ -1,13 +1,13 @@
 ---
 id: M55
 title: Attention Center
-status: in-progress
+status: done
 goal: A person can find and resolve current questions, approvals, reviews and stalled claims from one scoped screen without losing underlying source truth.
 depends_on: [M48, M53, M54]
 surfaces: [backend, gui, contract, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-09
-completed_at: null
+completed_at: 2026-11-10
 ---
 
 # M55 — Attention Center
@@ -22,10 +22,10 @@ Existing intervention queues are scattered; correct scope and complete pending l
 
 ## 3. Exit Criteria
 
-- [ ] A scoped screen exposes all current actionable sources through bounded independent pagination.
-- [ ] Every row states why action is needed and routes or acts using its actual scope.
-- [ ] Existing source actions govern resolution, permissions and stale decisions.
-- [ ] No second inbox database or notification state is introduced; full authorization/browser journeys pass.
+- [x] A scoped screen exposes all current actionable sources through bounded independent pagination.
+- [x] Every row states why action is needed and routes or acts using its actual scope.
+- [x] Existing source actions govern resolution, permissions and stale decisions.
+- [x] No second inbox database or notification state is introduced; full authorization/browser journeys pass.
 
 ## 4. Scope
 
@@ -51,7 +51,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/gui/src/features/Attention/; apps/gui/src/lib/eventQueryKeys.ts; apps/backend/src/modules/attention/.
   - **Verify**: Answer/decide/review/unassign uses existing server rules; successful actions remove current item and update original source; stale decisions and revoked permissions recover clearly; reconnect invalidates current truth; no competing state machine.
 
-- [ ] **M55-T05** — Verify supervision journeys, pagination and permissions and document the new entry point.
+- [x] **M55-T05** — Verify supervision journeys, pagination and permissions and document the new entry point.
   - **Files**: apps/gui/tests/e2e/; apps/backend/src/test/wire/; docs/; .milestones/MILESTONE-55-attention-center/reviews/.
   - **Verify**: Resolve every supported source across projects with >50 fixtures, live updates and reconnect; cross-tenant denials, full suites, a11y/overflow stories, standalone and all gates pass.
 

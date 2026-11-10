@@ -38,3 +38,31 @@ the other267 previews pass. After correction and rebuild, all11 affected preview
 pass44 WCAG/22 mobile scans. The full final-head matrix remains a required CI gate
 before main publication. Existing T03 discovery captures above predate configuring
 the owned M55 broker; no original broker/database was modified.
+
+## Final supervision (T05)
+
+Seven actual browser journeys and two native observer failure cases pass on the
+owned runtime. Coverage includes the source task/Back flow and51-question
+paging, known denial/offline/per-group recovery, preserved summary writing,
+reviewer removal, separate-client live updates, an actually severed HTTP stream
+and all four groups beyond50 with existing contextual actions. The latter
+passes40.5s and also checks task archive/restore: pending source IDs survive;
+recorded restore activity clears silence while the assignment remains.
+
+A direct event observer receives the owned organization's input-request event
+while the browser proxy is disconnected/gated. Reconnect must display it before
+the15s source poll. Removing reconnect invalidation produces the expected
+browser failure. A malformed observer startup is observed red, then malformed
+and no-ready cases verify cleanup. Only an explicitly owned manifest enables
+the large aging fixture; ordinary discovery/action tests create new resources.
+
+SQLite19/7417 and MySQL18/7901 assertions pass. Real HTTP verifies anonymous and
+nonmember denials without metadata, caller-bound reviews and unavailable
+projects. Removing task-read policy makes the outsider HTTP assertion fail,
+then is restored. A separate native paging proof reaches125 fixture sources
+per kind across both projects with1048 assertions. No agent credential is minted.
+
+Checkpoint7f559fa CI42769409239 passes all eight jobs, including the full268-story
+1072 WCAG/536 mobile matrix and GUI E2E. T05 changes tests/docs only; its actual
+final-head CI remains required before main publication. All35 local source
+gates pass, retaining existing coverage floors and standalone verification.

@@ -106,6 +106,7 @@ in [the CLI reference](cli-reference.md).
 | You want to | Read |
 | --- | --- |
 | Run it for real, or upgrade it | [Standalone guide](standalone.md) |
+| Find questions, approvals and quiet work | [Attention guide](attention.md) |
 | Connect an autonomous worker | [Agent integration](agent-integration.md) |
 | Look up a command | [CLI reference](cli-reference.md) |
 | Make invitation emails actually send | [Email](email.md) |

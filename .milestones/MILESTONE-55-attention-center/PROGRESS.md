@@ -301,3 +301,70 @@ final-head preview CI still gates milestone publication. No gate is relaxed.
 Four of five M55 tasks are complete;374 done/22 pending overall. T05 next verifies
 all-source supervision and actual stream-gap recovery, updates public entry-point
 docs and closes the milestone with applicable final-head CI before main merge.
+
+## M55-T05 — Supervision, scale, permissions and entry-point documentation
+
+- **Status**: done
+- **Date**: 2026-11-10
+- **Changed**: Verify current source supervision, complete paging, permissions and actual missed-event recovery; document the public Attention entry point.
+- **Verified**: T04 committed ase195851 after all35 source/closure gates,1551 GUI cases/95.14% branches,2302 backend cases and approved rendered/source amendments. Four of five tasks are complete;22 tasks remain.
+- **Notes**: Testing/security standards plus TDD selected. Existing ADR0048/UX/TC001–012 apply; no product/contract/dependency changes planned. Reuse owned loopback backend8096/broker4224, preserving original services. A native read-only probe already reaches125 fixture sources in every kind across two projects, with1048 scope/paging assertions. Strong stream-gap proof must actually close the browser connection and confirm the missed event was published before reconnect, rather than relying on offline emulation. Native session credentials remain outside page execution/traces.
+- **Next**: Add owned stream-gate/observer test and all-source browser supervision, then restore controlled recovery faults, current docs, independent review, required local gates and actual final-head CI before main merge.
+
+Actual stream-cut proof passes4.5s: an owned transparent proxy destroys the
+browser event response, a separate direct observer confirms publication in
+the newly-owned org while reconnects are gated, and release reconciles the
+missed question before15s polling. Removing reconnect active invalidation
+produces the expected browser assertion failure and is restored. The first
+proxy setup used a different loopback hostname, losing same-site authentication;
+localhost corrects that harness failure. All-four source paging/current controls
+pass31.9s against the owned125-per-kind fixture. The first harness called an RPC
+before account verification; awaiting the Attention heading corrects that race.
+
+CODE-v9 identifies observer/proxy cleanup on setup/read failure and two guide
+wording inaccuracies. A malformed stream reproduces the unhandled read failure
+red. Outer allocated-resource cleanup, nested teardown and startup abort/reader
+settlement now pass the native failure case and all four source/live journeys
+(5 cases,23.5s). Add a no-ready timeout case, preserve exact oldest-first paging
+wording and distinguish initial unknown counts from retained stale refresh data.
+Archive/restore supervision will preserve pending sources; its real recorded
+activity correctly clears silence eligibility without deleting the hold.
+
+Final actual supervision passes40.5s, including all four source kinds beyond50,
+current contextual answer/approval/reviewer/unassign actions, unchanged task
+status except the approved move, and task archive/restore with original pending
+IDs. A repeat first exposed an incorrect harness assumption that every question
+task is still working; questions remain independent on terminal tasks. Compare
+against actual prior status. The other eight final-file cases pass: two native
+observer startup failures, two navigation/scope/denial journeys and four existing
+source/live journeys. No product fix is inferred from either harness correction.
+
+Actual HTTP boundary assertions pass for all four kinds without authentication
+and for a real user outside the organization, with no items/count metadata.
+Caller-supplied review user ID cannot change identity; missing project returns404.
+SQLite19/7417 assertions and MySQL18/7901 assertions pass. Removing task-read
+authorization causes the real outsider HTTP assertion to fail403→200, then is
+restored. CODE-v10 approves cleanup/docs/source; explicit strict E2E TypeScript
+check passes. The original125-per-kind native paging proof passes1048 assertions
+across all/selected projects. No agent credential is minted.
+
+Checkpoint7f559fa passes all eight actual CI jobs, including the full268-story
+rendered accessibility/mobile matrices and GUI E2E. Those preview sources are
+unchanged in T05; applicable actual final-head CI still gates main publication.
+Current full35 is running. No thresholds, test discovery or CI gates are relaxed.
+
+T05 final source verification passes all35 checks (23 cached,2m52s), including
+GUI1551/95.14% branches and backend2302/zero failures/95.85% functions/96.80%
+lines. The first run stops only on an extra blank line in STATE; corrected
+without changing a gate, then full2 passes. Both SQL dialects, actual HTTP
+denials, caller identity, seven browser journeys/two native observer failures,
+strict E2E types, restored stream/authority faults and CODE-v10 approval pass.
+The268-story full matrices pass in checkpoint7f559fa CI with all eight jobs;
+preview/product source is unchanged by T05. Public Attention guide and entry
+links reflect actual oldest-first pages, source states and current authority.
+
+M55 is complete locally:5/5 tasks and4/4 exit criteria;375 done/21 pending
+overall. Applicable actual final-head CI still gates PR #8 readiness/main merge.
+M56-T01 is next eligible after publication: guided registration/connection
+design, not a hosted runner. Preserve original worktrees/services and all prior
+reviews. No additional product or dependency change is implied complete.

@@ -317,6 +317,22 @@ describe('current bounded attention source reads (M55)', () => {
         headers: { cookie: cookie!, 'content-type': 'application/json', 'connect-protocol-version': '1' },
         body: JSON.stringify({ orgId: f.orgId, kind: 'question', page: { limit: -1 } }) });
       expect(invalid.status).toBe(400);
+      // Exercise the actual authentication/transport boundary, not only the handler.
+      const endpoint = `${base}/tasker.health.v1.AttentionService/ListAttention`;
+      const outsider = await fetch(`${base}/api/auth/test/inject?userId=${encodeURIComponent(f.otherUserId)}`);
+      const outsiderCookie = outsider.headers.get('set-cookie')?.split(';')[0]; expect(!!outsiderCookie).toBe(true);
+      for (const kind of kinds) {
+        for (const headers of [undefined, { cookie: outsiderCookie! }]) {
+          const denied = await fetch(endpoint, { method: 'POST', headers: { ...headers, 'content-type': 'application/json', 'connect-protocol-version': '1' }, body: JSON.stringify({ orgId: f.orgId, kind }) });
+          expect(denied.status).toBe(headers ? 403 : 401);
+          const error = await denied.json(); expect(error).not.toHaveProperty('items'); expect(error).not.toHaveProperty('page');
+        }
+      }
+      const reviews = await fetch(endpoint, { method: 'POST', headers: { cookie: cookie!, 'content-type': 'application/json', 'connect-protocol-version': '1' }, body: JSON.stringify({ orgId: f.orgId, kind: 'review', userId: f.otherUserId }) });
+      expect(reviews.status).toBe(200); const reviewBody = await reviews.json() as { items: { actorId: string }[]; page: { totalCount: number } };
+      expect(reviewBody.page.totalCount).toBe(25); expect(reviewBody.items.every(item => item.actorId === f.userId)).toBe(true);
+      const unavailable = await fetch(endpoint, { method: 'POST', headers: { cookie: cookie!, 'content-type': 'application/json', 'connect-protocol-version': '1' }, body: JSON.stringify({ orgId: f.orgId, kind: 'question', projectId: `missing-${crypto.randomUUID()}` }) });
+      expect(unavailable.status).toBe(404); expect(await unavailable.json()).not.toHaveProperty('items');
     } finally {
       child.kill('SIGTERM');
       const exited = await Promise.race([child.exited.then(() => true), new Promise<false>(resolve => setTimeout(() => resolve(false), 5000))]);

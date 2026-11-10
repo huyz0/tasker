@@ -72,6 +72,12 @@ With no milestone id, both read `active_milestone` from `STATE.md`.
 The roadmap in [`.specs/product/roadmap.md`](.specs/product/roadmap.md) maps
 every remaining capability to the milestone that owns it.
 
+### Supervising current work
+
+[**Attention**](docs/attention.md) brings current questions, move approvals, your
+review responsibilities and quiet agent-held tasks into one scoped screen. Open
+the underlying task to inspect its context and use the existing actions.
+
 ### Integrating an agent
 
 [**Authenticating an agent**](docs/agent-integration.md) — how an autonomous
