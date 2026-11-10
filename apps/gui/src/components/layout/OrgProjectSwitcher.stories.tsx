@@ -1,3 +1,4 @@
+import { expect, userEvent, within } from 'storybook/test';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -46,7 +47,7 @@ export const Default: Story = {
 
 function ScopedSwitcher() { useScopeSync(); return <OrgProjectSwitcher />; }
 
-function ProjectlessMemoryPreview({ outsidePage = false }: { outsidePage?: boolean }) {
+function ProjectlessMemoryPreview({ outsidePage = false, attention = false, selectedProject = false }: { outsidePage?: boolean; attention?: boolean; selectedProject?: boolean }) {
   const [ready, setReady] = useState(false);
   const [client] = useState(() => {
     const cache = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false, refetchOnWindowFocus: false } } });
@@ -56,12 +57,12 @@ function ProjectlessMemoryPreview({ outsidePage = false }: { outsidePage?: boole
   });
   useEffect(() => {
     const { activeOrgId, activeProjectId } = useLayoutStore.getState();
-    useLayoutStore.setState({ activeOrgId: outsidePage ? 'org-owner-outside-page' : 'org-story', activeProjectId: outsidePage ? 'project-owner-outside-page' : '' });
+    useLayoutStore.setState({ activeOrgId: outsidePage ? 'org-owner-outside-page' : 'org-story', activeProjectId: outsidePage ? 'project-owner-outside-page' : selectedProject ? 'project-story' : '' });
     setReady(true);
     return () => useLayoutStore.setState({ activeOrgId, activeProjectId });
-  }, [outsidePage]);
+  }, [outsidePage, selectedProject]);
   return ready ? <QueryClientProvider client={client}>
-    <MemoryRouter initialEntries={[outsidePage ? '/tasks/task-owner?org=org-owner-outside-page&project=project-owner-outside-page' : '/memory/belief-story?org=org-story&scope=organization']}>
+    <MemoryRouter initialEntries={[attention ? `/attention?org=org-story${selectedProject ? '&project=project-story' : ''}` : outsidePage ? '/tasks/task-owner?org=org-owner-outside-page&project=project-owner-outside-page' : '/memory/belief-story?org=org-story&scope=organization']}>
       <ScopedSwitcher />
     </MemoryRouter>
   </QueryClientProvider> : null;
@@ -76,4 +77,21 @@ export const ProjectlessMemory: Story = {
 export const OwnerOutsideLoadedPage: Story = {
   parameters: { router: false },
   render: () => <ProjectlessMemoryPreview outsidePage />,
+};
+
+export const AttentionAllProjects: Story = {
+  parameters: { router: false }, render: () => <ProjectlessMemoryPreview attention />,
+  play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('button', { name: 'Active project' })).resolves.toHaveTextContent('All projects'); },
+};
+export const AttentionSelectedProject: Story = {
+  parameters: { router: false }, render: () => <ProjectlessMemoryPreview attention selectedProject />,
+  play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('button', { name: 'Active project' })).resolves.toHaveTextContent('Release'); },
+};
+export const AttentionChoices: Story = {
+  parameters: { router: false }, render: () => <ProjectlessMemoryPreview attention />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement); await userEvent.click(await canvas.findByRole('button', { name: 'Active project' }));
+    await expect(canvas.findByRole('option', { name: 'All projects' })).resolves.toBeVisible();
+    await expect(canvas.findByRole('option', { name: 'Release' })).resolves.toBeVisible();
+  },
 };

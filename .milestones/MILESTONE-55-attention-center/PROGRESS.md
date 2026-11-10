@@ -108,3 +108,38 @@ this task. The exact staged GUI coverage exception belongs to T03 and must be
 removed there.2/5 M55 tasks complete;372 done/24 pending overall. Draft PR #8
 requires subsequent screen/reconciliation/browser proof and actual final-head CI
 before main publication. Closure checks follow these ledger changes.
+
+## M55-T03 — Scoped attention screen and navigation
+
+- **Status**: in-progress
+- **Date**: 2026-11-10
+- **Changed**: Build the accepted grouped screen, bounded independent paging, intentional All projects switcher policy and actual-scope task/Back navigation.
+- **Verified**: T02 committed/pushed as7976c81 after all35 source and closure checks, SQLite/MySQL/current-process proof and approved amended source review.2/5 M55 tasks are complete;24 tasks remain.
+- **Notes**: Frontend/security standards plus TDD selected. Accepted ADR0048/UX/TC001–012 govern implementation; independent preflight specifically rejects copying Evidence's mounted-owner accepted flag. Use an account+org denial lifetime shared across kinds/project switches, with request-start epochs and explicit post-denial Retry receipts; keep project NotFound local. Preserve existing fonts/type roles/violet/semantic surfaces and native links, and Memory's projectless policy. Every changed component needs current stories. No new mutation forms or source-specific deep-link promise. Read-only current task navigation remains useful.
+- **Next**: Observe absent-screen and project-auto-selection regressions, implement source groups and lifetime-safe queries, remove the staged RPC exception, then controlled races, rendered/mobile/browser proof, independent review and full gates.
+
+Initial screen absence, All projects labeling/selection, protected lazy route /
+Work navigation, shared-denial lifetime and Back focus regressions are observed
+red before their implementation. Native group links, independent20-row pages,
+actual-project task URLs and once-only return intent are now implemented. The
+exact staged RPC exception is removed; GUI reaches170/186 methods with16
+preexisting justified exceptions. Existing fonts/type roles/semantic palette are
+retained. No resolution form or permission is invented.
+
+Focused screen22 cases, existing/extended routing43 and switcher23 pass. Shared
+account+organization epochs quarantine pre-denial sibling results and project
+caches; project NotFound has a separate local epoch. Explicit recovery requires a
+new completed response receipt plus a query update, so canceled cached isSuccess
+cannot authorize. Back waits for current loaded pages, restores a surviving row
+or visible heading once, and keeps background refresh from moving focus. The
+focus/poll test initially waits on a non-DOM counter under a frozen interval;
+this harness-only failure is corrected to observe changing rendered responses,
+then passes. It is not claimed as a product regression.
+
+Fifteen new Attention states plus three switcher states and the updated shell
+preview are authored; real rendered/contrast/overflow/capture proof remains
+pending. Independent source review, deliberate UI faults, full coverage/gates
+and actual backend browser journeys still gate T03. An owned M55 fixture runs on
+8096/5184 without touching earlier worktrees/services; private credentials stay
+outside the repository. This is a recoverable in-progress checkpoint, not task
+completion.24 tasks remain.

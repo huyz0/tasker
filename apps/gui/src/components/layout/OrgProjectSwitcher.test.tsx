@@ -37,7 +37,7 @@ function renderSwitcher(initialEntry = '/tasks') {
     if (visited[visited.length - 1] !== search) visited.push(search);
     return <ScopeSync />;
   }
-  const result = renderScoped(<><Probe /><OrgProjectSwitcher /></>, { paths: ['/tasks'], initialEntry });
+  const result = renderScoped(<><Probe /><OrgProjectSwitcher /></>, { paths: ['/tasks', '/attention'], initialEntry });
   return { ...result, visited };
 }
 
@@ -70,6 +70,22 @@ function withListProjects(response: object | ((body: any) => object)) {
 describe('OrgProjectSwitcher', () => {
   beforeEach(() => {
     useLayoutStore.setState({ activeOrgId: '', activeProjectId: '' });
+  });
+
+  it('preserves deliberate all-project Attention scope and offers an explicit choice', async () => {
+    withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One' }] });
+    withListProjects({ projects: [{ id: 'proj-1', name: 'Project One' }] });
+    const { location } = renderSwitcher('/attention?org=org-1&kind=approval');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Active organization' })).toHaveTextContent('Org One'));
+    expect(screen.getByRole('button', { name: 'Active project' })).toHaveTextContent('All projects');
+    expect(projectId(location.search)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Active project' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Project One' }));
+    await waitFor(() => expect(projectId(location.search)).toBe('proj-1'));
+    fireEvent.click(screen.getByRole('button', { name: 'Active project' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'All projects' }));
+    await waitFor(() => expect(projectId(location.search)).toBeNull());
+    expect(location.search).toContain('kind=approval');
   });
 
   it('auto-selects the first org when none is active', async () => {

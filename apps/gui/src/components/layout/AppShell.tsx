@@ -43,6 +43,7 @@ import { logout } from '../../lib/authSession';
 const NAV_GROUPS = [
   { label: 'Work', items: [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'Attention', path: '/attention', icon: ListChecks },
     { name: 'Tasks', path: '/tasks', icon: CheckSquare },
     { name: 'Handoffs', path: '/handoffs', icon: Handshake },
   ] },

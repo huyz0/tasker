@@ -34,6 +34,7 @@ const ContentSimulator = () => (
 );
 
 export const Desktop: Story = {
+  play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('link', { name: 'Attention', hidden: true })).resolves.toBeInTheDocument(); },
   args: {
     children: <ContentSimulator />,
   },

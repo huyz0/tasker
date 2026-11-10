@@ -171,6 +171,7 @@ describe('App', () => {
   // just the handful the tests above happen to touch already.
   describe('every remaining screen resolves through its own lazy chunk', () => {
     it.each([
+      ['/attention', 'heading', 'Attention'],
       ['/projects', 'heading', 'Projects'],
       ['/agents', 'heading', 'AI Agents'],
       ['/labels', 'heading', 'Labels'],
