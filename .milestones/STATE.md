@@ -1,8 +1,8 @@
 ---
 active_milestone: M55
-active_task: M55-T02
+active_task: M55-T03
 last_updated: 2026-11-10
-last_commit: d1171ea
+last_commit: 6c25e79
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M55-T02 verified:2/5 tasks.** Human-only bounded source projection, additive contracts and actual registration pass all35 checks (backend2302/zero failures/95.85% functions/96.80% lines; GUI1498/95.13% branches). SQLite19/MySQL18 cases, eight faults, old444messages/1261fields and18 old-client decodes pass; CODE-v2 approves after reproduced protobuf page defaults. The exhaustive agent-denial sweep omission is caught/fixed and passes. T03 next builds scoped source groups, projectless switcher policy, persistent authority fencing and canonical task/Back flow; remove the exact staged GUI exception.24 tasks remain; draft PR #8 stays unready until full screen/workflow/final-head proof.
 
 **2026-11-09 — M55-T02 in progress.** T01 committed/pushed as0815b6b after accepted design/review and all35 fresh/closure checks. Draft PR #8 is attached. Bounded reader, compatible contracts and actual routing implemented; SQLite19/MySQL18 and176 affected cases pass, with eight restored behavioral faults. CODE-v1 identifies protobuf zero/default page validation; actual HTTP reproduces it and a fix/cursor-only regression is under verification. Full gates/re-review pending; temporary GUI exception must be removed by T03. API/security standards plus TDD selected; no new inbox, permissions, migration or generic resolution action. SQLite raw aggregates use epoch seconds, MySQL UTC datetime text; preserve existing strict24h semantics.25 tasks remain.
 
@@ -1960,12 +1962,12 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
-| M55 | Attention Center | in-progress | M48, M53, M54 | 5 | 1 |
+| M55 | Attention Center | in-progress | M48, M53, M54 | 5 | 2 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 371 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 372 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

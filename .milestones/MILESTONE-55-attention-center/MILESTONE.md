@@ -39,7 +39,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: .milestones/MILESTONE-55-attention-center/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0055-attention-center/; packages/shared-contract/main.tsp.
   - **Verify**: For each source define ID, reason, age, owner, org/project, next action, permission and resolution rule; distinguish unresolved work from history; no duplicate inbox records or read/unread state.
 
-- [ ] **M55-T02** — Project current authorized source records with complete bounded paging and stable source identity.
+- [x] **M55-T02** — Project current authorized source records with complete bounded paging and stable source identity.
   - **Files**: apps/backend/src/modules/attention/; apps/backend/src/modules/tasks/; packages/shared-contract/; apps/cli/gen/.
   - **Verify**: Use source kind+ID identity and per-source cursors; old/more-than-50 pending rows remain reachable; no capped Dashboard/Reports result reused as a complete queue; same-org permission filtering and current authorization apply.
 

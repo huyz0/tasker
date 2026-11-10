@@ -49,7 +49,7 @@ is authorized by the accepted design. Existing source actions remain contextual.
 
 ## M55-T02 — Bounded current source projection
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Drive source-derived human attention reads through real database authority/eligibility/paging/preview/count regressions before compatible contracts and bounded SQL implementation.
 - **Verified**: T01 committed/pushed as0815b6b with accepted ADR0048/UX/TC001–012 and ARCH-v2/UX-v2; all35 fresh-worktree and closure checks pass. Published base M54 is858e2cf; draft PR #8 is attached.
@@ -97,3 +97,14 @@ a verification-map correction; runtime already denies agents. Full rerun remains
 pending. GUI1498 and contract1122 round trips pass; backend coverage95.85%
 functions/96.80% lines despite the failing completeness case. Main M54's eight
 post-merge CI jobs and both integration jobs are now all confirmed successful.
+
+T02 final verification passes all35 checks (22 cached,2m14s): backend2302/
+59environment-gated skips/zero failures with95.85% functions/96.80% lines,
+GUI1498/95.13% branches, generated round trips, CLI and standalone packaging.
+SQLite19/7387, MySQL18/7901, affected176/1215, exhaustive agent/source34/7404,
+eight restored faults and18 old-client decodes pass. CODE-v2 approves with v1
+retained. No new permission, migration, source mutation or UI is delivered by
+this task. The exact staged GUI coverage exception belongs to T03 and must be
+removed there.2/5 M55 tasks complete;372 done/24 pending overall. Draft PR #8
+requires subsequent screen/reconciliation/browser proof and actual final-head CI
+before main publication. Closure checks follow these ledger changes.
