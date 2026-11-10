@@ -8,7 +8,7 @@ const client = createClient(AttentionService, transport);
 export const ATTENTION_KINDS = ['question', 'approval', 'review', 'stalled_claim'] as const;
 export type AttentionKind = typeof ATTENTION_KINDS[number];
 export interface AttentionScope { accountId: string; orgId: string; projectId: string; }
-export const attentionKey = (scope: AttentionScope, kind: AttentionKind) => ['attention', scope.accountId, scope.orgId, scope.projectId, kind] as const;
+const attentionKey = (scope: AttentionScope, kind: AttentionKind) => ['attention', scope.accountId, scope.orgId, scope.projectId, kind] as const;
 
 export function useAttention(scope: AttentionScope, kind: AttentionKind, active: boolean) {
   const cache = useQueryClient(), access = useAttentionAccess(scope, kind), key = attentionKey(scope, kind);

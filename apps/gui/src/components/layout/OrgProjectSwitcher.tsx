@@ -298,7 +298,7 @@ export function OrgProjectSwitcher() {
       <SearchSelect
         label="Active project"
         value={activeProjectId}
-        valueLabel={!activeProjectId && attentionRoute ? 'All projects' : projectLabel.id === activeProjectId ? projectLabel.name : activeProjectId ? `Project ${activeProjectId}` : ''}
+        valueLabel={activeProjectId ? (projectLabel.id === activeProjectId ? projectLabel.name : `Project ${activeProjectId}`) : attentionRoute ? 'All projects' : ''}
         choices={[...(attentionRoute ? [{ id: '', label: 'All projects' }] : []), ...projects.map((p: any) => ({ id: p.id, label: p.name }))]}
         total={(projectsQuery.data?.total ?? 0) + (attentionRoute ? 1 : 0)}
         isLoading={projectsQuery.isLoading}

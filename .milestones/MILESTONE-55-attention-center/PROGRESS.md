@@ -193,3 +193,19 @@ control exists before its name effect settles. Await the actual Release label;
 no contrast/overflow defect is inferred from this harness timing failure. Add a
 mobile header preview, rebuild successfully and rerun all253 stories. Those
 matrices and final full35 remain pending; T03 is still in-progress.24 tasks remain.
+
+Both final253-story matrices pass:1012 settled WCAG scans and506 mobile-theme
+checks, zero violations/overflow. A final route review reproduces one empty-label
+carryover: choosing All projects then opening organization Memory leaves the
+switcher's empty-id label at All projects. Make cached project names conditional
+on a nonempty active project; Memory retains its prior Select project behavior.
+The new regression is first red, then all76 focused cases pass. Add a matching
+route-transition preview, producing254 final stories. CODE-v6 independently
+approves. This changes no Attention capture appearance or source authority.
+
+Actual checkpoint CI42730680306 finds unused exported attentionKey; make the
+internal helper private, and knip now passes (only a preexisting unused-ignore
+tag hint). Backend/standalone/contract CI jobs pass; this is not a final-head CI
+claim. Current source typecheck passes. Final full35 and the254-story build are
+running; execute the final matrices after GUI coverage to avoid resource races.
+T03 remains in-progress and24 tasks remain.
