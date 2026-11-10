@@ -14,7 +14,7 @@ const meta = {
     docs: { description: { component: 'Synthetic query fixtures render the shell without credentials. The live connection indicator uses the real transport and may show offline when Storybook has no event service.' } },
   },
   tags: ['autodocs'],
-  decorators: [(Story, context) => context.parameters.logoutPreview ? <Story /> : <WorkbenchPreview drawerOpen={context.parameters.drawerOpen === true}><Story /></WorkbenchPreview>],
+  decorators: [(Story, context) => context.parameters.logoutPreview ? <Story /> : <WorkbenchPreview drawerOpen={context.parameters.drawerOpen === true} initialEntry={context.parameters.attentionPreview ? '/attention?org=org-story' : undefined}><Story /></WorkbenchPreview>],
 } satisfies Meta<typeof AppShell>;
 
 export default meta;
@@ -63,4 +63,10 @@ export const SignOutUnavailable: Story = {
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Local summary drafts were discarded');
     useLayoutStore.setState({ sidebarOpen: true });
   },
+};
+
+export const AttentionAllProjects: Story = {
+  args: { children: <div><h1 className="type-page-title">Attention</h1><p className="type-body">All projects in this organization</p></div> },
+  parameters: { attentionPreview: true },
+  play: async ({ canvasElement }) => { await expect(within(canvasElement).findByLabelText('Current project')).resolves.toHaveTextContent('All projects'); },
 };

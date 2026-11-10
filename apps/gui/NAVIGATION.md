@@ -26,7 +26,7 @@ contextual actions there:
   not introduce an Approve review outcome. Its date is task creation because
   review assignment time is not recorded.
 - Stalled claims: inspect the current task/assignment before managing it.
-  More than24h without task activity is a source signal, not proof that a
+  More than 24 hours without task activity is a source signal, not proof that a
   worker process has stopped. No release action is attached to an old list row.
 
 Browser Back returns to the source, scope and loaded extent. After fresh data

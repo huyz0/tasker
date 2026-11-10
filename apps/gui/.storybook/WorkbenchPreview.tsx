@@ -9,10 +9,11 @@ interface WorkbenchPreviewProps {
   children: ReactNode;
   state?: 'empty' | 'loading' | 'error' | 'populated';
   drawerOpen?: boolean;
+  initialEntry?: string;
 }
 
 /** Cache fixtures keep screen previews independent from an authenticated data service. */
-export function WorkbenchPreview({ children, state = 'populated', drawerOpen = false }: WorkbenchPreviewProps) {
+export function WorkbenchPreview({ children, state = 'populated', drawerOpen = false, initialEntry = '/tasks?org=org-story&project=project-story' }: WorkbenchPreviewProps) {
   const [ready, setReady] = useState(false);
   const [client] = useState(() => {
     const q = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false, retryOnMount: false, refetchOnWindowFocus: false } } });
@@ -52,7 +53,7 @@ export function WorkbenchPreview({ children, state = 'populated', drawerOpen = f
   }, [ready, drawerOpen]);
   return ready ? (
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/tasks?org=org-story&project=project-story']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         {children}
       </MemoryRouter>
     </QueryClientProvider>

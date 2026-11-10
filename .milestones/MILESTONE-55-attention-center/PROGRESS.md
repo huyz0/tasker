@@ -177,3 +177,19 @@ task, then its first attempt incorrectly looks for an inert sidebar control in
 the accessibility tree while a dialog is open. Correct that harness assertion;
 Back/extent/viewport proof still awaits the rerun. No product defect is inferred
 from that locator failure. No new credentials are minted by these browser cases.
+
+Final actual browser journeys both pass (19.3s):51 questions created via current
+human RPCs across2 owned projects, complete source paging, keyboard canonical Beta
+task/Back extent/scroll/focus, reload-preserved All projects and both375/1280
+themes; denial/offline/per-group explicit recovery also passes. Screenshot review
+catches transitional sidebar resize frames and mobile No project selected copy.
+An actual header regression is observed red, then All projects labeling is fixed;
+new browser bounds assertions settle the drawer before recapture. Five corrected
+captures replace the transient frames.75 focused feature/shell/switcher cases
+pass. CODE-v5 and rendered UX-v3 approve with prior findings retained.
+
+First252-story matrices fail only the selected-project preview lifecycle: the
+control exists before its name effect settles. Await the actual Release label;
+no contrast/overflow defect is inferred from this harness timing failure. Add a
+mobile header preview, rebuild successfully and rerun all253 stories. Those
+matrices and final full35 remain pending; T03 is still in-progress.24 tasks remain.

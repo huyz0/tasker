@@ -1,4 +1,4 @@
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -85,7 +85,7 @@ export const AttentionAllProjects: Story = {
 };
 export const AttentionSelectedProject: Story = {
   parameters: { router: false }, render: () => <ProjectlessMemoryPreview attention selectedProject />,
-  play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('button', { name: 'Active project' })).resolves.toHaveTextContent('Release'); },
+  play: async ({ canvasElement }) => { const button = await within(canvasElement).findByRole('button', { name: 'Active project' }); await waitFor(() => expect(button).toHaveTextContent('Release')); },
 };
 export const AttentionChoices: Story = {
   parameters: { router: false }, render: () => <ProjectlessMemoryPreview attention />,

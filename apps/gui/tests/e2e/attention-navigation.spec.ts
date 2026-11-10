@@ -66,6 +66,11 @@ test('real Attention paging, All projects and keyboard task/Back flow preserve s
   for (const theme of ['light', 'dark']) for (const width of [375, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(value => { document.documentElement.setAttribute('data-theme', value); window.scrollTo(0, 0); }, theme);
+    const sidebar = page.locator('#app-sidebar');
+    if (width < 768) {
+      await expect.poll(() => sidebar.evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
+      await expect(page.getByLabel('Current project', { exact: true })).toHaveText('All projects');
+    } else await expect.poll(() => sidebar.evaluate(element => element.getBoundingClientRect().left)).toBe(0);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect(page.getByRole('navigation', { name: 'Attention sources' })).toBeVisible();
     await page.screenshot({ path: info.outputPath(`attention-${theme}-${width}.png`) });

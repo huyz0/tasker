@@ -2,7 +2,7 @@
 active_milestone: M55
 active_task: M55-T03
 last_updated: 2026-11-10
-last_commit: 7976c81
+last_commit: 6f32357
 blocked: false
 blocker: null
 ---
@@ -15,7 +15,7 @@ blocker: null
 
 ## Now
 
-**2026-11-10 — M55-T03 in progress.** T02 is committed/pushed as7976c81 with all35 source/closure gates and reviewed both-dialect bounded reads. Drive absent-screen/projectless regressions before native source navigation, scoped query lifetimes and canonical task/Back restoration. Frontend/security standards plus TDD apply. Account+org denial epochs must fence sibling in-flight/project-switch/cache resurrection; project NotFound stays local. Existing typography/palette/tokens remain coherent.The screen is implemented under verification:22 focused cases plus43 routing and23 switcher cases pass; new previews await real rendering. Independent review, faults, coverage/full gates and browser proof remain pending.24 tasks remain; no M55 milestone publication is implied.
+**2026-11-10 — M55-T03 in progress.** T02 is committed/pushed as7976c81 with all35 source/closure gates and reviewed both-dialect bounded reads. Drive absent-screen/projectless regressions before native source navigation, scoped query lifetimes and canonical task/Back restoration. Frontend/security standards plus TDD apply. Account+org denial epochs must fence sibling in-flight/project-switch/cache resurrection; project NotFound stays local. Existing typography/palette/tokens remain coherent.The screen passes30 focused source/race/Back cases and75 feature/shell/switcher cases, nine restored behavioral faults and both real browser journeys (51questions/two projects). Five settled375/1280 captures receive UX-v3/CODE-v5 approval after corrected return lifetime/mobile scope/preview timing. Final253-story matrices and full35 remain pending.24 tasks remain; no M55 milestone publication is implied.
 
 **2026-11-10 — M55-T02 verified:2/5 tasks.** Human-only bounded source projection, additive contracts and actual registration pass all35 checks (backend2302/zero failures/95.85% functions/96.80% lines; GUI1498/95.13% branches). SQLite19/MySQL18 cases, eight faults, old444messages/1261fields and18 old-client decodes pass; CODE-v2 approves after reproduced protobuf page defaults. The exhaustive agent-denial sweep omission is caught/fixed and passes. T03 next builds scoped source groups, projectless switcher policy, persistent authority fencing and canonical task/Back flow; remove the exact staged GUI exception.24 tasks remain; draft PR #8 stays unready until full screen/workflow/final-head proof.
 
