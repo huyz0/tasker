@@ -58,18 +58,22 @@ for (const theme of ['light', 'dark']) {
     await page.addInitScript(value => localStorage.setItem('tasker.theme', value), theme);
     await openSeededWork(page);
     await page.getByRole('button', { name: 'Table', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Table', exact: true })).toHaveAttribute('aria-pressed', 'true');
     const colors: Record<string, string> = {};
     for (const state of ['Todo', 'In Progress', 'Done']) {
       const badge = page.getByRole('cell').getByText(state, { exact: true }).first();
       await expect(badge).toBeVisible();
-      colors[state] = await badge.evaluate(element => getComputedStyle(element).backgroundColor);
+      let color = '';
+      await expect.poll(async () => color = await badge.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('');
+      colors[state] = color;
     }
     expect(new Set(Object.values(colors)).size).toBe(3);
     await page.getByRole('button', { name: 'Board', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Board', exact: true })).toHaveAttribute('aria-pressed', 'true');
     for (const state of ['Todo', 'In Progress', 'Done']) {
       const badge = page.getByText(state, { exact: true }).first();
       await expect(badge).toBeVisible();
-      expect(await badge.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(colors[state]);
+      await expect(badge).toHaveCSS('background-color', colors[state]);
     }
   });
 }

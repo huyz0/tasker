@@ -59,3 +59,45 @@
 - `GOTOOLCHAIN=go1.26.10 GOFLAGS=-buildvcs=false VITEST_MAX_WORKERS=2 MOON_CONCURRENCY=1 GOMAXPROCS=2 moon check --all` passes all36 tasks in12m24.508seconds. GUI121 files/1701 tests,95.21% branches; backend2377 tests/zero failures,95.92% functions/96.86% lines; contract1128 tests, CLI87.4% statements and production/standalone builds pass. Local opt-in socket/integration cases retain their explicit skips; gh-act simulation remains unavailable, not a claimed pass. Actual browser-to-owned-backend proofs and eventual hosted CI are separate.
 - Final source's permanent native/fast-type/reload/history case passes8.5seconds; final1280dark journey also passes and refreshes the remaining clean-fixture captures. There are zero live owned temporary deletion-proof tasks after cleanup. Earlier deliberate route-guard and fast-type reds, table ARIA/phone recovery reds and no-op key-order/default reds are retained above; no assertion, deadline or coverage gate is weakened.
 - Check T01 and URL exit criterion only.385 done/11 pending overall; M58 is1/4 tasks and remains in progress. Named definitions/permissions/UI/end-to-end sharing remain T02–T04. Commit source/tests/stories/checkbox/journal/state together, preserve the raw candidate checkpoint, reconcile only this owned unpublished task onto main80f7e97 without force-push, and publish T01 independently after actual final-head CI.
+
+## M58-T05 — Observe live status styles after navigation
+
+- **Status**: done
+- **Date**: 2026-11-10
+- **Changed**: Repair the existing status-color browser assertion after actual
+  post-main E2E shows an empty computed style during Board/Table replacement.
+  This is a small test-only follow-up; no new flow, API or visual policy needs
+  an ADR. The exact same expected colors and ordinary deadline remain binding.
+- **Verified**: T01 PR #11 passed all8 exact-head CI jobs and merged8dd8c1, with
+  identical tested/published trees521aa13. Post-main42891977654 fails the dark
+  status-color case in all3 attempts (expected RGB, received empty string);
+  light also flakes. Other7 jobs and both integration42891977657 jobs pass.
+  This actual existing-test failure is the behavioral red.
+- **Notes**: Testing/UI testing plus TDD apply. Observe the selected mode and
+  actual connected style through normal Playwright retry assertions, retaining
+  board/table equality and three distinct state colors. Demonstrate that an
+  actually wrong color still fails. Preserve the in-progress owned T02 checkout
+  separately; this follow-up ships independently and does not include it.
+- **Next**: Repeated both-theme real browser verification, restored wrong-color
+  fault, full/pre-commit checks, independent focused review and final-head CI.
+
+### T05 final verification
+
+- The unchanged published assertion reproduces locally3 failed/3 passed in
+  six real theme cases, with the same empty style result as hosted CI. Selected
+  mode waits and retryable live style reads then pass20/20 repeated light/dark
+  cases in1.8minutes, with zero retries. Three distinct colors and exact
+  board/table equality remain unchanged.
+- Deliberately force the actual Board headings to rgb(255,0,0): the exact
+  toHaveCSS assertion fails against expected theme color at its unchanged
+  ordinary5000ms deadline. Restore source in finally. No wrong-color fault
+  remains in the commit. Explicit E2E types pass.
+- All36 repository checks pass in20.685seconds (32 cached); production source,
+  tokens and screenshots are unchanged. Existing full121-file/1701 GUI and
+  backend2377 results are reused by the content cache. Optional gh-act and
+  opt-in socket/integration skips remain explicit. CODE-v5 approves the focused
+  test change. No new screen/Storybook state is needed for an assertion-only fix.
+-398 total/386 done/11 pending; M58 is2/5. Publish after actual final-head CI,
+  then resume the preserved in-progress T02 checkout and reconcile its candidate
+  base after its clean task checkpoint. Both T01 post-main integration jobs are
+  successful; the failing browser job is the reason for this follow-up.
