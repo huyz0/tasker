@@ -55,6 +55,10 @@ prefix. Configuration is intentionally a build-time deployment setting.
 
 ## Consequences
 
+- Validate an explicit API destination before Vite emits client assets, using
+  the same pure URL validator as runtime normalization. Invalid embedded
+  credentials must not be baked into a shipped JavaScript literal before a
+  runtime error rejects them. Production origin remains a runtime default.
 - No contract, scope, permission, token schema or migration changes. Existing
   admin authorization governs issuance/revocation; GetIdentity authenticates
   the issued token using its usual current validity checks.

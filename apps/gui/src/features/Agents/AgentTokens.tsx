@@ -89,6 +89,8 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
   const [notice, setNotice] = useState('');
   const issuanceForm = useRef<HTMLFormElement>(null);
   const newTokenButton = useRef<HTMLButtonElement>(null);
+  const tokenPanel = useRef<HTMLDivElement>(null);
+  const revokeOrigin = useRef<HTMLButtonElement | null>(null);
   const intent = useRef({ active: true, revision: 0 });
   useEffect(() => {
     intent.current.active = true;
@@ -123,11 +125,17 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
     onSettled: () => { void queryClient.invalidateQueries({ queryKey: ['agentTokens', agentId, orgId, accountId] }); },
   });
   const revokeMutation = useMutation({
+    gcTime: 0,
     mutationFn: async (tokenId: string) => { await agentClient.revokeAgentToken({ tokenId }); return tokenId; },
     onSuccess: tokenId => {
+      const focused = document.activeElement;
+      const retiredSection = tokenPanel.current?.querySelector('[aria-label="Newly issued credential"]');
+      const returnFocus = intent.current.active && (focused === document.body || focused === revokeOrigin.current || (credential?.tokenId === tokenId && retiredSection?.contains(focused)));
       void queryClient.invalidateQueries({ queryKey: ['agentTokens', agentId, orgId, accountId] });
       if (intent.current.active && credential?.tokenId === tokenId) { retire(); setNotice('Token revoked. Issue a replacement to reconnect the worker.'); }
+      if (returnFocus) newTokenButton.current?.focus();
     },
+    onSettled: () => { revokeOrigin.current = null; },
   });
   const administrationDenied = administration.epoch > 0 && tokensQuery.data?.epoch !== administration.epoch;
   const authorized = tokensQuery.data?.epoch === administration.epoch;
@@ -149,7 +157,7 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
     </div>;
 
   return (
-    <div className="p-3 bg-muted/20 border-t">
+    <div ref={tokenPanel} className="p-3 bg-muted/20 border-t">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-sm font-medium">Tokens</h3>
         <button
@@ -268,7 +276,8 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
                 {state === 'active' && (
                   <button
                     aria-label={`Revoke token ${t.name}`}
-                    onClick={async () => {
+                    onClick={async event => {
+                      const origin = event.currentTarget;
                       const revision = intent.current.revision;
                       if (await confirm({
                         title: `Revoke "${t.name}"?`,
@@ -276,7 +285,7 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
                         undo: null,
                         confirmLabel: 'Revoke token',
                       })) {
-                        if (intent.current.active && revision === intent.current.revision) revokeMutation.mutate(t.id);
+                        if (intent.current.active && revision === intent.current.revision) { revokeOrigin.current = origin; revokeMutation.mutate(t.id); }
                       }
                     }}
                     disabled={revokeMutation.isPending}

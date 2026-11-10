@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 const api = process.env.TASKER_E2E_BACKEND_URL ?? 'http://localhost:8080';
-test.use({ trace: 'off', video: 'off', screenshot: 'off' });
+test.use({ trace: 'off', video: 'off', screenshot: 'off', viewport: { width: 375, height: 900 } });
 test.beforeEach(async ({ context }) => {
   if (process.env.TASKER_E2E_PRODUCTION === '1') {
     const response = await context.request.get(`${api}/api/auth/test/inject?userId=dev-user`);
@@ -116,6 +116,8 @@ test('issues least privilege, copies scoped configuration and verifies the exact
     const issued = await response.json() as { token: { id: string; agentId: string; scopes: string[] }; plaintext: string }; tokenId = issued.token.id; secret = issued.plaintext; owned.get(context)!.tokenId = tokenId;
     expect(Boolean(tokenId && secret.startsWith('tskr_'))).toBe(true); expect(JSON.stringify(issued.token.scopes) === JSON.stringify(['tasks:read', 'comments:write'])).toBe(true);
     await expect(connection.getByRole('heading', { name: 'Save this token', exact: true })).toBeFocused();
+    const focus = await page.evaluate(() => { const rect = document.activeElement!.getBoundingClientRect(); return { top: rect.top, bottom: rect.bottom, header: document.querySelector('header')?.getBoundingClientRect().bottom ?? 0, height: innerHeight }; });
+    expect(focus.top).toBeGreaterThanOrEqual(focus.header); expect(focus.bottom).toBeLessThanOrEqual(focus.height);
     await connection.getByLabel('Configuration format', { exact: true }).selectOption('mcp');
     const preview = await connection.getByLabel('Worker configuration', { exact: true }).textContent(); expect(Boolean(preview?.includes('<TOKEN>') && !preview.includes(secret))).toBe(true);
     await connection.getByRole('button', { name: 'Copy configuration', exact: true }).click();
@@ -148,6 +150,7 @@ test('issues least privilege, copies scoped configuration and verifies the exact
     await page.unroute(probeUrl); await connection.getByRole('button', { name: 'Verify token', exact: true }).click(); await expect(connection.getByText(/Token verified at/)).toBeVisible();
     await connection.getByRole('button', { name: `Revoke token ${tokenName}`, exact: true }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Revoke token', exact: true }).click();
     await expect(connection.getByText(/Token revoked\. Issue a replacement/)).toBeVisible(); owned.get(context)!.revoked = true; await expect(connection.getByRole('region', { name: 'Newly issued credential', exact: true })).toHaveCount(0);
+    await expect(connection.getByRole('button', { name: 'New token', exact: true })).toBeFocused();
     let status = 0;
     try { status = (await fetch(`${api}/tasker.health.v1.AuthService/GetIdentity`, { method: 'POST', redirect: 'error', headers: { 'content-type': 'application/json', 'connect-protocol-version': '1', authorization: `Bearer ${secret}` }, body: '{}' })).status; }
     catch { throw new Error('Owned revoked-credential check could not reach the API.'); } expect(status).toBe(401);

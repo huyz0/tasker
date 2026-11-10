@@ -3,7 +3,8 @@ import { createClient } from '@connectrpc/connect';
 import { AuthService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/mockRpc';
-import { BACKEND_URL, resolveBackendUrl } from './backendUrl';
+import { BACKEND_URL } from './backendUrl';
+import { resolveBackendUrl } from './apiDestination';
 import { workerConfiguration, verifyAgentCredential } from './agentCredential';
 
 const expected = { agentId: 'agent-1', orgId: 'org-1', tokenId: 'token-1', scopes: ['tasks:read', 'comments:write'] };

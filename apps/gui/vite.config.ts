@@ -1,10 +1,17 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type ResolvedConfig } from 'vite'
+import { resolveBackendUrl } from './src/lib/apiDestination'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), {
+    name: 'validate-tasker-api-destination',
+    configResolved(config: ResolvedConfig) {
+      const configured = config.env.VITE_BACKEND_URL;
+      if (configured !== undefined) resolveBackendUrl(configured, false, '');
+    },
+  }],
   define: {
     // Mirrors how the backend derives its own version (health.handler.ts) -
     // lets the GUI show which build is actually running without needing to

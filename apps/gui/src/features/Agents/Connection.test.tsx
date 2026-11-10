@@ -196,4 +196,19 @@ describe('one-time external worker connection', () => {
     fireEvent.click(screen.getByRole('button', { name: "I've saved it" })); await waitFor(() => expect(aborted).toBe(true));
   });
 
+  it('returns revocation focus to the stable New token control before the metadata action disappears', async () => {
+    let revoked = false;
+    mockRpc(AgentService, 'ListAgentTokens', () => ({ tokens: [{ ...metadata, revokedAt: revoked ? '2026-11-10T10:00:00Z' : '' }] }));
+    mockRpc(AgentService, 'RevokeAgentToken', () => { revoked = true; return { success: true }; });
+    view(); const origin = await screen.findByRole('button', { name: 'Revoke token Release worker' }); origin.focus(); fireEvent.click(origin); await confirmAction(); await screen.findByText('revoked');
+    expect(screen.getByRole('button', { name: 'New token' })).toHaveFocus();
+  });
+  it('preserves later token-form writing while an earlier revocation completes', async () => {
+    mockRpc(AgentService, 'ListAgentTokens', { tokens: [metadata] }); const pending = mockRpcPending(AgentService, 'RevokeAgentToken');
+    view(); fireEvent.click(await screen.findByRole('button', { name: 'Revoke token Release worker' })); await confirmAction(); await waitFor(() => expect(pending.requests).toHaveLength(1));
+    fireEvent.click(screen.getByRole('button', { name: 'New token' })); const input = screen.getByLabelText('Name'); input.focus(); fireEvent.change(input, { target: { value: 'Later writing' } });
+    mockRpc(AgentService, 'ListAgentTokens', { tokens: [{ ...metadata, revokedAt: '2026-11-10T10:00:00Z' }] });
+    await act(async () => pending.resolve({ success: true })); await screen.findByText('revoked'); expect(input).toHaveFocus(); expect(input).toHaveValue('Later writing');
+  });
+
 });

@@ -309,3 +309,22 @@ above a failed Copy action; synthetic active expiry is90 days and expired rows
 use a past date. No product behavior/API changes are required. The final
 305-story full accessibility/mobile matrices are running, with source review,
 final production/CLI browser, full35 and actual final-head CI still pending.
+
+All305 baseline previews pass1220 WCAG/610 mobile scans. Final keyboard proof
+then reproduces lost focus when a revoked metadata action disappears. Preserve
+its origin and return to the stable New token control only while the old action
+or retiring credential section owns focus; later token-form writing stays put.
+The two native cases pass, and removing the ownership guard steals writing and
+fails the assertion. All128 affected cases pass; actual375px copied CLI/MCP
+journey passes13.3s with visible reveal focus and stable post-revoke focus.
+
+A build-boundary probe observes that invalid credential-bearing VITE_BACKEND_URL
+settings are rejected only at runtime, after a synthetic value is embedded in
+public JavaScript. Strengthen the accepted ADR: share the pure URL validator
+between runtime and Vite's pre-emission config hook. The same actual probe now
+fails before emission with no reflected value. Commit a permanent native build
+regression and make GUI build depend on its cheap Moon gate (36 required targets
+now). Removing the hook makes that gate fail; restore source. App/node/E2E types
+and knip pass; final Storybook build succeeds. The remaining source review,
+current affected previews, full36, final production/CLI browser and actual
+final-head CI still gate completion/publication.

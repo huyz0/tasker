@@ -48,7 +48,7 @@ administration access retires it.
 
 ## Configure the external client
 
-Install the Tasker CLI where the worker runs. Choose **Shell** for environment
+Install the [Tasker CLI](../apps/cli/README.md) where the worker runs. Choose **Shell** for environment
 variables or **MCP stdio** for a client that launches `tasker mcp`. Copied settings
 include the configured API, organization and optional current project.
 
@@ -103,7 +103,8 @@ and generated worker configuration:
 The override must be an absolute HTTP(S) URL without embedded credentials, query
 or fragment. Trailing slashes are normalized and an API path prefix is preserved.
 It is deployment configuration, not an editable destination for probing a token.
-Invalid settings fail with a sanitized configuration error.
+Invalid explicit settings fail before the build emits client assets, with a
+sanitized configuration error. Runtime origin validation uses the same rules.
 
 For separate GUI/API origins, include the GUI's exact origin in the backend's
 `CORS_ALLOWED_ORIGINS`. The API permits the `Authorization` preflight header for
