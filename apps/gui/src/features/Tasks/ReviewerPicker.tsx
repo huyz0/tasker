@@ -33,7 +33,10 @@ export function ReviewerPicker({ taskId, orgId }: { taskId: string; orgId: strin
     queryKey: ['taskReviewers', taskId],
     queryFn: async () => (await taskClient.listTaskReviewers({ taskId })).reviewers,
   });
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['taskReviewers', taskId] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['taskReviewers', taskId] });
+    queryClient.invalidateQueries({ queryKey: ['attention'] });
+  };
 
   const candidates = useQuery({
     queryKey: ['reviewerCandidates', orgId, debouncedSearch],
@@ -46,12 +49,13 @@ export function ReviewerPicker({ taskId, orgId }: { taskId: string; orgId: strin
 
   const addMutation = useMutation({
     mutationFn: async (userId: string) => { await taskClient.addTaskReviewer({ taskId, userId }); },
-    onSuccess: () => { setIsAdding(false); setSearch(''); invalidate(); },
+    onSuccess: () => { setIsAdding(false); setSearch(''); },
+    onSettled: invalidate,
   });
 
   const removeMutation = useMutation({
     mutationFn: async (userId: string) => { await taskClient.removeTaskReviewer({ taskId, userId }); },
-    onSuccess: invalidate,
+    onSettled: invalidate,
   });
 
   const reviewers = reviewersQuery.data ?? [];

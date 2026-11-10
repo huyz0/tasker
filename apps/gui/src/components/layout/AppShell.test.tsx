@@ -296,6 +296,10 @@ describe('activity navigation', () => {
     renderShell();
     const work = screen.getByRole('group', { name: 'Work' });
     expect(work).toContainElement(screen.getByRole('link', { name: 'Tasks' }));
+    const attention = screen.getByRole('link', { name: 'Attention' });
+    expect(work).toContainElement(attention);
+    expect(screen.getByRole('link', { name: 'Dashboard' }).compareDocumentPosition(attention) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(attention.compareDocumentPosition(screen.getByRole('link', { name: 'Tasks' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(work).toContainElement(screen.getByRole('link', { name: 'Handoffs' }));
     expect(screen.getByRole('group', { name: 'Automation' })).toContainElement(screen.getByRole('link', { name: 'Workflows' }));
   });
@@ -317,4 +321,11 @@ describe('activity navigation', () => {
     expect(screen.getByRole('button', { name: 'Workspace settings' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('link', { name: 'Roles' })).toHaveAttribute('aria-current', 'page');
   });
+});
+
+test('labels intentional All projects Attention scope accurately in the mobile header', async () => {
+  mockRpc(OrgService, 'ListOrgs', { organizations: [{ id: 'org-attention', name: 'Attention workspace' }] });
+  mockRpc(ProjectService, 'ListProjects', { projects: [{ id: 'project-attention', name: 'One project' }] });
+  renderScoped(<AppShell><h1>Attention</h1></AppShell>, { initialEntry: '/attention?org=org-attention' });
+  await waitFor(() => expect(screen.getByLabelText('Current project')).toHaveTextContent('All projects'));
 });

@@ -34,6 +34,7 @@ function Decide({ approval, onNotice }: DecideProps) {
     onSettled: () => {
       // Approving moves the task; a stale refusal means the list is out of date. Either way, refetch.
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['attention'] });
       queryClient.invalidateQueries({ queryKey: ['task'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },

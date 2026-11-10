@@ -6,7 +6,7 @@ const meta = {
   title: 'Features/Tasks/InputRequests',
   component: TaskInputRequests,
   args: { taskId: 'task-storybook' },
-  parameters: { layout: 'fullscreen', router: false },
+  parameters: { layout: 'fullscreen', router: false, docs: { description: { component: 'Existing answer settlement reconciles source truth, including conflicts; assembled journeys are in Attention/ExistingSourceActions.' } } },
 } satisfies Meta<typeof TaskInputRequests>;
 export default meta;
 type Story = StoryObj<typeof meta>;

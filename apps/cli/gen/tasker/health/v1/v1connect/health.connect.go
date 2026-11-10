@@ -71,6 +71,8 @@ const (
 	WorkflowServiceName = "tasker.health.v1.WorkflowService"
 	// ScheduleServiceName is the fully-qualified name of the ScheduleService service.
 	ScheduleServiceName = "tasker.health.v1.ScheduleService"
+	// AttentionServiceName is the fully-qualified name of the AttentionService service.
+	AttentionServiceName = "tasker.health.v1.AttentionService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -596,6 +598,9 @@ const (
 	// ScheduleServiceListScheduleRunsProcedure is the fully-qualified name of the ScheduleService's
 	// ListScheduleRuns RPC.
 	ScheduleServiceListScheduleRunsProcedure = "/tasker.health.v1.ScheduleService/ListScheduleRuns"
+	// AttentionServiceListAttentionProcedure is the fully-qualified name of the AttentionService's
+	// ListAttention RPC.
+	AttentionServiceListAttentionProcedure = "/tasker.health.v1.AttentionService/ListAttention"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -810,6 +815,8 @@ var (
 	scheduleServiceDeleteScheduleMethodDescriptor                 = scheduleServiceServiceDescriptor.Methods().ByName("DeleteSchedule")
 	scheduleServiceRunScheduleMethodDescriptor                    = scheduleServiceServiceDescriptor.Methods().ByName("RunSchedule")
 	scheduleServiceListScheduleRunsMethodDescriptor               = scheduleServiceServiceDescriptor.Methods().ByName("ListScheduleRuns")
+	attentionServiceServiceDescriptor                             = v1.File_tasker_health_v1_health_proto.Services().ByName("AttentionService")
+	attentionServiceListAttentionMethodDescriptor                 = attentionServiceServiceDescriptor.Methods().ByName("ListAttention")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -6672,4 +6679,72 @@ func (UnimplementedScheduleServiceHandler) RunSchedule(context.Context, *connect
 
 func (UnimplementedScheduleServiceHandler) ListScheduleRuns(context.Context, *connect.Request[v1.ListScheduleRunsRequest]) (*connect.Response[v1.ListScheduleRunsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ScheduleService.ListScheduleRuns is not implemented"))
+}
+
+// AttentionServiceClient is a client for the tasker.health.v1.AttentionService service.
+type AttentionServiceClient interface {
+	ListAttention(context.Context, *connect.Request[v1.ListAttentionRequest]) (*connect.Response[v1.ListAttentionResponse], error)
+}
+
+// NewAttentionServiceClient constructs a client for the tasker.health.v1.AttentionService service.
+// By default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped
+// responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAttentionServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AttentionServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &attentionServiceClient{
+		listAttention: connect.NewClient[v1.ListAttentionRequest, v1.ListAttentionResponse](
+			httpClient,
+			baseURL+AttentionServiceListAttentionProcedure,
+			connect.WithSchema(attentionServiceListAttentionMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// attentionServiceClient implements AttentionServiceClient.
+type attentionServiceClient struct {
+	listAttention *connect.Client[v1.ListAttentionRequest, v1.ListAttentionResponse]
+}
+
+// ListAttention calls tasker.health.v1.AttentionService.ListAttention.
+func (c *attentionServiceClient) ListAttention(ctx context.Context, req *connect.Request[v1.ListAttentionRequest]) (*connect.Response[v1.ListAttentionResponse], error) {
+	return c.listAttention.CallUnary(ctx, req)
+}
+
+// AttentionServiceHandler is an implementation of the tasker.health.v1.AttentionService service.
+type AttentionServiceHandler interface {
+	ListAttention(context.Context, *connect.Request[v1.ListAttentionRequest]) (*connect.Response[v1.ListAttentionResponse], error)
+}
+
+// NewAttentionServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAttentionServiceHandler(svc AttentionServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	attentionServiceListAttentionHandler := connect.NewUnaryHandler(
+		AttentionServiceListAttentionProcedure,
+		svc.ListAttention,
+		connect.WithSchema(attentionServiceListAttentionMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.AttentionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AttentionServiceListAttentionProcedure:
+			attentionServiceListAttentionHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAttentionServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAttentionServiceHandler struct{}
+
+func (UnimplementedAttentionServiceHandler) ListAttention(context.Context, *connect.Request[v1.ListAttentionRequest]) (*connect.Response[v1.ListAttentionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AttentionService.ListAttention is not implemented"))
 }

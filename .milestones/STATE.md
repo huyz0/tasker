@@ -1,8 +1,8 @@
 ---
 active_milestone: M55
 active_task: null
-last_updated: 2026-11-09
-last_commit: b1892d6
+last_updated: 2026-11-10
+last_commit: e195851
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,24 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M55 complete locally:5/5 tasks,4/4 exit criteria.** T05 passes all35 checks (GUI1551/95.14% branches; backend2302/zero failures), both SQL dialects, actual HTTP denials/identity, seven browser journeys/two native observer failures, strict E2E types and restored stream/authority faults. CODE-v10 approves. Full268-story matrices and all eight jobs pass on unchanged-preview checkpoint7f559fa. Public Attention guide is linked. Draft PR #8 still needs actual final-head CI/main publication. M56-T01 is next eligible after publication; no registration/connection work is complete.375 done/21 pending overall. Original worktrees/services remain preserved.
+
+**2026-11-10 — M55-T04 verified:4/5 tasks.** Existing contextual settlement, native event roots and combined assignment exact-pair payload pass all35 checks (GUI1551/95.14% branches; backend2302/zero failures),228 affected cases, nine restored faults and three real browser journeys. CODE-v8/UX-v5 approve. Newly populated comment preview exposes/fixes agent timestamp contrast; initial268 matrices fail only that, rebuilt affected11 pass44/22 scans. Final-head full preview CI still gates publication. T05 next proves actual stream-gap/all-source supervision and public docs.374 done/22 pending overall; PR #8 remains draft. Original services and memory-only credentials are preserved.
+
+**2026-11-10 — M55-T03 verified:3/5 tasks.** Scoped Attention/All projects, native source navigation, persistent shared-authority fences and once-only canonical task/Back restoration pass all35 gates (GUI1532/95.13% branches; backend2302/zero failures). Final254 previews pass1016 accessibility/508 overflow checks, both real browser journeys pass with51 questions/two projects, and five settled captures receive UX-v3/CODE-v6 approval.76 focused UI cases/nine restored faults pass. A reproduced Memory label carryover is corrected, and the new RPC is genuinely used without its staged exception. T04 next reconciles existing contextual actions/events, including the preflight's combined assignment exact-pair omission; no stale-incarnation guarantee before M57.23 tasks remain; PR #8 is draft.
+
+**2026-11-10 — M55-T03 in progress.** T02 is committed/pushed as7976c81 with all35 source/closure gates and reviewed both-dialect bounded reads. Drive absent-screen/projectless regressions before native source navigation, scoped query lifetimes and canonical task/Back restoration. Frontend/security standards plus TDD apply. Account+org denial epochs must fence sibling in-flight/project-switch/cache resurrection; project NotFound stays local. Existing typography/palette/tokens remain coherent.The screen passes30 focused source/race/Back cases and75 feature/shell/switcher cases, nine restored behavioral faults and both real browser journeys (51questions/two projects). Five settled375/1280 captures receive UX-v3/CODE-v5 approval after corrected return lifetime/mobile scope/preview timing. Both253-story matrices pass; a reproduced Attention→organization Memory empty-label regression is corrected with76 focused cases and CODE-v6 approval, and the unused helper export is private. Final254-story build/matrices and full35 are running/pending.24 tasks remain; no M55 milestone publication is implied.
+
+**2026-11-10 — M55-T02 verified:2/5 tasks.** Human-only bounded source projection, additive contracts and actual registration pass all35 checks (backend2302/zero failures/95.85% functions/96.80% lines; GUI1498/95.13% branches). SQLite19/MySQL18 cases, eight faults, old444messages/1261fields and18 old-client decodes pass; CODE-v2 approves after reproduced protobuf page defaults. The exhaustive agent-denial sweep omission is caught/fixed and passes. T03 next builds scoped source groups, projectless switcher policy, persistent authority fencing and canonical task/Back flow; remove the exact staged GUI exception.24 tasks remain; draft PR #8 stays unready until full screen/workflow/final-head proof.
+
+**2026-11-09 — M55-T02 in progress.** T01 committed/pushed as0815b6b after accepted design/review and all35 fresh/closure checks. Draft PR #8 is attached. Bounded reader, compatible contracts and actual routing implemented; SQLite19/MySQL18 and176 affected cases pass, with eight restored behavioral faults. CODE-v1 identifies protobuf zero/default page validation; actual HTTP reproduces it and a fix/cursor-only regression is under verification. Full gates/re-review pending; temporary GUI exception must be removed by T03. API/security standards plus TDD selected; no new inbox, permissions, migration or generic resolution action. SQLite raw aggregates use epoch seconds, MySQL UTC datetime text; preserve existing strict24h semantics.25 tasks remain.
+
+**2026-11-09 — M55-T01 verified:1/5 tasks.** Accepted ADR0048/UX/TC001–012 define independent bounded source paging, exact current source/active-parent rules, honest missing assignment age and canonical contextual task actions. ARCH-v2/UX-v2 approve after explicit GUI Answer/external cancellation and org-wide in-flight/project-switch access-lifetime amendments. All35 fresh-worktree checks pass (GUI1498/95.13%, backend2282/zero failures, standalone). No M55 runtime behavior exists. T02 next drives bounded SQL/current scope/cursors/silence regressions before compatible contracts. M54 is published858e2cf; two post-merge integration jobs pass.25 tasks remain.
+
+**2026-11-09 — M54 published.** PR #7 merged as858e2cf after all8 final-head jobs42715671413 pass. Final0682bab and fetched main have identical trees. M55-T01's proposed ADR0048/UX/TC001–012 receive two precise acceptance amendments (GUI Answer versus external cancellation; org-wide late-response/project-switch access lifetime), now written for re-review. No M55 runtime implementation exists. Rebase this checkpoint onto published M54, then complete static design review/full checks.26 tasks remain.
+
+**2026-11-09 — M55-T01 in progress.** Define source-derived attention groups and independent bounded selectors before implementation in an isolated branch based on locally closed M54head0682bab. M54 PR #7 actual final CI42715671413 still gates its main publication; reconcile that base before publishing M55. API/security standards plus static-design TDD exception selected; existing independently reviewed typography/tokens and external UX references guide judgement. Source reviews have no independent outcome, existing question/approval selectors lack project filters, and current stalled helper filters after an unbounded held-row load. No new inbox/read-state or resolution state machine is allowed.26 tasks remain.
 
 **2026-11-09 — M54 complete locally:5/5 tasks,4/4 exit criteria.** T05 is committed asb1892d6 after all35 source and closure checks. Bounded artifacts/MCP/digest, one current Evidence surface, real SQLite/MySQL/socket/upgrade proof, old-client compatibility, reviewed captures and live worker-to-human automatic refresh are verified. Draft PR #7 still requires all applicable actual final-head CI before main merge. M55-T01 is next eligible, with M54 base reconciliation before its publication. Overall26 tasks remain; original worktree/services and private credentials remain preserved.
 
@@ -1952,12 +1970,12 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
-| M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
+| M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 370 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 375 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

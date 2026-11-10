@@ -85,6 +85,7 @@ export function CommentProvider({ entityId, entityType, children }: CommentProvi
   });
 
   const addCommentMutation = useMutation({
+    onSettled: () => { if (entityType === 'task') void queryClient.invalidateQueries({ queryKey: ['attention'] }); },
     mutationFn: async (content: string) => {
       const resp = await commentClient.createComment({ entityId, entityType, content });
       return resp.comment;

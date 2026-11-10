@@ -508,6 +508,7 @@ export function TasksWorkbench() {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const queryClient = useQueryClient();
+  const invalidateAttention = () => { void queryClient.invalidateQueries({ queryKey: ['attention'] }); };
 
   const createTaskMutation = useMutation({
     mutationFn: async (variables: { title: string; status: string }) => {
@@ -685,6 +686,7 @@ export function TasksWorkbench() {
   };
 
   const updateStatusMutation = useMutation({
+    onSettled: invalidateAttention,
     mutationFn: async (variables: { taskId: string; status: string }) => {
       const resp = await taskClient.updateTaskStatus(variables);
       return resp.task;
@@ -716,6 +718,7 @@ export function TasksWorkbench() {
       }
     },
     onSettled: () => {
+      invalidateAttention();
       queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] });
       queryClient.invalidateQueries({ queryKey: ['task'] });
     },
@@ -723,6 +726,7 @@ export function TasksWorkbench() {
   });
 
   const updateTaskMutation = useMutation({
+    onSettled: invalidateAttention,
     mutationFn: async (variables: { taskId: string; title: string; description: string }) => {
       const resp = await taskClient.updateTask(variables);
       return resp.task;
@@ -735,6 +739,7 @@ export function TasksWorkbench() {
   });
 
   const updatePriorityMutation = useMutation({
+    onSettled: invalidateAttention,
     mutationFn: async (variables: { taskId: string; priority: number }) => {
       await taskClient.updateTask(variables);
     },
@@ -745,6 +750,7 @@ export function TasksWorkbench() {
   });
 
   const deleteTaskMutation = useMutation({
+    onSettled: invalidateAttention,
     mutationFn: async (taskId: string) => {
       await taskClient.deleteTask({ taskId });
     },

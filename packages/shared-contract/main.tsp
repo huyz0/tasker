@@ -3530,3 +3530,40 @@ interface ScheduleService {
   runSchedule(request: RunScheduleRequest): RunScheduleResponse;
   listScheduleRuns(request: ListScheduleRunsRequest): ListScheduleRunsResponse;
 }
+
+// M55 current human attention, projected from source records (ADR-0048).
+// No inbox/read state or generic resolution mutation is introduced.
+model AttentionItem {
+  @field(1) kind: string;
+  @field(2) sourceId: string;
+  @field(3) taskId: string;
+  @field(4) taskDisplayId: string;
+  @field(5) taskTitle: string;
+  @field(6) taskStatus: string;
+  @field(7) projectId: string;
+  @field(8) projectName: string;
+  @field(9) reason: string;
+  @field(10) since?: string;
+  @field(11) sinceKind: string;
+  @field(12) actorKind?: string;
+  @field(13) actorId?: string;
+  @field(14) actorName?: string;
+  @field(15) reasonTruncated?: boolean;
+}
+model ListAttentionRequest {
+  @field(1) orgId: string;
+  @field(2) projectId?: string;
+
+  // question | approval | review | stalled_claim; each owns its cursor.
+  @field(3) kind: string;
+
+  @field(4) page?: PageRequest;
+}
+model ListAttentionResponse {
+  @field(1) items: AttentionItem[];
+  @field(2) page: PageResponse;
+  @field(3) observedAt: string;
+}
+interface AttentionService {
+  listAttention(request: ListAttentionRequest): ListAttentionResponse;
+}

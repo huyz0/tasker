@@ -37,7 +37,7 @@ export function CommentItem({ comment }: { comment: CommentData }) {
           {isAgent && <Bot className="w-3.5 h-3.5" />}{author}
         </span>
         <span className="flex items-center gap-2">
-          <time dateTime={comment.createdAt} className="text-muted-foreground text-xs tabular-nums">
+          <time dateTime={comment.createdAt} className={`${isAgent ? 'text-primary-subtle-foreground' : 'text-muted-foreground'} text-xs tabular-nums`}>
             {formatDateTime(comment.createdAt)}
           </time>
           {isOwnComment && !isEditing && (

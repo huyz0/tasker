@@ -7,7 +7,7 @@ describe('queryKeysForSubject', () => {
   it('invalidates only what a task event touches', () => {
     // The whole point of the feed is to stop refetching everything. A task
     // changing must not re-run artifacts, teams and the memory screen.
-    expect(roots('domain.task.created')).toEqual(['tasks', 'task', 'taskLinks', 'inputRequests', 'approvals', 'dashboard', 'reports', 'auditEvents']);
+    expect(roots('domain.task.created')).toEqual(['tasks', 'task', 'taskLinks', 'inputRequests', 'approvals', 'dashboard', 'reports', 'attention', 'auditEvents']);
   });
 
   it('refreshes an open task\'s relations when a link changes or a blocker finishes (M35)', () => {
@@ -35,7 +35,7 @@ describe('queryKeysForSubject', () => {
   });
 
   it('routes a note to the handoff and task queries, not the board', () => {
-    expect(roots('domain.tasknote.created')).toEqual(['handoffNotes', 'taskNotes', 'task', 'reports', 'auditEvents']);
+    expect(roots('domain.tasknote.created')).toEqual(['handoffNotes', 'taskNotes', 'task', 'reports', 'attention', 'auditEvents']);
   });
 
   it("refreshes an open task's notes panel when an agent writes a note (M32-T01)", () => {
@@ -52,7 +52,7 @@ describe('queryKeysForSubject', () => {
     // M24: every Reports card derives from task activity — status changes,
     // handoff notes, comment churn. Anything else (a label, a team) must not
     // re-run two report RPCs.
-    expect(roots('domain.comment.created')).toEqual(['comments', 'reports', 'auditEvents']);
+    expect(roots('domain.comment.created')).toEqual(['comments', 'reports', 'attention', 'auditEvents']);
     expect(roots('domain.label.created')).not.toContain('reports');
     expect(roots('domain.project.updated')).not.toContain('reports');
   });
@@ -61,7 +61,7 @@ describe('queryKeysForSubject', () => {
     // Statuses and transitions have no queries of their own — they are read as
     // part of a task type.
     for (const entity of ['task_status', 'task_status_transition', 'task_statuses', 'task_type']) {
-      expect(roots(`domain.${entity}.created`)).toEqual(['taskTypes', 'taskType', 'auditEvents']);
+      expect(roots(`domain.${entity}.created`)).toEqual(['taskTypes', 'taskType', 'attention', 'auditEvents']);
     }
   });
 
@@ -126,4 +126,9 @@ describe('domain.task.stalled (M29)', () => {
       expect(keys).not.toContain('notificationCount');
     }
   });
+});
+
+it('reconciles source eligibility, parents, actor names and current authority without mistaking edits for new activity', () => {
+  for (const subject of ['domain.task.input_answered', 'domain.task.approval_decided', 'domain.task.status_updated', 'domain.project.archived', 'domain.project.restored', 'domain.org.member_removed', 'domain.role.updated', 'domain.grant.revoked', 'domain.team.member_removed', 'domain.agent.updated', 'domain.comment.created', 'domain.tasknote.created']) expect(roots(subject)).toContain('attention');
+  for (const subject of ['domain.comment.updated', 'domain.comment.deleted', 'domain.tasknote.updated', 'domain.tasknote.deleted', 'domain.artifact.updated', 'domain.schedule.updated']) expect(roots(subject)).not.toContain('attention');
 });

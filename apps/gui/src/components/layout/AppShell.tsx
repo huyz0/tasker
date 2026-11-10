@@ -43,6 +43,7 @@ import { logout } from '../../lib/authSession';
 const NAV_GROUPS = [
   { label: 'Work', items: [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'Attention', path: '/attention', icon: ListChecks },
     { name: 'Tasks', path: '/tasks', icon: CheckSquare },
     { name: 'Handoffs', path: '/handoffs', icon: Handshake },
   ] },
@@ -77,6 +78,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [settingsExpanded, setSettingsExpanded] = useState(() => isSettingsPath(location.pathname));
   const { projectName, hasProject } = useScopeLabels();
+  const scopeParams = new URLSearchParams(location.search);
+  const projectlessAttention = location.pathname === '/attention' && !!scopeParams.get('org') && !scopeParams.get('project');
+  const projectLabel = projectlessAttention ? 'All projects' : hasProject ? projectName : 'No project selected';
   useEffect(() => {
     if (isSettingsPath(location.pathname)) setSettingsExpanded(true);
   }, [location.pathname]);
@@ -156,8 +160,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Activity className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
               Tasker
             </div>
-            <p className="max-w-28 truncate text-xs text-muted-foreground" aria-label="Current project" title={hasProject ? projectName : 'No project selected'}>
-              {hasProject ? projectName : 'No project selected'}
+            <p className="max-w-28 truncate text-xs text-muted-foreground" aria-label="Current project" title={projectLabel}>
+              {projectLabel}
             </p>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { screen, fireEvent, waitFor, within, createEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  TaskService, CommentService, LabelService, RepositoryService, TaskTypeService,
+  AttentionService, TaskService, CommentService, LabelService, RepositoryService, TaskTypeService,
   TaskNoteService, OrgService, AgentService, ArtifactService, SearchService, ProjectService,
 } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError, mockRpcPending, server } from '../../test/mockRpc';
@@ -29,6 +29,7 @@ vi.mock('../../components/ui/RichMarkdownEditor', () => ({
   ),
 }));
 
+import { useAttention } from '../Attention/useAttention';
 import { TasksWorkbench } from './index';
 import { useSummaryDrafts } from './summaryDrafts';
 import { confirmAction, cancelAction } from '../../test/confirm';
@@ -39,6 +40,11 @@ import { useSetScope } from '../../hooks/useScope';
 // Match AppShell's URL-to-store read surface, while retaining this suite's
 // deliberately mocked layout store. Real store hydration is covered by
 // canonicalNavigation/entityNavigation integration regressions.
+let showAttention = false;
+function AttentionProbe() {
+  const read = useAttention({ accountId: 'workbench-fixture-user', orgId: mockActiveOrgId, projectId: mockActiveProjectId }, 'review', true);
+  return <output aria-label="Attention fixture count">{read.totalCount ?? 'Loading'}</output>;
+}
 function ScopedFixture() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -49,6 +55,7 @@ function ScopedFixture() {
     <button onClick={() => select({ projectId: 'proj-2' })}>Select fixture project</button>
     <button onClick={() => select({ orgId: 'org-2', projectId: 'proj-2' })}>Select fixture organization</button>
     <TasksWorkbench />
+    {showAttention && <AttentionProbe />}
   </>;
 }
 
@@ -57,7 +64,8 @@ function ScopedFixture() {
 // deep link; `lastLocation` lets it assert where a click navigated to.
 let lastLocation: LocationRef;
 
-function renderPage(initialEntry = '/tasks') {
+function renderPage(initialEntry = '/tasks', attention = false) {
+  showAttention = attention;
   const result = renderScoped(<ScopedFixture />, {
     paths: ['/tasks', '/tasks/:taskId'],
     initialEntry,
@@ -90,6 +98,7 @@ function withTasks(tasks: any[], page: object = {}) {
 
 describe('TasksWorkbench', () => {
   beforeEach(() => {
+    server.use(http.post(`${BACKEND_URL}/api/client-errors`, () => HttpResponse.json({})));
     useSummaryDrafts.getState().endSession();
     useSummaryDrafts.getState().setAccount('workbench-fixture-user');
     server.use(http.get(`${BACKEND_URL}/api/auth/session`, () => HttpResponse.json({ authenticated: true, userId: 'workbench-fixture-user', mustChangePassword: false })));
@@ -179,6 +188,19 @@ describe('TasksWorkbench', () => {
     fireEvent.change(select, { target: { value: 'in-progress' } });
 
     await waitFor(() => expect(requests).toContainEqual({ taskId: 'task-1', status: 'in-progress' }));
+  });
+
+  it.each(['done', 'write_denied'])('reconciles Attention after an existing task status %s settlement', async outcome => {
+    const task = { id: 'task-1', title: 'Review status change', status: 'todo', description: '' }; withTasks([task]); let reads = 0;
+    mockRpc(AttentionService, 'ListAttention', () => { reads++; return { items: task.status === 'done' ? [] : [{ kind: 'review', sourceId: 'review-1', taskId: task.id, taskTitle: task.title, taskStatus: task.status, projectId: 'proj-1', projectName: 'Seed Project', reason: 'You are a reviewer', sinceKind: 'task_created_at' }], page: { totalCount: task.status === 'done' ? 0 : 1 } }; });
+    if (outcome === 'write_denied') mockRpcError(TaskService, 'UpdateTaskStatus', 'permission_denied', 'Write access removed');
+    else mockRpc(TaskService, 'UpdateTaskStatus', body => { task.status = body.status; return { task }; });
+    renderPage('/tasks?org=org-1&project=proj-1', true);
+    await waitFor(() => expect(screen.getByLabelText('Attention fixture count')).toHaveTextContent('1'));
+    fireEvent.click(await screen.findByText('Review status change')); const select = await screen.findByDisplayValue('Todo');
+    fireEvent.change(select, { target: { value: 'done' } });
+    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
+    expect(screen.getByLabelText('Attention fixture count')).toHaveTextContent(outcome === 'done' ? '0' : '1');
   });
 
   // Native HTML5 drag-and-drop (no dnd-kit), added alongside the existing

@@ -103,7 +103,7 @@ function SearchSelect({
         onClick={() => setIsOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-2 rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/50"
       >
-        <span className="truncate">{(value && valueLabel) || (error ? 'Unavailable' : placeholder ?? emptyMessage)}</span>
+        <span className="truncate">{valueLabel || (error ? 'Unavailable' : placeholder ?? emptyMessage)}</span>
         <ChevronsUpDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
       </button>
 
@@ -173,6 +173,7 @@ function SearchSelect({
 
 export function OrgProjectSwitcher() {
   const location = useLocation();
+  const attentionRoute = location.pathname === '/attention';
   const memoryTier = new URLSearchParams(location.search).get('scope');
   const projectlessMemory = (location.pathname === '/memory' || location.pathname.startsWith('/memory/'))
     && (memoryTier === 'organization' || memoryTier === 'team');
@@ -242,7 +243,7 @@ export function OrgProjectSwitcher() {
     // user just made. Picking project 1234 of 2000 put the switcher back on
     // project 0999 (M06-T09).
     if (!activeProjectId) {
-      if (projectlessMemory) return;
+      if (projectlessMemory || attentionRoute) return;
       setScope({ projectId: projects[0].id }, { replace: true });
       setProjectLabel({ id: projects[0].id, name: projects[0].name });
       return;
@@ -253,7 +254,7 @@ export function OrgProjectSwitcher() {
     const found = projects.find((p: any) => p.id === activeProjectId);
     if (found) setProjectLabel({ id: found.id, name: found.name });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projects, activeProjectId, projectlessMemory]);
+  }, [projects, activeProjectId, projectlessMemory, attentionRoute]);
 
   /**
    * Organizations are a tree. Within the page that came back, a child sits one
@@ -297,9 +298,9 @@ export function OrgProjectSwitcher() {
       <SearchSelect
         label="Active project"
         value={activeProjectId}
-        valueLabel={projectLabel.id === activeProjectId ? projectLabel.name : activeProjectId ? `Project ${activeProjectId}` : ''}
-        choices={projects.map((p: any) => ({ id: p.id, label: p.name }))}
-        total={projectsQuery.data?.total ?? 0}
+        valueLabel={activeProjectId ? (projectLabel.id === activeProjectId ? projectLabel.name : `Project ${activeProjectId}`) : attentionRoute ? 'All projects' : ''}
+        choices={[...(attentionRoute ? [{ id: '', label: 'All projects' }] : []), ...projects.map((p: any) => ({ id: p.id, label: p.name }))]}
+        total={(projectsQuery.data?.total ?? 0) + (attentionRoute ? 1 : 0)}
         isLoading={projectsQuery.isLoading}
         error={projectsQuery.error}
         onRetry={() => projectsQuery.refetch()}

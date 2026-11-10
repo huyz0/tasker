@@ -25,28 +25,28 @@ const KEYS_BY_ENTITY: Record<string, string[]> = {
   // 'taskLinks' (M35): a link, unlink or unblock changes the open task's
   // relations panel as well as the board's blocked badges.
   // 'inputRequests' (M38): a question asked or answered on any task.
-  task: ['tasks', 'task', 'taskLinks', 'inputRequests', 'approvals', 'dashboard', 'reports'],
+  task: ['tasks', 'task', 'taskLinks', 'inputRequests', 'approvals', 'dashboard', 'reports', 'attention'],
   // 'taskNotes' (M32-T01) is the open task's notes panel and handoff summary.
   // Keys match by whole element, so 'task' never covered it and the panel
   // supervisors watch agents in did not live-update.
   tasknote: ['handoffNotes', 'taskNotes', 'task', 'reports'],
   schedule: ['schedules', 'schedule', 'scheduleRuns'],
-  task_type: ['taskTypes', 'taskType'],
-  task_status: ['taskTypes', 'taskType'],
-  task_status_transition: ['taskTypes', 'taskType'],
-  task_statuses: ['taskTypes', 'taskType'],
-  project: ['projects', 'project', 'dashboard'],
+  task_type: ['taskTypes', 'taskType', 'attention'],
+  task_status: ['taskTypes', 'taskType', 'attention'],
+  task_status_transition: ['taskTypes', 'taskType', 'attention'],
+  task_statuses: ['taskTypes', 'taskType', 'attention'],
+  project: ['projects', 'project', 'dashboard', 'attention'],
   project_template: ['templates'],
-  org: ['orgs', 'orgMembers', 'orgInvitations'],
-  agent: ['agents', 'agentTokens'],
+  org: ['orgs', 'orgMembers', 'orgInvitations', 'attention'],
+  agent: ['agents', 'agentTokens', 'attention'],
   agent_role: ['agentRoles', 'agents'],
   artifact: ['artifacts', 'artifactContent', 'artifactLocate'],
   folder: ['folders', 'artifacts'],
   comment: ['comments', 'reports'],
   label: ['labels'],
-  team: ['teams', 'teamMembers'],
-  role: ['roles', 'permissionsRoles'],
-  grant: ['grants', 'teamGrants'],
+  team: ['teams', 'teamMembers', 'attention'],
+  role: ['roles', 'permissionsRoles', 'attention'],
+  grant: ['grants', 'teamGrants', 'attention'],
   belief: ['memoryBeliefs', 'memoryBelief', 'memoryBeliefRelations', 'memoryBeliefPromotions'],
   repository: ['repositoryLinks', 'pullRequests', 'builds', 'deployments'],
   // M37: webhook management events (create, update, delete, rotate).
@@ -74,6 +74,10 @@ const KEYS_BY_ENTITY: Record<string, string[]> = {
  */
 const EXTRA_KEYS_BY_SUBJECT: Record<string, string[]> = {
   'domain.task.stalled': ['notifications', 'notificationCount'],
+  // Only creation records a new task activity signal; edits/deletes do not.
+  // Artifact comment creation may cause a bounded read, never a silence write.
+  'domain.comment.created': ['attention'],
+  'domain.tasknote.created': ['attention'],
 };
 
 /** Subjects that mean "anything could have changed". */
