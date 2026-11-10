@@ -1,8 +1,8 @@
 ---
 active_milestone: M58
-active_task: null
+active_task: M58-T02
 last_updated: 2026-11-10
-last_commit: e09993b
+last_commit: 2076ff9
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,12 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M58-T01 verified; publication next.** URL-owned Tasks/Reports settings, live narrow writers, lossless fast search and native/semantic mobile table recovery pass all36 checks (GUI1701/95.21% branches; backend2377/zero failures). CODE-v4/UX-v5 approve;37 rendered previews pass148 WCAG/contrast and74 overflow scans. Six layout/theme journeys, final native/history8.5s, explicit-default/order history reds and corrected actual delayed POST200 departure proof pass. M57 main80f7e97 and all10 post-main jobs are verified. Commit this task atomically, preserve its raw checkpoint, reconcile onto the identical-tree published base and publish T01 independently after actual hosted final-head CI. Next M58-T02 owns named definitions/permissions; M58 remains1/4.385 done/11 pending. Original user worktrees/WIP/services remain preserved.
+
+**2026-11-10 — M57 published; M58-T01 under verification.** PR #10 final2076ff9 passes all8 CI42871675560 jobs and merges to main80f7e97, with identical tested/published treefacc437. Post-main CI42877838912/integration42877839320 are queued. M58 URL task/report settings, narrow live writers and truthful filter recovery pass168 affected cases and explicit app types; UX-v1 approves design. Rendered/runtime/fault/final review/full checks still gate T01. Reconcile this owned candidate branch onto published M57 after its clean checkpoint; preserve earlier branches/user WIP/services.384 done/12 pending.
+
+**2026-11-10 — M58-T01 in progress.** Isolated feature/m58-operational-views starts from final M57 candidate2076ff9, with frozen dependencies installed. Record URL UX/TC001–004 and drive task/report reload/history/scope/malformed regressions before runtime edits; frontend/security plus TDD apply. Reuse ADR0025 and independently researched M51 visual direction. PR #10 is ready; final CI42871675560 is queued and its main publication/base reconciliation still gate this branch's publication.384 done/12 pending; original branches/WIP/services remain preserved.
 
 **2026-11-10 — M57 complete locally:5/5 tasks,4/4 exit criteria.** Exact-generation receipts, owner-bound delayed/legacy reports and bounded history/source flows pass all36 checks (backend2377/zero failures; GUI1657/95.14% branches), actual both-dialect85/427, real socket11/47, both CLI/MCP and MCP-only browser journeys, old SDK18 decodes and restored faults. CODE-v5/UX-v4 approve. Public worker/read/unsafe old-writer rollback guidance is current. Draft PR #10 passes all8 preliminary e09993b CI jobs, but final T05 head CI/main publication remains required.384 done/12 pending; next eligible M58-T01 owns URL and named operational views. Keep original worktrees/services intact; owned credentials were memory-only and revoked in finally.
 
@@ -2009,9 +2015,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
-| M58 | Operational Views | todo | M53 | 4 | 0 |
+| M58 | Operational Views | in-progress | M53 | 4 | 1 |
 
-**Total: 397 tasks across 52 milestones — 384 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 385 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

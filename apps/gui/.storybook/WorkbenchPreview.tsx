@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { create } from '@bufbuild/protobuf';
 import { TaskSchema } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore } from '../src/store/layout';
+import { parseTaskView, DEFAULT_TASK_VIEW, TASK_SORT_FIELDS } from '../src/lib/operationalView';
 
 interface WorkbenchPreviewProps {
   children: ReactNode;
@@ -27,14 +28,22 @@ export function WorkbenchPreview({ children, state = 'populated', drawerOpen = f
     q.setQueryData(['pullRequests', 'project-story', 'org-story', 'workbench-story-user'], []);
     const statuses = ['todo', 'in-progress', 'done'];
     const tasks = statuses.map((status, i) => create(TaskSchema, { id: `task-${i}`, displayId: `REL-${i + 1}`, title: ['Review release notes', 'Verify the build', 'Prepare the checklist'][i], status, projectId: 'project-story' }));
-    for (const status of ['table', ...statuses]) {
+    const initial = parseTaskView(new URL(initialEntry, 'https://tasker.invalid').searchParams).value;
+    for (const view of [initial, DEFAULT_TASK_VIEW]) for (const status of ['table', ...statuses]) {
       const queryKey = status === 'table'
-        ? ['tasks', 'project-story', 'table', '', undefined, undefined, false]
-        : ['tasks', 'project-story', 'column', status, '', undefined, false];
+        ? ['tasks', 'project-story', 'table', view.search, view.sort ? `${TASK_SORT_FIELDS[view.sort.key]}:${view.sort.dir}` : undefined, view.priorityFilter === '' ? undefined : Number(view.priorityFilter), view.readyOnly]
+        : ['tasks', 'project-story', 'column', status, view.search, view.priorityFilter === '' ? undefined : Number(view.priorityFilter), view.readyOnly];
       if (state === 'loading' || state === 'error') {
         void q.fetchQuery({ queryKey, queryFn: () => state === 'loading' ? new Promise<never>(() => {}) : Promise.reject(new Error('Permission denied. Ask your workspace administrator for access.')) }).catch(() => undefined);
       } else {
-        const rows = state === 'populated' ? tasks.filter(t => status === 'table' || t.status === status) : [];
+        const rows = state === 'populated' ? tasks.filter(t => (status === 'table' || t.status === status)
+          && (!view.search || t.title.toLowerCase().includes(view.search.toLowerCase()))
+          && (view.priorityFilter === '' || t.priority === Number(view.priorityFilter))
+          && (!view.readyOnly || t.status !== 'done')) : [];
+        if (status === 'table' && view.sort) rows.sort((a, b) => {
+          const left = view.sort!.key === 'displayId' ? a.id : a[view.sort!.key], right = view.sort!.key === 'displayId' ? b.id : b[view.sort!.key];
+          const order = left < right ? -1 : left > right ? 1 : 0;return view.sort!.dir === 'asc' ? order : -order;
+        });
         q.setQueryData(queryKey, { pages: [{ tasks: rows, page: { totalCount: BigInt(rows.length) } }], pageParams: [undefined] });
       }
     }

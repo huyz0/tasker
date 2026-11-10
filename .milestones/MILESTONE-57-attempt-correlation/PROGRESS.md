@@ -158,3 +158,7 @@
 
 - All five task outcomes and all four exit criteria are demonstrated by the actual SQLite/MySQL, populated-upgrade/race, generated old/new client, real socket/CLI/MCP/browser and rendered proofs above. Current-source all36 gates pass; final closure/pre-commit reruns validate this ledger. M57 is complete locally, with384 done/12 pending overall and M58 next eligible. The final task commit carries its code/tests/documentation and milestone closure together, preserving atomic handoff state.
 - PR #10 still requires actual final-head CI, readiness and main merge. Record publication as a separate observation when it occurs; do not equate preliminary CI or local closure with deployment. Next work must preserve the published/candidate base, all earlier branches/user WIP and the running original services.
+
+### Main publication observed
+
+- PR #10 final2076ff9 passes all8 actual CI42871675560 jobs, including full rendered and Playwright suites, and merges as80f7e97. Fetched main exactly matches the tested treefacc43718ea1af0dfd58c08412b59a33b5a24cfa. Post-main CI42877838912 and real integration42877839320 remain queued. This is repository publication, not a production deployment observation.

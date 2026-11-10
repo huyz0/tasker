@@ -34,13 +34,19 @@ import { TasksWorkbench } from './index';
 import { useSummaryDrafts } from './summaryDrafts';
 import { confirmAction, cancelAction } from '../../test/confirm';
 import { renderScoped, type LocationRef } from '../../test/renderScoped';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useSetScope } from '../../hooks/useScope';
 
 // Match AppShell's URL-to-store read surface, while retaining this suite's
 // deliberately mocked layout store. Real store hydration is covered by
 // canonicalNavigation/entityNavigation integration regressions.
 let showAttention = false;
+let showHistoryControls = false;
+function HistoryControls() {
+  const navigate = useNavigate(), selectScope = useSetScope();
+  return <><button onClick={() => navigate(-1)}>Fixture Back</button><button onClick={() => navigate(1)}>Fixture Forward</button>
+    <button onClick={() => selectScope({ orgId: 'org-2' })}>Fixture organization only</button></>;
+}
 function AttentionProbe() {
   const read = useAttention({ accountId: 'workbench-fixture-user', orgId: mockActiveOrgId, projectId: mockActiveProjectId }, 'review', true);
   return <output aria-label="Attention fixture count">{read.totalCount ?? 'Loading'}</output>;
@@ -54,6 +60,7 @@ function ScopedFixture() {
   return <>
     <button onClick={() => select({ projectId: 'proj-2' })}>Select fixture project</button>
     <button onClick={() => select({ orgId: 'org-2', projectId: 'proj-2' })}>Select fixture organization</button>
+    {showHistoryControls && <HistoryControls />}
     <TasksWorkbench />
     {showAttention && <AttentionProbe />}
   </>;
@@ -64,8 +71,8 @@ function ScopedFixture() {
 // deep link; `lastLocation` lets it assert where a click navigated to.
 let lastLocation: LocationRef;
 
-function renderPage(initialEntry = '/tasks', attention = false) {
-  showAttention = attention;
+function renderPage(initialEntry = '/tasks', attention = false, history = false) {
+  showAttention = attention; showHistoryControls = history;
   const result = renderScoped(<ScopedFixture />, {
     paths: ['/tasks', '/tasks/:taskId'],
     initialEntry,
@@ -98,6 +105,7 @@ function withTasks(tasks: any[], page: object = {}) {
 
 describe('TasksWorkbench', () => {
   beforeEach(() => {
+    showHistoryControls = false;
     server.use(http.post(`${BACKEND_URL}/api/client-errors`, () => HttpResponse.json({})));
     useSummaryDrafts.getState().endSession();
     useSummaryDrafts.getState().setAccount('workbench-fixture-user');
@@ -135,6 +143,93 @@ describe('TasksWorkbench', () => {
   });
 
   afterEach(() => useSummaryDrafts.getState().endSession());
+
+  it('restores supported task view settings from a deep URL, including no priority and ID sort', async () => {
+    const requests = withTasks([{ id: 'task-1', title: 'URL state task', status: 'todo', priority: 0 }]);
+    renderPage('/tasks?org=org-1&project=proj-1&view=table&q=URL&priority=0&ready=1&sort=createdAt:desc');
+    expect(screen.getByRole('button', { name: 'Table' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('searchbox', { name: 'Filter tasks' })).toHaveValue('URL');
+    expect(screen.getByRole('combobox', { name: 'Filter by priority' })).toHaveValue('0');
+    expect(screen.getByRole('button', { name: 'Ready only' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('columnheader', { name: /ID/ })).toHaveTextContent('▼');
+    await waitFor(() => expect(requests.some(request => !request.status && request.page?.filter === 'URL'
+      && request.page?.sort === 'createdAt:desc' && request.priority === 0 && request.ready === true)).toBe(true));
+  });
+  it('writes discrete view changes to history while replacing text edits and preserving scope', async () => {
+    withTasks([{ id: 'task-1', title: 'URL state task', status: 'todo' }]);
+    renderPage('/tasks?org=org-1&project=proj-1&marker=keep', false, true);
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+    expect(new URLSearchParams(lastLocation.search).get('view')).toBe('table');
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filter tasks' }), { target: { value: 'first query' } });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filter tasks' }), { target: { value: 'final query' } });
+    expect(new URLSearchParams(lastLocation.search).get('q')).toBe('final query');
+    fireEvent.click(screen.getByRole('button', { name: 'Ready only' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fixture Back' }));
+    expect(screen.getByRole('button', { name: 'Ready only' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('searchbox', { name: 'Filter tasks' })).toHaveValue('final query');
+    fireEvent.click(screen.getByRole('button', { name: 'Fixture Back' }));
+    expect(screen.getByRole('button', { name: 'Board' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('searchbox', { name: 'Filter tasks' })).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: 'Fixture Forward' }));
+    expect(screen.getByRole('button', { name: 'Table' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('searchbox', { name: 'Filter tasks' })).toHaveValue('final query');
+    expect(new URLSearchParams(lastLocation.search).get('org')).toBe('org-1');
+    expect(new URLSearchParams(lastLocation.search).get('project')).toBe('proj-1');
+    expect(new URLSearchParams(lastLocation.search).get('marker')).toBe('keep');
+  });
+  for (const exit of ['close', 'breadcrumb', 'escape'] as const) it(`retains list settings through task open and ${exit}`, async () => {
+    withTasks([{ id: 'task-1', title: 'URL state task', status: 'todo' }]);
+    renderPage('/tasks?org=org-1&project=proj-1&q=URL&priority=0&ready=1&sort=title:asc');
+    fireEvent.click(await screen.findByText('URL state task'));
+    const detail = within(await screen.findByRole('dialog', { name: 'Task Details' }));
+    expect(new URLSearchParams(lastLocation.search).get('q')).toBe('URL');
+    if (exit === 'close') fireEvent.click(detail.getByRole('button', { name: 'Close task details' }));
+    if (exit === 'breadcrumb') fireEvent.click(detail.getByRole('link', { name: 'Tasks' }));
+    if (exit === 'escape') fireEvent.keyDown(detail.getByRole('button', { name: 'Close task details' }), { key: 'Escape' });
+    await waitFor(() => expect(lastLocation.pathname).toBe('/tasks'));
+    const params = new URLSearchParams(lastLocation.search);
+    expect(params.get('q')).toBe('URL');expect(params.get('priority')).toBe('0');
+    expect(params.get('ready')).toBe('1');expect(params.get('sort')).toBe('title:asc');
+  });
+  it('distinguishes no filter matches from an empty project and clears only the filters', async () => {
+    const task = { id: 'task-1', title: 'Existing task', status: 'todo' };withTasks([task]);
+    mockRpc(TaskService, 'ListTasks', body => ({ tasks: body.page?.filter || (body.status && body.status !== 'todo') ? [] : [task], page: { totalCount: body.page?.filter ? 0 : 1 } }));
+    renderPage('/tasks?org=org-1&project=proj-1&view=table&q=missing&sort=title:asc');
+    expect(await screen.findByText('No tasks match these view settings.')).toBeVisible();
+    expect(screen.queryByText('No tasks yet.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(await screen.findByText('Existing task')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Table' })).toHaveAttribute('aria-pressed', 'true');
+    const params = new URLSearchParams(lastLocation.search);expect(params.get('q')).toBeNull();
+    expect(params.get('sort')).toBe('title:asc');expect(params.get('org')).toBe('org-1');expect(params.get('project')).toBe('proj-1');
+  });
+
+  it('recovers malformed task settings without losing valid text or workspace scope', async () => {
+    withTasks([]);
+    renderPage('/tasks?org=org-1&project=proj-1&view=broken&priority=7&ready=maybe&sort=DROP&q=kept&marker=keep');
+    expect(screen.getByRole('searchbox', { name: 'Filter tasks' })).toHaveValue('kept');
+    expect(screen.getByRole('button', { name: 'Board' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
+    const params = new URLSearchParams(lastLocation.search);
+    expect(params.get('q')).toBeNull();expect(params.get('view')).toBeNull();expect(params.get('sort')).toBeNull();
+    expect(params.get('org')).toBe('org-1');expect(params.get('project')).toBe('proj-1');expect(params.get('marker')).toBe('keep');
+  });
+  it.each(['mode', 'sort', 'text', 'organization'])('discards bulk selection when %s intent changes', async change => {
+    withTasks([{ id: 'task-1', title: 'Selection task', displayId: 'SEL-1', status: 'todo' }]);
+    renderPage('/tasks?org=org-1&project=proj-1', false, change === 'organization');
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));await screen.findByText('Selection task');
+    const boxes = screen.getAllByRole('checkbox');fireEvent.click(boxes.at(-1)!);
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+    if (change === 'mode') fireEvent.click(screen.getByRole('button', { name: 'Board' }));
+    if (change === 'sort') fireEvent.click(within(screen.getByRole('columnheader', { name: 'Title' })).getByRole('button'));
+    if (change === 'text') fireEvent.change(screen.getByRole('searchbox', { name: 'Filter tasks' }), { target: { value: 'Selection' } });
+    if (change === 'organization') fireEvent.click(screen.getByRole('button', { name: 'Fixture organization only' }));
+    expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
+    if (change === 'mode') {
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+      expect(screen.getAllByRole('checkbox').at(-1)).not.toBeChecked();
+    }
+  });
 
   it('titles the page "Tasks" and says what the screen is for', async () => {
     withTasks([]);
@@ -1000,6 +1095,20 @@ describe('TasksWorkbench', () => {
     expect(screen.getByRole('columnheader', { name: 'Title' })).toBeInTheDocument();
   });
 
+  it('exposes native sort controls, current direction and full virtual row positions to assistive technology', async () => {
+    withTasks([{ id: 'task-1', title: 'Accessible task', status: 'todo', displayId: 'ENG-1' }], { totalCount: 10 });
+    renderPage('/tasks?view=table&sort=title:asc');
+    const title = await screen.findByText('Accessible task');
+    const table = screen.getByRole('table', { name: 'Tasks' });
+    expect(table).toHaveAttribute('aria-rowcount', '11');
+    expect(title.closest('[role="row"]')).toHaveAttribute('aria-rowindex', '2');
+    const header = screen.getByRole('columnheader', { name: /Title/ });
+    expect(header.tagName).not.toBe('BUTTON');
+    expect(header).toHaveAttribute('aria-sort', 'ascending');
+    fireEvent.click(within(header).getByRole('button', { name: 'Title' }));
+    await waitFor(() => expect(header).toHaveAttribute('aria-sort', 'descending'));
+  });
+
   it('bulk-changes the status of tasks selected in the table', async () => {
     withTasks([
       { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
@@ -1234,18 +1343,18 @@ describe('TasksWorkbench', () => {
 
     // Sorting one page of a paginated set in the browser sorts the page, not
     // the set — which is why this asserts on the request and not on the rows.
-    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
+    fireEvent.click(within(screen.getByRole('columnheader', { name: /Title/ })).getByRole('button'));
     await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ page: expect.objectContaining({ sort: 'title:asc' }) }),
     ));
 
-    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
+    fireEvent.click(within(screen.getByRole('columnheader', { name: /Title/ })).getByRole('button'));
     await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ page: expect.objectContaining({ sort: 'title:desc' }) }),
     ));
 
     requests.length = 0;
-    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
+    fireEvent.click(within(screen.getByRole('columnheader', { name: /Title/ })).getByRole('button'));
     await waitFor(() => expect(requests.length).toBeGreaterThan(0));
     // Off: the request carries no sort at all, rather than an empty string -
     // an empty/unset `sort` is proto3's default, so the real JSON codec omits
@@ -1261,7 +1370,7 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Table' }));
 
-    fireEvent.click(screen.getByRole('columnheader', { name: /^ID/ }));
+    fireEvent.click(within(screen.getByRole('columnheader', { name: /^ID/ })).getByRole('button'));
     // displayId is a string, so sorting by it puts "ENG-100" before "ENG-99".
     // Ids are handed out in creation order, so createdAt is the same ordering
     // done correctly.
@@ -1278,9 +1387,9 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Table' }));
 
-    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
-    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
-    fireEvent.click(screen.getByRole('columnheader', { name: /Status/ }));
+    fireEvent.click(within(screen.getByRole('columnheader', { name: /Title/ })).getByRole('button'));
+    fireEvent.click(within(screen.getByRole('columnheader', { name: /Title/ })).getByRole('button'));
+    fireEvent.click(within(screen.getByRole('columnheader', { name: /Status/ })).getByRole('button'));
     await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ page: expect.objectContaining({ sort: 'status:asc' }) }),
     ));
@@ -1629,7 +1738,7 @@ describe('TasksWorkbench', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Table' }));
       await screen.findByText('One');
       expect(screen.getByRole('row', { name: /One/ })).toHaveTextContent('Medium');
-      fireEvent.click(screen.getByRole('columnheader', { name: 'Priority' }));
+      fireEvent.click(within(screen.getByRole('columnheader', { name: 'Priority' })).getByRole('button'));
       await waitFor(() => expect(requests.some((r) => r.page?.sort === 'priority:asc')).toBe(true));
     });
 

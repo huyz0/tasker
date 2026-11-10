@@ -1,12 +1,12 @@
 ---
 id: M58
 title: Operational Views
-status: todo
+status: in-progress
 goal: Task and report filters survive reload and browser history, and people can reopen named tenant-safe personal or explicitly shared query definitions.
 depends_on: [M53]
 surfaces: [backend, gui, contract, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-10
 completed_at: null
 ---
 
@@ -22,7 +22,7 @@ Useful operational views currently disappear when local screen state resets.
 
 ## 3. Exit Criteria
 
-- [ ] Tasks and Reports use validated URLs as the source of view state across reload and history.
+- [x] Tasks and Reports use validated URLs as the source of view state across reload and history.
 - [ ] Named definitions are personal by default; shared editing has an explicit checked server policy.
 - [ ] Saved definitions confer no data access and revalidate referenced resources when used.
 - [ ] Obsolete/malformed definitions recover clearly and tenant/history/browser/full-gate checks pass.
@@ -35,7 +35,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
 
 ## 5. Task Breakdown
 
-- [ ] **M58-T01** — Make task/report view mode, filters, sort and reporting window URL-owned.
+- [x] **M58-T01** — Make task/report view mode, filters, sort and reporting window URL-owned.
   - **Files**: apps/gui/src/features/Tasks/; apps/gui/src/features/Reports/; apps/gui/src/hooks/; .milestones/MILESTONE-58-operational-views/design/UX-DESIGN.md.
   - **Verify**: Reload, deep link and Back/Forward reproduce supported state; parse malformed values safely; changing org/project removes invalid references; saved definitions/local cache never silently replace current URL scope; no result snapshots in URLs.
 
