@@ -51,6 +51,10 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/gui/tests/e2e/; apps/backend/src/test/wire/; docs/; .milestones/MILESTONE-58-operational-views/reviews/.
   - **Verify**: Test two users in one org plus another org, private-ID guessing, shared admin-only edits, scope revocation/deleted references, reload and Back/Forward; both dialects, migrations, generated clients and all gates pass.
 
+- [x] **M58-T05** — Observe settled live status colors in the browser verification after view navigation.
+  - **Files**: apps/gui/tests/e2e/ui-layout.spec.ts.
+  - **Verify**: Both themes retain exact distinct table/board color assertions across repeated real view changes; native mode/connected-style assertions survive rerendering, a deliberate wrong board color still fails, and full/final-head checks pass.
+
 ## 6. Verification
 
 1. Write and run a behavioral regression before implementation; for design/static documents, record why runtime TDD does not apply.

@@ -2,7 +2,7 @@
 active_milestone: M58
 active_task: M58-T02
 last_updated: 2026-11-10
-last_commit: 2076ff9
+last_commit: 8dd8c1
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,10 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M58-T05 verified; publication next.** The published color assertion reproduces3/6 failures locally. Mode/live-style synchronization passes20 repeated real light/dark cases, while a forced wrong Board color still fails exact equality at the unchanged5000ms deadline. E2E types, CODE-v5 and all36 checks pass (32 cached); production source and visual tokens are unchanged.398 total/386 done/11 pending, M582/5. Commit/push this independent test fix and merge only after actual final-head CI. Then resume preserved in-progress T02 in tasker-saved-views; reconcile its candidate-derived checkpoint onto published main without force-push. T01 is published8dd8c1 and both post-main integration jobs passed.
+
+**2026-11-10 — M58-T05 browser follow-up in progress.** T01 is published8dd8c1 after all8 exact-head CI jobs and identical-tree verification. Post-main CI42891977654 has7 successes but an existing live status-color test reads an empty computed style during mode replacement; both integration42891977657 jobs pass. Repair its settled-DOM assertion without changing exact colors or deadlines, and prove wrong colors still fail. New stable taskT05 adds one browser verification task;398 total/385 done/12 pending, M581/5. Preserve dirty owned T02 persistence/design work in tasker-saved-views; do not mix it into this publication.
 
 **2026-11-10 — M58-T01 verified; publication next.** URL-owned Tasks/Reports settings, live narrow writers, lossless fast search and native/semantic mobile table recovery pass all36 checks (GUI1701/95.21% branches; backend2377/zero failures). CODE-v4/UX-v5 approve;37 rendered previews pass148 WCAG/contrast and74 overflow scans. Six layout/theme journeys, final native/history8.5s, explicit-default/order history reds and corrected actual delayed POST200 departure proof pass. M57 main80f7e97 and all10 post-main jobs are verified. Commit this task atomically, preserve its raw checkpoint, reconcile onto the identical-tree published base and publish T01 independently after actual hosted final-head CI. Next M58-T02 owns named definitions/permissions; M58 remains1/4.385 done/11 pending. Original user worktrees/WIP/services remain preserved.
 
@@ -2015,9 +2019,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
-| M58 | Operational Views | in-progress | M53 | 4 | 1 |
+| M58 | Operational Views | in-progress | M53 | 5 | 2 |
 
-**Total: 397 tasks across 52 milestones — 385 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 398 tasks across 52 milestones — 386 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
