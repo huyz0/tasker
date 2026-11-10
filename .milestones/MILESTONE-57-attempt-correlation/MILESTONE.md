@@ -1,12 +1,12 @@
 ---
 id: M57
 title: Attempt Correlation
-status: todo
+status: in-progress
 goal: Claims leave durable generation receipts and workers can optionally associate notes, usage and artifacts with the correct claim after release.
 depends_on: [M46, M54]
 surfaces: [backend, gui, contract, cli, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-10
 completed_at: null
 ---
 
@@ -35,7 +35,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
 
 ## 5. Task Breakdown
 
-- [ ] **M57-T01** — Define backward-compatible claim receipts, attribution and stale-release semantics.
+- [x] **M57-T01** — Define backward-compatible claim receipts, attribution and stale-release semantics.
   - **Files**: .specs/adr/ADR-0043-claim-attempt-correlation.md; .test-plans/TEST-PLAN-0057-attempt-correlation/; packages/shared-contract/main.tsp.
   - **Verify**: Reuse winning ta-* assignment ID; immutable authenticated owner/task/org/claimedAt plus optional externalRunId; release means ownership ended only; omitted fields remain legacy; no fabricated historical claim times or inferred execution outcomes.
 
