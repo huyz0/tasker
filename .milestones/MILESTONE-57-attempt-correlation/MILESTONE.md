@@ -39,7 +39,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: .specs/adr/ADR-0043-claim-attempt-correlation.md; .test-plans/TEST-PLAN-0057-attempt-correlation/; packages/shared-contract/main.tsp.
   - **Verify**: Reuse winning ta-* assignment ID; immutable authenticated owner/task/org/claimedAt plus optional externalRunId; release means ownership ended only; omitted fields remain legacy; no fabricated historical claim times or inferred execution outcomes.
 
-- [ ] **M57-T02** — Persist receipts atomically with claims and close the exact generation on release/unassign.
+- [x] **M57-T02** — Persist receipts atomically with claims and close the exact generation on release/unassign.
   - **Files**: apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/; packages/shared-contract/; apps/cli/gen/.
   - **Verify**: Keyed replay returns same receipt; changed correlation with same key fails; racing claims create one receipt; reclaim creates another; expectedAttemptId fences stale release before handoff/deletion; human unassignment closes receipt transactionally; both migrations preserve old clients.
 

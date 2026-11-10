@@ -1,8 +1,8 @@
 ---
 active_milestone: M57
-active_task: M57-T02
+active_task: M57-T03
 last_updated: 2026-11-10
-last_commit: daab6a1
+last_commit: 52c7ba4
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,14 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M57-T02 verified:2/5 tasks.** Atomic winning-ID receipts, stale-release fencing and exact human/retention closure pass all36 checks (backend2318/zero failures/95.89% functions/96.83% lines; GUI1622/95.13% branches). CODE-v1 approves;15 SQLite cases,46 real MySQL assertions,4 populated both-dialect upgrades,15 actual old-client decodes and3 restored rollback faults pass. M56 is published as681dc20 after all8 final-head jobs with identical tested/main trees; post-main CI42822658627/integration42822658587 remain pending. T03 next adds explicit owner/task-bound report association and worker arguments.381 done/15 pending; history UI is not delivered yet. Reconcile this clean checkpoint onto published main in a new owned delivery branch; preserve earlier pushed checkpoint and original user WIP/services.
+
+**2026-11-10 — M56 published; M57-T02 source approved.** PR #9 passes all8 final-head jobs and merges as681dc20; fetched main exactly matches tested daab6a1's tree. Post-main CI42822658627/integration42822658587 remain pending. M57 CODE-v1 approves receipt persistence/closure after15 SQLite cases, real MySQL/race/fault and both-dialect upgrade proof, actual old-client compatibility and restored rollback faults. Explicit backend types pass. Full1 stops only on TypeSpec formatting; whitespace is corrected and full2 still gates T02 completion.380 done/16 pending; original user WIP/services are preserved. Reconcile the owned M57 branch onto published main after a clean checkpoint without rewriting its earlier pushed checkpoint.
+
+**2026-11-10 — M57-T02 implementation under verification.** Real receipts and exact-generation release/closure pass15 SQLite cases,59 affected cases,46 real MySQL assertions,4 both-dialect populated upgrade/reboot cases and15 actual old-client decodes preserving447 messages/1283 fields. Three restored source faults prove transaction rollback assertions. Final type fixes, independent CODE review and full36 still gate completion; no report correlation/history UI is delivered yet.380 done/16 pending overall. M56 final CI has3 successes and its GUI job running; main publication/base reconciliation remain pending.
+
+**2026-11-10 — M57-T02 in progress.** T01 is committed/pushed as52c7ba4 after approved design and all36 source/closure/pre-commit checks. Drive real receipt/stale-release/closure regressions before compatible contracts and additive migrations; API/security plus TDD apply. No M57 runtime feature is implemented yet.380 done/16 pending overall. M56 PR #9 final-head CI remains2 success/6 queued, so its main publication/base reconciliation still gates publication of this branch. Original user WIP/services remain preserved.
 
 **2026-11-10 — M57-T01 verified:1/5 tasks.** Accepted ADR0043/UX/TC001–010 and ARCH-v3/UX-v2 define durable exact-generation ownership receipts, optional authenticated-owner reporting, real retention closure and bounded visible history. All36 checks pass (GUI1622/95.13% branches; backend2302/zero failures). Nine initial-render/deadline failures under fresh-build load pass unchanged in168 isolated cases and the full rerun with limited parallelism; no assertions/timeouts/product source changed. No M57 runtime feature exists yet. T02 is next;380 done/16 pending overall. Ready PR #9 remains at daab6a1 with final-head CI42812207225 at2 success/6 queued; main publication and base reconciliation remain pending. Original user WIP/services are preserved.
 
@@ -1990,10 +1998,10 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
-| M57 | Attempt Correlation | in-progress | M46, M54 | 5 | 1 |
+| M57 | Attempt Correlation | in-progress | M46, M54 | 5 | 2 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 380 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 381 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

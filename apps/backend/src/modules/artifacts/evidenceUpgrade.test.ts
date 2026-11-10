@@ -15,6 +15,13 @@ import { setupDatabase } from '../../db/db';
 import { makeAuthContext } from '../../test/setup';
 import { createArtifactsHandler } from './artifacts.handler';
 
+// Keep the actual legacy boundary when newer migrations are appended.
+function beforeMigration(migrations: typeof EMBEDDED_SQLITE_MIGRATIONS, tag: string) {
+  const index = migrations.findIndex(migration => migration.tag === tag);
+  if (index < 0) throw new Error('missing historical evidence migration');
+  return migrations.slice(0, index);
+}
+
 async function seedLegacy(db: any, S: typeof SQ | typeof MY) {
   const key = crypto.randomUUID(), orgId = `org-${key}`, userId = `user-${key}`, projectId = `project-${key}`;
   const templateId = `template-${key}`, folderId = `folder-${key}`, artifactId = `artifact-${key}`, taskId = `task-${key}`, linkId = `legacy-${key}`;
@@ -49,7 +56,7 @@ it('SQLite upgrade preserves existing links/content and does not invent historic
   let db: any;
   try {
     raw.query('CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(title, body, content="")').run();
-    await applyEmbeddedMigrations(sqliteRunner(raw), EMBEDDED_SQLITE_MIGRATIONS.slice(0, -1));
+    await applyEmbeddedMigrations(sqliteRunner(raw), beforeMigration(EMBEDDED_SQLITE_MIGRATIONS, '0064_link_evidence'));
     const f = await seedLegacy(sqliteDrizzle(raw, { schema: SQ }), SQ);
     raw.query('INSERT INTO task_artifact_links (id,task_id,artifact_id) VALUES (?,?,?)').run(f.linkId, f.taskId, f.artifactId);
     raw.close();
@@ -78,7 +85,7 @@ const enabled = process.env.TASKER_MYSQL_INTEGRATION === '1';
     process.env.STANDALONE = 'false'; process.env.DB_NAME = name;
     pool = mysql.createPool({ ...credentials, database: name });
     const legacy = mysqlDrizzle(pool, { schema: MY, mode: 'default' });
-    await applyEmbeddedMigrations(mysqlRunner(legacy, sql.raw.bind(sql)), EMBEDDED_MYSQL_MIGRATIONS.slice(0, -1));
+    await applyEmbeddedMigrations(mysqlRunner(legacy, sql.raw.bind(sql)), beforeMigration(EMBEDDED_MYSQL_MIGRATIONS, '0052_link_evidence'));
     const f = await seedLegacy(legacy, MY);
     await pool.execute('INSERT INTO task_artifact_links (id,task_id,artifact_id) VALUES (?,?,?)', [f.linkId, f.taskId, f.artifactId]);
     await pool.end(); pool = undefined;

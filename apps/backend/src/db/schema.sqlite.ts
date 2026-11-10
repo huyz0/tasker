@@ -464,6 +464,22 @@ export const taskAssignments = sqliteTable("task_assignments", {
   };
 });
 
+// Receipt owners are snapshots and deliberately have no owner foreign key.
+export const taskClaimAttempts = sqliteTable("task_claim_attempts", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => tasks.id),
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  ownerKind: text("owner_kind").notNull(),
+  ownerId: text("owner_id").notNull(),
+  ownerName: text("owner_name").notNull(),
+  claimedAt: integer("claimed_at", { mode: "timestamp" }).notNull(),
+  externalRunId: text("external_run_id"),
+  releasedAt: integer("released_at", { mode: "timestamp" }),
+  releaseReason: text("release_reason"),
+  releasedByKind: text("released_by_kind"),
+  releasedById: text("released_by_id"),
+}, table => ({ taskClaimedIdx: index("task_claim_attempts_task_claimed_idx").on(table.taskId, table.claimedAt, table.id) }));
+
 export const taskReviewers = sqliteTable("task_reviewers", {
   id: text("id").primaryKey(),
   taskId: text("task_id").notNull().references(() => tasks.id),

@@ -333,6 +333,22 @@ export const taskAssignments = mysqlTable("task_assignments", {
   };
 });
 
+// Receipt owners survive owner retention cleanup on still-live tasks.
+export const taskClaimAttempts = mysqlTable("task_claim_attempts", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  ownerKind: varchar("owner_kind", { length: 16 }).notNull(),
+  ownerId: varchar("owner_id", { length: 256 }).notNull(),
+  ownerName: varchar("owner_name", { length: 256 }).notNull(),
+  claimedAt: timestamp("claimed_at").notNull(),
+  externalRunId: varchar("external_run_id", { length: 256 }),
+  releasedAt: timestamp("released_at"),
+  releaseReason: varchar("release_reason", { length: 32 }),
+  releasedByKind: varchar("released_by_kind", { length: 16 }),
+  releasedById: varchar("released_by_id", { length: 256 }),
+}, table => ({ taskClaimedIdx: index("task_claim_attempts_task_claimed_idx").on(table.taskId, table.claimedAt, table.id) }));
+
 export const taskReviewers = mysqlTable("task_reviewers", {
   id: varchar("id", { length: 256 }).primaryKey(),
   taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),

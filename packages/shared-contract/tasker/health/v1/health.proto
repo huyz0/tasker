@@ -856,6 +856,7 @@ message AssignTaskResponse {
   bool success = 1;
 }
 
+
 // Agent self-service (M14-T06): claims the task for the calling principal
 // only - no field names a different assignee. Succeeds only if the task
 // currently has no assignee at all.
@@ -864,12 +865,14 @@ message ClaimTaskRequest {
 
   // Retry-safety (M14-T07), same contract as CreateTaskRequest.idempotencyKey.
   string idempotencyKey = 2;
+  optional string externalRunId = 3;
 }
 
 message ClaimTaskResponse {
   Task task = 1;
   // M22-T02: the task's most recent handoff-typed TaskNote, if one exists.
   TaskNote latestHandoffNote = 2;
+  TaskAttempt attempt = 3;
 }
 
 // M33-T02. See main.tsp's ClaimNextTaskRequest.
@@ -879,18 +882,21 @@ message ClaimNextTaskRequest {
   optional string idempotencyKey = 3;
   // M35.
   optional string labelId = 4;
+  optional string externalRunId = 5;
 }
 
 message ClaimNextTaskResponse {
   // Absent when there is nothing open and unassigned to claim.
   optional Task task = 1;
   optional TaskNote latestHandoffNote = 2;
+  TaskAttempt attempt = 3;
 }
 
 // M33-T03 (ADR-0027). See main.tsp's ReleaseTaskRequest.
 message ReleaseTaskRequest {
   string taskId = 1;
   optional string handoffNote = 2;
+  optional string expectedAttemptId = 3;
 }
 
 message ReleaseTaskResponse {
@@ -2984,3 +2990,17 @@ message ListAttentionResponse {
 service AttentionService {
   rpc ListAttention(ListAttentionRequest) returns (ListAttentionResponse);
 }
+
+// ADR-0043: appended to retain existing generated message indexes.
+message TaskAttempt {
+  string id = 1;
+  string taskId = 2;
+  string orgId = 3;
+  EvidenceActor owner = 4;
+  string claimedAt = 5;
+  optional string externalRunId = 6;
+  optional string releasedAt = 7;
+  optional string releaseReason = 8;
+  EvidenceActor releasedBy = 9;
+}
+

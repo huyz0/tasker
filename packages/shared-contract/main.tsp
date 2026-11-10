@@ -1098,6 +1098,19 @@ model AssignTaskResponse {
   @field(1) success: boolean;
 }
 
+// Durable ownership facts, not external process status (ADR-0043).
+model TaskAttempt {
+  @field(1) id: string;
+  @field(2) taskId: string;
+  @field(3) orgId: string;
+  @field(4) owner: EvidenceActor;
+  @field(5) claimedAt: string;
+  @field(6) externalRunId?: string;
+  @field(7) releasedAt?: string;
+  @field(8) releaseReason?: string;
+  @field(9) releasedBy?: EvidenceActor;
+}
+
 // Agent self-service (M14-T06): claims the task for the *calling* principal
 // only, atomically - there is no field to name a different assignee, unlike
 // AssignTaskRequest. Succeeds only if the task currently has no assignee at
@@ -1109,6 +1122,8 @@ model ClaimTaskRequest {
 
   // Retry-safety (M14-T07), same contract as CreateTaskRequest.idempotencyKey.
   @field(2) idempotencyKey?: string;
+
+  @field(3) externalRunId?: string;
 }
 
 model ClaimTaskResponse {
@@ -1118,6 +1133,8 @@ model ClaimTaskResponse {
   // populated in the same round trip as the claim itself succeeding, so the
   // caller sees prior continuity context without a second call.
   @field(2) latestHandoffNote?: TaskNote;
+
+  @field(3) attempt?: TaskAttempt;
 }
 
 // M33-T02: claims the oldest open (non-terminal), unassigned task in the
@@ -1136,11 +1153,14 @@ model ClaimNextTaskRequest {
 
   // M35: only tasks carrying this label - label-based routing.
   @field(4) labelId?: string;
+
+  @field(5) externalRunId?: string;
 }
 
 model ClaimNextTaskResponse {
   @field(1) task?: Task;
   @field(2) latestHandoffNote?: TaskNote;
+  @field(3) attempt?: TaskAttempt;
 }
 
 // M33-T03 (ADR-0027): gives back a task the caller holds by its own claim.
@@ -1150,6 +1170,7 @@ model ClaimNextTaskResponse {
 model ReleaseTaskRequest {
   @field(1) taskId: string;
   @field(2) handoffNote?: string;
+  @field(3) expectedAttemptId?: string;
 }
 
 model ReleaseTaskResponse {
