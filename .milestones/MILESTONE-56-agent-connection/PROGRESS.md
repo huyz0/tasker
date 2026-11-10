@@ -227,3 +227,17 @@ set now passes126 cases, including actual pending request cancellation and one
 shared prefixed API across normal session/RPC, exact probe and generated config.
 Final source types,39-preview matrices, updated backend/privacy source review and
 all35 local gates remain pending. T03/T04 are not complete.
+
+Final39 previews pass156 WCAG/78 mobile scans; eight settled synthetic credential
+captures show ready/configuration/verified/offline in both themes. CODE-v5
+approves the narrow CORS change but catches an earlier cleanup window: server
+creation can commit before the browser records its token ID. Capture owned agent,
+unique token name and administrator cookie before issuance, then discover/revoke
+only that matching metadata when response identity is unavailable. The unchanged
+normal browser journey passes9.0s. The first withheld-response fault sets its
+deadline before commitment and therefore does not exercise the intended case;
+move the timeout trigger after actual server200. The corrected withheld committed
+response times out as intended, cleanup discovers/revokes exactly one token, no
+long-token artifact appears, and an independent metadata scan leaves zero active
+owned credentials. The test source is restored. Full35 runs against final source;
+final E2E types/re-review and gates remain pending.

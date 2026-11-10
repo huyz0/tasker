@@ -2,10 +2,11 @@ import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 const api = process.env.TASKER_E2E_BACKEND_URL ?? 'http://localhost:8080';
 test.use({ trace: 'off', video: 'off', screenshot: 'off' });
 // Remove credential DOM before automatic failure context, also after timeouts.
-const owned = new WeakMap<BrowserContext, { tokenId: string; cookie: string; revoked: boolean }>();
+interface OwnedCredential { tokenId: string; agentId: string; tokenName: string; cookie: string; revoked: boolean; issuanceStarted: boolean; }
+const owned = new WeakMap<BrowserContext, OwnedCredential>();
 test.afterEach(async ({ context }) => {
   const current = owned.get(context);
-  const results = await Promise.allSettled([clearSecret(context), current?.tokenId && !current.revoked ? revoke(current.tokenId, current.cookie) : Promise.resolve()]);
+  const results = await Promise.allSettled([clearSecret(context), current?.issuanceStarted && !current.revoked ? revoke(current) : Promise.resolve()]);
   owned.delete(context);
   if (results.some(result => result.status === 'rejected')) throw new Error('Owned credential or browser cleanup failed.');
 });
@@ -22,11 +23,22 @@ async function adminRpc<T>(page: Page, service: string, method: string, body: ob
     if (!response.ok) throw new Error(`Setup request failed (${response.status}).`); return response.json();
   }, { api, service, method, body });
 }
-async function revoke(tokenId: string, cookie: string) {
-  try {
-    const response = await fetch(`${api}/tasker.health.v1.AgentService/RevokeAgentToken`, { method: 'POST', redirect: 'error', headers: { 'content-type': 'application/json', 'connect-protocol-version': '1', cookie }, body: JSON.stringify({ tokenId }) });
-    if (!response.ok) throw new Error();
-  } catch { throw new Error('Could not revoke the owned browser test credential.'); }
+async function revoke(current: OwnedCredential) {
+  const call = async (method: string, body: object) => {
+    try {
+      const response = await fetch(`${api}/tasker.health.v1.AgentService/${method}`, { method: 'POST', redirect: 'error', headers: { 'content-type': 'application/json', 'connect-protocol-version': '1', cookie: current.cookie }, body: JSON.stringify(body) });
+      if (!response.ok) throw new Error(); return await response.json();
+    } catch { throw new Error('Owned test credential cleanup request failed.'); }
+  };
+  let ids = current.tokenId ? [current.tokenId] : [];
+  // Creation may commit even when its response never reaches the browser. Use
+  // only pre-recorded owned agent/name metadata, never recover the plaintext.
+  for (let attempt = 0; !ids.length && attempt < 10; attempt++) {
+    const response = await call('ListAgentTokens', { agentId: current.agentId }) as { tokens: { id: string; agentId: string; name: string; revokedAt?: string }[] };
+    ids = response.tokens.filter(token => token.agentId === current.agentId && token.name === current.tokenName && !token.revokedAt).map(token => token.id);
+    if (!ids.length) await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  for (const tokenId of ids) await call('RevokeAgentToken', { tokenId });
 }
 
 test('issues least privilege, copies scoped configuration and verifies the exact bearer without cookie fallback', async ({ page, context }) => {
@@ -38,12 +50,15 @@ test('issues least privilege, copies scoped configuration and verifies the exact
     const { organization } = await adminRpc<{ organization: { id: string } }>(page, 'OrgService', 'SeedOrg', { name: `Connection browser ${stamp}`, slug: `connection-${stamp}` });
     const { role } = await adminRpc<{ role: { id: string } }>(page, 'AgentService', 'CreateAgentRole', { orgId: organization.id, name: 'Release reader', systemPrompt: 'Read authorized evidence.', capabilities: '[]' });
     await page.goto(`/agents?org=${organization.id}`); await page.getByRole('button', { name: 'Register agent', exact: true }).click();
-    await page.getByRole('textbox', { name: 'Agent name', exact: true }).fill(name); await page.getByRole('combobox', { name: 'Role', exact: true }).selectOption(role.id); await page.getByRole('button', { name: 'Register', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Agent name', exact: true }).fill(name); await page.getByRole('combobox', { name: 'Role', exact: true }).selectOption(role.id);
+    const registration = page.waitForResponse(response => response.url().endsWith('/CreateAgent') && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Register', exact: true }).click();
+    const { agent } = await (await registration).json() as { agent: { id: string } };
     const connection = page.getByRole('region', { name: `Connect ${name}`, exact: true });
-    owned.set(context, { tokenId: '', cookie: (await context.cookies(api)).map(cookie => `${cookie.name}=${cookie.value}`).join('; '), revoked: false });
+    owned.set(context, { tokenId: '', agentId: agent.id, tokenName, issuanceStarted: false, cookie: (await context.cookies(api)).map(cookie => `${cookie.name}=${cookie.value}`).join('; '), revoked: false });
     await connection.getByRole('button', { name: 'New token', exact: true }).click(); await expect(connection.getByRole('checkbox', { checked: true })).toHaveCount(0);
     await connection.getByLabel('Name', { exact: true }).fill(tokenName); await connection.getByRole('checkbox', { name: 'tasks:read', exact: true }).check();
-    const issuance = page.waitForResponse(response => response.url().endsWith('/CreateAgentToken') && response.request().method() === 'POST'); await connection.getByRole('button', { name: 'Create', exact: true }).click();
+    const issuance = page.waitForResponse(response => response.url().endsWith('/CreateAgentToken') && response.request().method() === 'POST'); owned.get(context)!.issuanceStarted = true; await connection.getByRole('button', { name: 'Create', exact: true }).click();
     const response = await issuance; expect(response.status()).toBe(200);
     const issued = await response.json() as { token: { id: string; agentId: string; scopes: string[] }; plaintext: string }; tokenId = issued.token.id; secret = issued.plaintext; owned.get(context)!.tokenId = tokenId;
     expect(Boolean(tokenId && secret.startsWith('tskr_'))).toBe(true); expect(issued.token.scopes).toEqual(['tasks:read']);
