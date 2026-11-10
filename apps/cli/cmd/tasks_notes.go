@@ -24,9 +24,10 @@ var tasksNoteAddCmd = &cobra.Command{
 
 		client := backend.NewTaskNoteServiceClient()
 		res, err := client.CreateTaskNote(cmd.Context(), connect.NewRequest(&healthv1.CreateTaskNoteRequest{
-			TaskId:   args[0],
-			Content:  content,
-			NoteType: noteType,
+			TaskId:    args[0],
+			Content:   content,
+			NoteType:  noteType,
+			AttemptId: optionalString(cmd, "attempt-id"),
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to add note: %w", err)
@@ -51,9 +52,19 @@ var tasksNotesCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := backend.NewTaskNoteServiceClient()
-		res, err := client.ListTaskNotes(cmd.Context(), connect.NewRequest(&healthv1.ListTaskNotesRequest{
-			TaskId: args[0],
-		}))
+		request := &healthv1.ListTaskNotesRequest{TaskId: args[0], AttemptId: optionalString(cmd, "attempt-id"),
+			UncorrelatedOnly: optionalBool(cmd, "uncorrelated-only"), NoteType: optionalString(cmd, "note-type")}
+		request.Page = reportReadPage(cmd, request.AttemptId != nil || request.UncorrelatedOnly != nil || request.NoteType != nil)
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, request, func() (proto.Message, error) {
+				response, err := client.ListTaskNotes(cmd.Context(), connect.NewRequest(request))
+				if err != nil {
+					return nil, err
+				}
+				return response.Msg, nil
+			})
+		}
+		res, err := client.ListTaskNotes(cmd.Context(), connect.NewRequest(request))
 		if err != nil {
 			return fmt.Errorf("failed to list notes: %w", err)
 		}
@@ -74,6 +85,7 @@ var tasksNotesCmd = &cobra.Command{
 				}
 			}
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -206,6 +218,10 @@ func init() {
 
 	tasksNoteAddCmd.Flags().String("content", "", "Note text")
 	tasksNoteAddCmd.Flags().String("type", "", "Note type: comment (default) or handoff")
+	tasksNoteAddCmd.Flags().String("attempt-id", "", "Claim receipt owned by the caller; omit to leave this note ungrouped")
+	addReportReadFlags(tasksNotesCmd)
+	addReportPageFlags(tasksNotesCmd)
+	tasksNotesCmd.Flags().String("note-type", "", "Only comment or handoff notes")
 	// --agent is gone (M04-T06): a task note is authored by the authenticated
 	// agent, not by whoever the caller names. Authenticate with an agent token
 	// (M04-T09 adds --token / TASKER_TOKEN).

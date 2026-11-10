@@ -347,9 +347,10 @@ Usage:
   tasker artifacts link-task [flags]
 
 Flags:
-      --artifact string   Artifact ID to link
-  -h, --help              help for link-task
-      --task string       Task ID to link the artifact to
+      --artifact string     Artifact ID to link
+      --attempt-id string   Claim receipt owned by the caller; omit to leave this link ungrouped
+  -h, --help                help for link-task
+      --task string         Task ID to link the artifact to
 ```
 
 #### `tasker artifacts list`
@@ -379,9 +380,14 @@ Usage:
   tasker artifacts list-task-links [flags]
 
 Flags:
-      --artifact string   List links for this artifact
-  -h, --help              help for list-task-links
-      --task string       List links for this task
+      --artifact string     List links for this artifact
+      --attempt-id string   Only reports associated with this task claim receipt
+  -c, --cursor string       Pagination cursor from a previous response
+  -h, --help                help for list-task-links
+  -l, --limit int32         Maximum number of items to return (default 50)
+      --page-all            Fetch every page as one JSON object per item per line (NDJSON)
+      --task string         List links for this task
+      --uncorrelated-only   Only reports without a claim receipt
 ```
 
 #### `tasker artifacts purge`
@@ -1813,6 +1819,7 @@ Available Commands:
   approve               Approve an agent's held status change; it is applied as you (people only)
   ask                   Ask a person a question on a task; its reviewers (or org admins) are notified
   assign                Assign a task to an agent or user
+  attempts              Read recorded claim ownership, newest first
   cancel-question       Withdraw a question you asked (or, as an admin, close any)
   claim                 Atomically claim an unassigned task for the calling principal (agent self-service)
   claim-next            Claim the most important ready task in a project (agent self-service)
@@ -1935,6 +1942,21 @@ Flags:
       --user string    User ID to assign
 ```
 
+#### `tasker tasks attempts`
+
+```
+Read recorded claim ownership, newest first
+
+Usage:
+  tasker tasks attempts [task_id] [flags]
+
+Flags:
+  -c, --cursor string   Pagination cursor from a previous response
+  -h, --help            help for attempts
+  -l, --limit int32     Maximum number of items to return (default 50)
+      --page-all        Fetch every page as one JSON object per item per line (NDJSON)
+```
+
 #### `tasker tasks cancel-question`
 
 ```
@@ -1956,6 +1978,7 @@ Usage:
   tasker tasks claim [task_id] [flags]
 
 Flags:
+      --external-run-id string   Optional external job/run correlation recorded with the claim
   -h, --help                     help for claim
       --idempotency-key string   Optional key: replaying the same key from the same principal returns the original claim instead of erroring on an already-claimed task
 ```
@@ -1972,6 +1995,7 @@ Usage:
   tasker tasks claim-next [flags]
 
 Flags:
+      --external-run-id string   Optional external job/run correlation recorded with the claim
   -h, --help                     help for claim-next
       --idempotency-key string   Optional key: a retry with the same key returns the original claim instead of claiming another task
       --label string             Only tasks carrying this label ID
@@ -2161,9 +2185,10 @@ Usage:
   tasker tasks note-add [task_id] [flags]
 
 Flags:
-      --content string   Note text
-  -h, --help             help for note-add
-      --type string      Note type: comment (default) or handoff
+      --attempt-id string   Claim receipt owned by the caller; omit to leave this note ungrouped
+      --content string      Note text
+  -h, --help                help for note-add
+      --type string         Note type: comment (default) or handoff
 ```
 
 #### `tasker tasks note-delete`
@@ -2200,7 +2225,13 @@ Usage:
   tasker tasks notes [task_id] [flags]
 
 Flags:
-  -h, --help   help for notes
+      --attempt-id string   Only reports associated with this task claim receipt
+  -c, --cursor string       Pagination cursor from a previous response
+  -h, --help                help for notes
+  -l, --limit int32         Maximum number of items to return (default 50)
+      --note-type string    Only comment or handoff notes
+      --page-all            Fetch every page as one JSON object per item per line (NDJSON)
+      --uncorrelated-only   Only reports without a claim receipt
 ```
 
 #### `tasker tasks plan`
@@ -2285,8 +2316,9 @@ Usage:
   tasker tasks release [task_id] [flags]
 
 Flags:
-      --handoff string   A handoff note to record before releasing: what you tried, what is blocked, the next step
-  -h, --help             help for release
+      --expected-attempt-id string   Release only this claim generation; omission uses legacy release
+      --handoff string               A handoff note to record before releasing: what you tried, what is blocked, the next step
+  -h, --help                         help for release
 ```
 
 #### `tasker tasks restore`

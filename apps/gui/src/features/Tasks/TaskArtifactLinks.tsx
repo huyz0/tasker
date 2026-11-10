@@ -11,6 +11,7 @@ import { useAuthSession } from '../../hooks/useAuthSession';
 import { Button } from '../../components/ui/button';
 import { ListState } from '../../components/ui/ListState';
 import { RELATIONSHIP_WRITES, relationshipAccessLost, relationshipKey, useArtifactRelationships, type EvidenceRow, type RelationshipOwner, type RelationshipWrite } from './useArtifactRelationships';
+import { reportFilterArguments, useTaskReportScope } from './TaskReportScope';
 
 const artifacts = createClient(ArtifactService, transport);
 const searchClient = createClient(SearchService, transport);
@@ -19,19 +20,24 @@ interface TaskArtifactLinksProps { taskId?: string; artifactId?: string; orgId: 
 /** Both ends share one relationship control. A new owner remounts local intent. */
 export function TaskArtifactLinks(props: TaskArtifactLinksProps) {
   const session = useAuthSession();
+  const scope = useTaskReportScope();
   if (!session.authenticated || !session.userId) return <p className="type-caption text-muted-foreground" role="status">
     {session.isLoading ? 'Checking account…' : 'Sign in to view linked evidence.'}
   </p>;
   if (!(props.taskId || props.artifactId) || !props.orgId) return <p className="type-caption text-muted-foreground">Choose a resource to view its links.</p>;
-  const owner = { accountId: session.userId, orgId: props.orgId, taskId: props.taskId, artifactId: props.artifactId };
+  const owner = { accountId: session.userId, orgId: props.orgId, taskId: props.taskId, artifactId: props.artifactId,
+    ...(scope && scope.taskId === props.taskId && scope.orgId === props.orgId && scope.accountId === session.userId
+      ? reportFilterArguments(scope.filter) : {}) };
   return <RelationshipPanel key={JSON.stringify(relationshipKey(owner))} owner={owner}>{props.children}</RelationshipPanel>;
 }
 
 interface RelationshipPanelProps { owner: RelationshipOwner; children?: ReactNode; }
 function RelationshipPanel({ owner, children }: RelationshipPanelProps) {
   const taskSide = !!owner.taskId;
+  const reportScope = useTaskReportScope();
   const queryClient = useQueryClient();
-  const { query, rows, blocked, denied, canLink, canUnlink, totalCount } = useArtifactRelationships(owner);
+  const { query, rows, blocked, denied, canLink, canUnlink, totalCount, refresh: refreshRead, canRetry } = useArtifactRelationships(owner);
+  const [outsideLink, setOutsideLink] = useState<'ungrouped' | 'other' | 'unknown' | null>(null);
   const [isPicking, setIsPicking] = useState(false);
   const [writeAccessLost, setWriteAccessLost] = useState(false);
   const [search, setSearch] = useState('');
@@ -53,7 +59,13 @@ function RelationshipPanel({ owner, children }: RelationshipPanelProps) {
   const link = useMutation({
     mutationKey: RELATIONSHIP_WRITES,
     mutationFn: (write: RelationshipWrite) => artifacts.linkTaskArtifact({ taskId: write.taskId, artifactId: write.artifactId }),
-    onSuccess: (_response, write) => { setIsPicking(false); setSearch(''); invalidate(write); },
+    onSuccess: (response, write) => {
+      setIsPicking(false); setSearch(''); invalidate(write);
+      if (owner.attemptId !== undefined || owner.uncorrelatedOnly) {
+        const outside = !response.link || (owner.attemptId !== undefined ? response.link.attemptId !== owner.attemptId : response.link.attemptId !== undefined);
+        setOutsideLink(outside ? !response.link ? 'unknown' : response.link.attemptId === undefined ? 'ungrouped' : 'other' : null);
+      }
+    },
     onError: error => { if (relationshipAccessLost(error)) setWriteAccessLost(true); },
   });
   const unlink = useMutation({
@@ -77,12 +89,13 @@ function RelationshipPanel({ owner, children }: RelationshipPanelProps) {
     ? candidates.data.filter(candidate => candidate.type === (taskSide ? 'artifact' : 'task') && !linkedIds.has(candidate.id)) : [];
   const refresh = async () => {
     const before = queryClient.getQueryState(relationshipKey(owner))?.dataUpdateCount ?? 0;
-    const result = await query.refetch();
+    const result = await refreshRead();
     const after = queryClient.getQueryState(relationshipKey(owner))?.dataUpdateCount ?? 0;
     // Cancellation can return the previous successful result without a response.
-    if (result.isSuccess && after > before) { setWriteAccessLost(false); link.reset(); unlink.reset(); }
+    if (result?.isSuccess && after > before) { setWriteAccessLost(false); link.reset(); unlink.reset(); }
   };
   const noun = taskSide ? 'evidence' : 'task links';
+  if (!canRetry) return <p role="status" className="type-caption text-muted-foreground">Verify task access in Claim history to view evidence.</p>;
   const content = <>
     <div className="flex items-start justify-between gap-3">
       {taskSide ? <h3 id={headingId} className="type-section-title">Evidence</h3> : <span className="type-caption text-muted-foreground">Linked tasks</span>}
@@ -136,6 +149,11 @@ function RelationshipPanel({ owner, children }: RelationshipPanelProps) {
         onClick={() => { setIsPicking(true); link.reset(); }}>{taskSide ? 'Link an artifact…' : 'Link a task…'}</Button>)}
     </>}
     {denied && <p className="type-caption text-muted-foreground">Current access must be verified before showing linked data.</p>}
+    {outsideLink && <div role="status" className="rounded-md border bg-surface-panel p-3 type-caption space-y-2">
+      <p>{outsideLink === 'ungrouped' ? 'Artifact linked without a claim receipt.'
+        : outsideLink === 'other' ? 'Artifact is linked with a different claim receipt.' : 'Artifact linked. Its claim association was not returned.'}</p>
+      {reportScope && <Button type="button" variant="outline" size="sm" onClick={() => reportScope.choose({ kind: 'all' }, true)}>Show all reports</Button>}
+    </div>}
     {mutationError && <p role="alert" className="type-caption text-destructive-subtle-foreground">
       {link.error ? 'Failed to link: ' : 'Failed to unlink: '}{actionErrorMessage(mutationError)}
       {writeDenied && ' Refresh to verify current controls.'}

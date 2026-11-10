@@ -29,6 +29,7 @@ export function linkToWire(row: any, artifactName?: string, taskTitle?: string) 
     ...(taskTitle !== undefined ? { taskTitle } : {}),
     ...(row.linkedAt ? { linkedAt: iso(row.linkedAt) } : {}),
     ...(linkedBy ? { linkedBy } : {}),
+    ...(row.attemptId != null ? { attemptId: row.attemptId } : {}),
   };
 }
 

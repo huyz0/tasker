@@ -45,6 +45,7 @@ var tasksClaimNextCmd = &cobra.Command{
 			TaskTypeId:     optionalString(cmd, "type"),
 			IdempotencyKey: optionalString(cmd, "idempotency-key"),
 			LabelId:        optionalString(cmd, "label"),
+			ExternalRunId:  optionalString(cmd, "external-run-id"),
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to claim the next task: %w", err)
@@ -57,6 +58,9 @@ var tasksClaimNextCmd = &cobra.Command{
 			return nil
 		}
 		cmd.Printf("Claimed %s: %s (id: %s)\n", res.Msg.Task.DisplayId, res.Msg.Task.Title, res.Msg.Task.Id)
+		if receipt := res.Msg.Attempt; receipt != nil && receipt.Id != "" {
+			cmd.Printf("Claim receipt: %s\n", receipt.Id)
+		}
 		if n := res.Msg.LatestHandoffNote; n != nil {
 			cmd.Printf("Handoff note (%s): %s\n", noteAuthor(n), n.Content)
 		}
@@ -73,8 +77,9 @@ var tasksReleaseCmd = &cobra.Command{
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		res, err := backend.NewTaskServiceClient().ReleaseTask(cmd.Context(), connect.NewRequest(&healthv1.ReleaseTaskRequest{
-			TaskId:      args[0],
-			HandoffNote: optionalString(cmd, "handoff"),
+			TaskId:            args[0],
+			HandoffNote:       optionalString(cmd, "handoff"),
+			ExpectedAttemptId: optionalString(cmd, "expected-attempt-id"),
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to release task: %w", err)
@@ -145,6 +150,8 @@ func noteAuthor(n *healthv1.TaskNote) string {
 
 func init() {
 	tasksCmd.AddCommand(tasksClaimNextCmd, tasksReleaseCmd, tasksMineCmd)
+	tasksClaimNextCmd.Flags().String("external-run-id", "", "Optional external job/run correlation recorded with the claim")
+	tasksReleaseCmd.Flags().String("expected-attempt-id", "", "Release only this claim generation; omission uses legacy release")
 
 	tasksClaimNextCmd.Flags().StringP("project", "p", "", "Project to take work from (or set TASKER_PROJECT_ID)")
 	tasksClaimNextCmd.Flags().String("type", "", "Only tasks of this task type ID")

@@ -9,7 +9,9 @@ import { assertCan, can } from "../../lib/policy";
 import { setRequestProject } from "../../lib/requestContext";
 import { ConnectError, Code } from "@connectrpc/connect";
 
-import { withUnitOfWork } from "../../db/access";
+import { transactionalOperation } from "../../db/access";
+import { validatedReportAttemptId } from '../tasks/taskAttempts';
+import { reportReadFilters, reportAssociationWhere } from '../tasks/claimHistory';
 import { storedBytesSql, contentPrefixSql, decodeContentPrefix, artifactContentValue, linkToWire, linkActor, evidenceMetadata } from "./evidence";
 
 // --- Zod Request Schemas ---
@@ -49,17 +51,19 @@ const UpdateArtifactContentSchema = z.object({
   contentType: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(128).optional()),
 });
 
-const LinkTaskArtifactSchema = z.object({
+const TaskArtifactPairSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   artifactId: z.string().min(1, "artifactId is required"),
 });
 
-const UnlinkTaskArtifactSchema = LinkTaskArtifactSchema;
+const LinkTaskArtifactSchema = TaskArtifactPairSchema.extend({ attemptId: z.string().min(1).max(256).optional() });
+const UnlinkTaskArtifactSchema = TaskArtifactPairSchema;
 
 const ListTaskArtifactLinksSchema = z
   .object({
     taskId: z.string().optional(),
     artifactId: z.string().optional(),
+    ...reportReadFilters,
     page: z.object({
       limit: z.number().int().min(0).optional(), cursor: z.string().optional(),
       filter: z.string().optional(), sort: z.string().optional(),
@@ -67,7 +71,7 @@ const ListTaskArtifactLinksSchema = z
   })
   // Proto3 sends "" for an omitted string, so emptiness - not absence - is what
   // "unset" means on the wire.
-  .transform((v) => ({ taskId: v.taskId || undefined, artifactId: v.artifactId || undefined, page: v.page }))
+  .transform((v) => ({ ...v, taskId: v.taskId || undefined, artifactId: v.artifactId || undefined }))
   .refine((v) => Boolean(v.taskId) !== Boolean(v.artifactId), {
     message: "exactly one of taskId or artifactId is required",
   });
@@ -307,13 +311,22 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     async linkTaskArtifact(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = LinkTaskArtifactSchema.parse(req);
-      return withUnitOfWork(db, async () => {
+      return transactionalOperation(db, async () => {
         const taskOrgId = await getTaskOrgId(db, parsed.taskId);
         const artifactOrgId = await getArtifactOrgId(db, parsed.artifactId);
         if (taskOrgId !== artifactOrgId) {
           throw new ConnectError("task and artifact belong to different organizations", Code.InvalidArgument);
         }
         await authorizePrincipal(db, principal, taskOrgId, { scope: 'artifacts:write', permission: 'artifact:write' });
+        const attemptId = await validatedReportAttemptId(db, isStandalone, { taskId: parsed.taskId, orgId: taskOrgId, principal, attemptId: parsed.attemptId });
+
+        if (!isStandalone) {
+          // Serialize pair creation without dropping historical duplicate rows.
+          const artifacts = schemaMysql.artifacts;
+          const [current] = await db.select({ id: artifacts.id }).from(artifacts)
+            .where(eq(artifacts.id, parsed.artifactId)).for('update').limit(1);
+          if (!current) throw new ConnectError('artifact not found', Code.NotFound);
+        }
 
         const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
         const newId = `tal-${crypto.randomUUID()}`;
@@ -323,21 +336,29 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
           artifactId: parsed.artifactId,
           linkedAt: new Date(Math.floor(Date.now() / 1000) * 1000),
           ...await linkActor(db, isStandalone, principal),
+          attemptId: attemptId ?? null,
         };
 
         // Clicking twice used to produce two rows, and the artifact then appeared
         // twice on the task. Same treatment as assignTask: a duplicate is
         // success, and the existing row is what comes back.
-        const existing = await db
+        const existingQuery = db
           .select()
           .from(links)
           .where(and(eq((links as any).taskId, parsed.taskId), eq((links as any).artifactId, parsed.artifactId)))
           .limit(1);
-        if (existing.length > 0) return { link: linkToWire(existing[0]) };
+        // MySQL authorization may have established an older consistent snapshot.
+        const existing = await (isStandalone ? existingQuery : existingQuery.for('update'));
+        if (existing.length > 0) {
+          if (attemptId !== undefined && existing[0].attemptId !== attemptId) {
+            throw new ConnectError('artifact is already linked with different claim association', Code.FailedPrecondition);
+          }
+          return { link: linkToWire(existing[0]) };
+        }
 
         await insertRecord(db, links, payload, isStandalone, false);
         return { link: linkToWire(payload) };
-      });
+      })();
     },
     async unlinkTaskArtifact(req: unknown, { values: contextValues }: { values: any }) {
       // requireUser, not requirePrincipal: an agent that can detach its own
@@ -364,19 +385,34 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         : await getArtifactOrgId(db, parsed.artifactId!);
       await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
 
+      const filtered = parsed.attemptId !== undefined || parsed.uncorrelatedOnly === true;
+      if (!parsed.taskId && filtered) {
+        throw new ConnectError('claim report filters require a task-side evidence read', Code.InvalidArgument);
+      }
+
       const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const tsks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const association = parsed.taskId
+        ? await reportAssociationWhere(db, isStandalone, parsed.taskId, orgId, links.attemptId, parsed) : undefined;
 
-      if (parsed.page) {
-        if (parsed.page.filter || (parsed.page.sort && parsed.page.sort !== 'id')) {
+      if (parsed.page || filtered) {
+        const page = parsed.page ?? {};
+        if (page.filter || (page.sort && page.sort !== 'id')) {
           throw new ConnectError('Evidence pages use fixed id ordering without a filter', Code.InvalidArgument);
         }
-        const limit = Math.min(parsed.page.limit || 50, 100);
-        const binding = JSON.stringify(['task-artifact-links', parsed.taskId ? 'task' : 'artifact', parsed.taskId ?? parsed.artifactId, orgId, 'id:asc']);
-        const cursor = decodeCursor(parsed.page.cursor);
+        const limit = Math.min(page.limit || 50, 100);
+        const binding = filtered
+          ? JSON.stringify(['task-artifact-reports', parsed.taskId, orgId, parsed.attemptId ?? '', parsed.uncorrelatedOnly === true, 'id:asc'])
+          : JSON.stringify(['task-artifact-links', parsed.taskId ? 'task' : 'artifact', parsed.taskId ?? parsed.artifactId, orgId, 'id:asc']);
+        const cursor = decodeCursor(page.cursor);
         const valid = cursor?.binding === binding && cursor.field === 'id' && typeof cursor.value === 'string' && cursor.value === cursor.id;
-        const scope = parsed.taskId ? eq((links as any).taskId, parsed.taskId) : eq((links as any).artifactId, parsed.artifactId!);
+        const receiptCursor = cursor?.binding?.startsWith('["task-artifact-reports",');
+        // Preserve legacy unfiltered restart semantics while fencing new report cursors.
+        if ((filtered || receiptCursor) && page.cursor && !valid) {
+          throw new ConnectError('evidence pagination changed; refresh the evidence list', Code.InvalidArgument);
+        }
+        const scope = and(parsed.taskId ? eq((links as any).taskId, parsed.taskId) : eq((links as any).artifactId, parsed.artifactId!), association);
         const [rows, [count]] = await Promise.all([
           db.select().from(links).where(and(scope, valid ? gt((links as any).id, cursor.id) : undefined))
             .orderBy(asc((links as any).id)).limit(limit + 1),

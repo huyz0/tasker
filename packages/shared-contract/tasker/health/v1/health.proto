@@ -856,6 +856,7 @@ message AssignTaskResponse {
   bool success = 1;
 }
 
+
 // Agent self-service (M14-T06): claims the task for the calling principal
 // only - no field names a different assignee. Succeeds only if the task
 // currently has no assignee at all.
@@ -864,12 +865,14 @@ message ClaimTaskRequest {
 
   // Retry-safety (M14-T07), same contract as CreateTaskRequest.idempotencyKey.
   string idempotencyKey = 2;
+  optional string externalRunId = 3;
 }
 
 message ClaimTaskResponse {
   Task task = 1;
   // M22-T02: the task's most recent handoff-typed TaskNote, if one exists.
   TaskNote latestHandoffNote = 2;
+  TaskAttempt attempt = 3;
 }
 
 // M33-T02. See main.tsp's ClaimNextTaskRequest.
@@ -879,18 +882,21 @@ message ClaimNextTaskRequest {
   optional string idempotencyKey = 3;
   // M35.
   optional string labelId = 4;
+  optional string externalRunId = 5;
 }
 
 message ClaimNextTaskResponse {
   // Absent when there is nothing open and unassigned to claim.
   optional Task task = 1;
   optional TaskNote latestHandoffNote = 2;
+  TaskAttempt attempt = 3;
 }
 
 // M33-T03 (ADR-0027). See main.tsp's ReleaseTaskRequest.
 message ReleaseTaskRequest {
   string taskId = 1;
   optional string handoffNote = 2;
+  optional string expectedAttemptId = 3;
 }
 
 message ReleaseTaskResponse {
@@ -1117,6 +1123,7 @@ message UsageRecord {
   int64 outputTokens = 9;
   int64 costMicros = 10;
   string createdAt = 11;
+  optional string attemptId = 12;
 }
 message ReportUsageRequest {
   string taskId = 1;
@@ -1125,6 +1132,7 @@ message ReportUsageRequest {
   int64 outputTokens = 4;
   int64 costMicros = 5;
   optional string idempotencyKey = 6;
+  optional string attemptId = 7;
 }
 message ReportUsageResponse {
   UsageRecord record = 1;
@@ -1134,6 +1142,8 @@ message ReportUsageResponse {
 message ListUsageRecordsRequest {
   string taskId = 1;
   PageRequest page = 2;
+  optional string attemptId = 3;
+  optional bool uncorrelatedOnly = 4;
 }
 message ListUsageRecordsResponse {
   repeated UsageRecord records = 1;
@@ -1251,6 +1261,7 @@ service TaskService {
   rpc SetTaskSummary(SetTaskSummaryRequest) returns (SetTaskSummaryResponse);
   rpc GetTaskDigest(GetTaskDigestRequest) returns (GetTaskDigestResponse);
   rpc ListCompactionCandidates(ListCompactionCandidatesRequest) returns (ListCompactionCandidatesResponse);
+  rpc ListTaskAttempts(ListTaskAttemptsRequest) returns (ListTaskAttemptsResponse);
 }
 
 message Folder {
@@ -1326,6 +1337,7 @@ message TaskArtifactLink {
   string taskTitle = 5;
   optional string linkedAt = 6;
   EvidenceActor linkedBy = 7;
+  optional string attemptId = 8;
 }
 
 message EvidenceActor {
@@ -1386,6 +1398,7 @@ message UpdateArtifactContentResponse {
 message LinkTaskArtifactRequest {
   string taskId = 1;
   string artifactId = 2;
+  optional string attemptId = 3;
 }
 
 message LinkTaskArtifactResponse {
@@ -1408,6 +1421,8 @@ message ListTaskArtifactLinksRequest {
   optional string taskId = 1;
   optional string artifactId = 2;
   PageRequest page = 3;
+  optional string attemptId = 4;
+  optional bool uncorrelatedOnly = 5;
 }
 
 message ListTaskArtifactLinksResponse {
@@ -1583,6 +1598,7 @@ message TaskNote {
   string noteType = 6;
   // M32-T06: the author's display name, resolved server-side.
   string agentName = 7;
+  optional string attemptId = 8;
 }
 
 message CreateTaskNoteRequest {
@@ -1593,6 +1609,7 @@ message CreateTaskNoteRequest {
   string content = 3;
   // M22-T02: defaults to "comment" server-side when omitted.
   string noteType = 4;
+  optional string attemptId = 5;
 }
 
 message CreateTaskNoteResponse {
@@ -1602,6 +1619,9 @@ message CreateTaskNoteResponse {
 message ListTaskNotesRequest {
   string taskId = 1;
   PageRequest page = 2;
+  optional string attemptId = 3;
+  optional bool uncorrelatedOnly = 4;
+  optional string noteType = 5;
 }
 
 message ListTaskNotesResponse {
@@ -2984,3 +3004,26 @@ message ListAttentionResponse {
 service AttentionService {
   rpc ListAttention(ListAttentionRequest) returns (ListAttentionResponse);
 }
+
+// ADR-0043: appended to retain existing generated message indexes.
+message TaskAttempt {
+  string id = 1;
+  string taskId = 2;
+  string orgId = 3;
+  EvidenceActor owner = 4;
+  string claimedAt = 5;
+  optional string externalRunId = 6;
+  optional string releasedAt = 7;
+  optional string releaseReason = 8;
+  EvidenceActor releasedBy = 9;
+}
+
+message ListTaskAttemptsRequest {
+  string taskId = 1;
+  PageRequest page = 2;
+}
+message ListTaskAttemptsResponse {
+  repeated TaskAttempt attempts = 1;
+  PageResponse page = 2;
+}
+

@@ -8,6 +8,8 @@ import { requirePrincipal, authorizePrincipal, getTaskOrgId, getProjectOrgId } f
 import { recordTaskActivity, currentAssignee } from "./taskActivity";
 import type { Principal } from "../auth/session";
 import { ConnectError, Code } from "@connectrpc/connect";
+import { validatedReportAttemptId } from './taskAttempts';
+import { reportReadFilters, reportAssociationWhere, reportReadScope } from './claimHistory';
 
 // --- Zod Request Schema ---
 
@@ -21,7 +23,8 @@ import { ConnectError, Code } from "@connectrpc/connect";
 const CreateTaskNoteSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   content: z.string().min(1, "content is required").max(8192),
-  noteType: z.enum(["comment", "handoff"]).default("comment"),
+  noteType: z.preprocess(value => value === '' ? undefined : value, z.enum(["comment", "handoff"]).default("comment")),
+  attemptId: z.string().min(1).max(256).optional(),
 });
 
 const ListHandoffNotesSchema = z.object({
@@ -89,7 +92,7 @@ export async function recordTaskNote(
   db: any,
   isStandalone: boolean,
   nc: any,
-  note: { taskId: string; agentId: string; content: string; noteType: string },
+  note: { taskId: string; agentId: string; content: string; noteType: string; attemptId?: string },
 ) {
   const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
   // M19-T02: set explicitly rather than left to insertRecord's default -
@@ -169,12 +172,14 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
         );
       }
       await authorizePrincipal(db, principal, orgId, { scope: "comments:write", permission: "tasknote:write" });
+      const attemptId = await validatedReportAttemptId(db, isStandalone, { taskId: parsed.taskId, orgId, principal, attemptId: parsed.attemptId });
 
       const noteResp = await recordTaskNote(db, isStandalone, nc, {
         taskId: parsed.taskId,
         agentId: principal.agentId,
         content: parsed.content,
         noteType: parsed.noteType,
+        ...(attemptId !== undefined ? { attemptId } : {}),
       });
       return { taskNote: noteResp };
     },
@@ -215,14 +220,21 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       publishDomainEvent(nc, "domain.tasknote.deleted", { taskNoteId: parsed.taskNoteId });
       return { success: true };
     },
-    async listTaskNotes(req: any, { values: contextValues }: { values: any }) {
+    async listTaskNotes(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.taskId) throw new ConnectError("taskId is required", Code.InvalidArgument);
-      const orgId = await getTaskOrgId(db, req.taskId);
+      const parsed = z.object({ taskId: z.string().min(1), page: z.any().optional(), noteType: z.string().optional(),
+        ...reportReadFilters }).parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
       await authorizePrincipal(db, principal, orgId, { scope: 'tasks:read', permission: 'tasknote:read' });
-
+      if (parsed.noteType !== undefined && !['comment', 'handoff'].includes(parsed.noteType)) {
+        throw new ConnectError('noteType must be comment or handoff', Code.InvalidArgument);
+      }
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, notes, eq((notes as any).taskId, req.taskId), req.page, {
+      const association = await reportAssociationWhere(db, isStandalone, parsed.taskId, orgId, notes.attemptId, parsed);
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, notes, and(
+        eq((notes as any).taskId, parsed.taskId), association, parsed.noteType ? eq(notes.noteType, parsed.noteType) : undefined,
+      ), parsed.page, {
+        cursorScope: reportReadScope('task-notes', parsed.taskId, orgId, parsed, parsed.noteType),
         // `content` is the note. Same reasoning as comments: projecting it out
         // would leave a list of empty rows.
         select: {
@@ -232,6 +244,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
           content: (notes as any).content,
           createdAt: (notes as any).createdAt,
           noteType: (notes as any).noteType,
+          attemptId: (notes as any).attemptId,
         },
       });
 

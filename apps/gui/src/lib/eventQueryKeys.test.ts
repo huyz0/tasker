@@ -7,7 +7,7 @@ describe('queryKeysForSubject', () => {
   it('invalidates only what a task event touches', () => {
     // The whole point of the feed is to stop refetching everything. A task
     // changing must not re-run artifacts, teams and the memory screen.
-    expect(roots('domain.task.created')).toEqual(['tasks', 'task', 'taskLinks', 'inputRequests', 'approvals', 'dashboard', 'reports', 'attention', 'auditEvents']);
+    expect(roots('domain.task.created')).toEqual(['tasks', 'task', 'taskLinks', 'inputRequests', 'approvals', 'taskAttempts', 'usageRecords', 'dashboard', 'reports', 'attention', 'auditEvents']);
   });
 
   it('refreshes an open task\'s relations when a link changes or a blocker finishes (M35)', () => {

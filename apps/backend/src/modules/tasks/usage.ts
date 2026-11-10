@@ -11,6 +11,8 @@ import * as schemaSqlite from "../../db/schema.sqlite";
 import { executePaginatedQuery } from "../../db/query-builder";
 import { requirePrincipal, getTaskOrgId, authorizePrincipal } from "../../lib/authz";
 import { publishDomainEvent } from "../../lib/natsCorrelation";
+import { validatedReportAttemptId } from './taskAttempts';
+import { reportReadFilters, reportAssociationWhere, reportReadScope } from './claimHistory';
 
 /** Per report: a billion tokens, or USD 1,000. Anything larger is a units bug, not a report. */
 const MAX_TOKENS_PER_REPORT = 1_000_000_000;
@@ -35,9 +37,10 @@ const ReportSchema = z.object({
   outputTokens: count("outputTokens", MAX_TOKENS_PER_REPORT),
   costMicros: count("costMicros", MAX_COST_MICROS_PER_REPORT),
   idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
+  attemptId: z.string().min(1).max(256).optional(),
 }).refine((r) => r.inputTokens + r.outputTokens + r.costMicros > 0, { message: "a report must carry tokens or cost" });
 
-const ListSchema = z.object({ taskId: z.string().min(1, "taskId is required"), page: z.any().optional() });
+const ListSchema = z.object({ taskId: z.string().min(1, "taskId is required"), page: z.any().optional(), ...reportReadFilters });
 
 const iso = (d: unknown) => (d instanceof Date ? d.toISOString() : d ? String(d) : undefined);
 
@@ -119,6 +122,7 @@ export function createUsageHandlers(db: any, nc: any, isStandalone: boolean) {
       outputTokens: BigInt(r.outputTokens ?? 0),
       costMicros: BigInt(r.costMicros ?? 0),
       createdAt: iso(r.createdAt),
+      ...(r.attemptId != null ? { attemptId: r.attemptId } : {}),
     }));
   }
 
@@ -133,12 +137,18 @@ export function createUsageHandlers(db: any, nc: any, isStandalone: boolean) {
       const parsed = ReportSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
+      const attemptId = await validatedReportAttemptId(db, isStandalone, { taskId: parsed.taskId, orgId, principal, attemptId: parsed.attemptId });
 
-      const replay = async (row: any) => ({
-        record: (await toWire([row]))[0],
-        totals: await taskUsageTotals(db, isStandalone, parsed.taskId),
-        replayed: true,
-      });
+      const replay = async (row: any) => {
+        const sameReporter = principal.kind === 'agent'
+          ? row.agentId === principal.agentId && row.userId == null
+          : row.userId === principal.userId && row.agentId == null;
+        if ((row.attemptId != null || attemptId !== undefined)
+          && (row.attemptId !== attemptId || !sameReporter)) {
+          throw new ConnectError('idempotency key belongs to a different receipt or reporter', Code.InvalidArgument);
+        }
+        return { record: (await toWire([row]))[0], totals: await taskUsageTotals(db, isStandalone, parsed.taskId), replayed: true };
+      };
       if (parsed.idempotencyKey) {
         const existing = await byKey(parsed.taskId, parsed.idempotencyKey);
         if (existing) return replay(existing);
@@ -157,6 +167,7 @@ export function createUsageHandlers(db: any, nc: any, isStandalone: boolean) {
         outputTokens: parsed.outputTokens,
         costMicros: parsed.costMicros,
         idempotencyKey: parsed.idempotencyKey ?? null,
+        attemptId: attemptId ?? null,
         createdAt: new Date(),
       };
       try {
@@ -184,7 +195,8 @@ export function createUsageHandlers(db: any, nc: any, isStandalone: boolean) {
       const parsed = ListSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await authorizePrincipal(db, principal, orgId, { scope: "tasks:read", permission: "task:read" });
-      const scope = eq(usage.taskId, parsed.taskId);
+      const association = await reportAssociationWhere(db, isStandalone, parsed.taskId, orgId, usage.attemptId, parsed);
+      const scope = and(eq(usage.taskId, parsed.taskId), association);
       const [{ items, nextCursor, totalCount }, totals] = await Promise.all([
         executePaginatedQuery(db, usage, scope, parsed.page, {
           sortableColumns: { createdAt: usage.createdAt },
@@ -192,8 +204,10 @@ export function createUsageHandlers(db: any, nc: any, isStandalone: boolean) {
             id: usage.id, taskId: usage.taskId, projectId: usage.projectId, agentId: usage.agentId, userId: usage.userId,
             modelName: usage.modelName, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
             costMicros: usage.costMicros, createdAt: usage.createdAt,
+            attemptId: usage.attemptId,
           },
           extraCacheKey: parsed.taskId,
+          cursorScope: reportReadScope('task-usage', parsed.taskId, orgId, parsed),
         }),
         taskUsageTotals(db, isStandalone, parsed.taskId),
       ]);

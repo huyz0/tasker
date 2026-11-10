@@ -15,7 +15,9 @@ import { purgeTaskCascade } from "../../lib/cascadePurge";
 import { createInputRequestHandlers, waitingOnPeopleCounts } from "./inputRequests";
 import { createApprovalHandlers, isGatedTransition } from "./approvals";
 import { createUsageHandlers, taskUsageTotals } from "./usage";
+import { createClaimHistoryHandlers } from './claimHistory';
 import { createDigestHandlers, taskSummaryToWire } from "./digest";
+import { createClaimReceipt, endClaimReceipts, assignmentReceiptId } from "./taskAttempts";
 import { MAX_PRIORITY, priorityRankSql, LINK_KINDS, assertLinkAllowed, openBlockerCounts, hasOpenBlockerSql, newlyUnblocked, assertParentAllowed, insertLink, deleteLink, listLinks } from "./taskGraph";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -167,6 +169,7 @@ const AssignTaskSchema = z.object({
 const ClaimTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
+  externalRunId: z.string().min(1).max(256).refine(value => value.trim().length > 0).optional(),
 });
 
 const ClaimNextTaskSchema = z.object({
@@ -174,6 +177,7 @@ const ClaimNextTaskSchema = z.object({
   taskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
   idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
   labelId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  externalRunId: z.string().min(1).max(256).refine(value => value.trim().length > 0).optional(),
 });
 
 const ListMyTasksSchema = z.object({
@@ -185,6 +189,7 @@ const ListMyTasksSchema = z.object({
 const ReleaseTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   handoffNote: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(20_000).optional()),
+  expectedAttemptId: z.string().min(1).max(256).optional(),
 });
 
 /**
@@ -698,10 +703,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
    * The atomic claim (M14-T06): one `INSERT ... SELECT ... WHERE NOT EXISTS`,
    * so of several callers racing one task exactly one wins, with no gap
    * between check and write on either dialect. Shared by ClaimTask and
-   * ClaimNextTask (M33-T02). Records `source = 'claim'` (ADR-0027). True when
-   * this call won.
+   * ClaimNextTask (M33-T02). Records `source = 'claim'` (ADR-0027). Returns
+   * the winning assignment ID only when this call won.
    */
-  async function insertClaim(taskId: string, principal: Principal): Promise<boolean> {
+  async function insertClaim(taskId: string, principal: Principal): Promise<string | undefined> {
     const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
     const newId = `ta-${crypto.randomUUID()}`;
     const selfAgentId = principal.kind === "agent" ? principal.agentId : null;
@@ -718,15 +723,16 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           FROM DUAL
           WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${taskId})
         `);
-    return Boolean(isStandalone ? (insertResult as any).changes : (insertResult as any)[0]?.affectedRows);
+    return (isStandalone ? (insertResult as any).changes : (insertResult as any)[0]?.affectedRows) ? newId : undefined;
   }
 
   /** What a won claim does next - activity, event, and the response with any prior handoff note. */
-  async function completeClaim(taskId: string, principal: Principal) {
+  async function completeClaim(taskId: string, principal: Principal, orgId: string, assignmentId: string, externalRunId?: string) {
     const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
     const [task] = await db.select().from(tasks).where(eq((tasks as any).id, taskId)).limit(1);
     const selfAgentId = principal.kind === "agent" ? principal.agentId : null;
     const selfUserId = principal.kind === "user" ? principal.userId : null;
+    const attempt = await createClaimReceipt(db, isStandalone, { id: assignmentId, taskId, orgId, principal, externalRunId });
     // M24-T04 (ADR-0020): only a WON claim is recorded - claim_rejected is
     // deliberately not a kind - and inside the caller's withIdempotency
     // callback, so a replayed claim replays the stored response without a
@@ -745,6 +751,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     const latestHandoffNote = await getLatestHandoffNote(db, taskId, isStandalone);
     return {
       task: toWireTask(task, { blockedByOpenCount: (await openBlockerCounts(db, isStandalone, [taskId])).get(taskId) ?? 0 }),
+      attempt,
       ...(latestHandoffNote ? { latestHandoffNote } : {}),
     };
   }
@@ -872,6 +879,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     listTransitionApprovals: approvals.listTransitionApprovals,
     // M40 (ADR-0033): what agents report their work cost.
     ...createUsageHandlers(db, nc, isStandalone),
+    ...createClaimHistoryHandlers(db, isStandalone),
     async createTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = CreateTaskSchema.parse(req);
@@ -1251,14 +1259,20 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // changes/affectedRows dialect split updateTaskStatus/claimTask use) -
       // the RPC stays unconditionally idempotent for the caller, but only a
       // real removal is an event worth recording.
-      const deleteResult = await db.delete(assignments).where(and(
+      const exactPair = and(
         eq((assignments as any).taskId, parsed.taskId),
         parsed.agentId ? eq((assignments as any).agentId, parsed.agentId) : isNull((assignments as any).agentId),
         parsed.userId ? eq((assignments as any).userId, parsed.userId) : isNull((assignments as any).userId),
-      ));
+      );
+      const matchingQuery = db.select({ id: (assignments as any).id }).from(assignments).where(exactPair);
+      const matching = await (isStandalone ? matchingQuery : matchingQuery.for('update'));
+      if (!matching.length) return { success: true };
+      const removedIds = matching.map((row: any) => row.id);
+      const deleteResult = await db.delete(assignments).where(inArray((assignments as any).id, removedIds));
       const removed = isStandalone ? (deleteResult as any).changes : (deleteResult as any)[0]?.affectedRows;
 
       if (removed) {
+        await endClaimReceipts(db, isStandalone, removedIds, 'unassigned', { kind: 'user', userId });
         // The removed holder needs no pre-delete query: the DELETE matches
         // the exact (agentId, userId) pair from the request (see the comment
         // above), so when a row was removed, that pair IS the holder that
@@ -1320,10 +1334,11 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           throw new ConnectError(`task is in terminal status "${current.status}" - only open tasks can be claimed`, Code.FailedPrecondition);
         }
 
-        if (!(await insertClaim(parsed.taskId, principal))) {
+        const assignmentId = await insertClaim(parsed.taskId, principal);
+        if (!assignmentId) {
           throw new ConnectError("task is already assigned - claim only succeeds on an unassigned task", Code.FailedPrecondition);
         }
-        return completeClaim(parsed.taskId, principal);
+        return completeClaim(parsed.taskId, principal, orgId, assignmentId, parsed.externalRunId);
       });
     },
     /**
@@ -1362,7 +1377,8 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
             .limit(CLAIM_NEXT_WINDOW);
           if (candidates.length === 0) return {};
           for (const c of shuffleWithinPriority(candidates)) {
-            if (await insertClaim(c.id, principal)) return completeClaim(c.id, principal);
+            const assignmentId = await insertClaim(c.id, principal);
+            if (assignmentId) return completeClaim(c.id, principal, orgId, assignmentId, parsed.externalRunId);
           }
         }
         // Every candidate in every round went to someone else first: there is
@@ -1374,9 +1390,9 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     /**
      * M33-T03 (ADR-0027): gives back a task the caller holds by its own
      * claim. An assignment a person made is theirs to change, not the
-     * holder's. With a handoff note, the note is written first - so the next
-     * claimant sees it - and refused up front if the caller may not write one,
-     * before anything is released.
+     * holder's. A handoff and ownership removal commit together so the next
+     * claimant sees continuity. Missing note permission is refused before
+     * anything is removed.
      */
     async releaseTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
@@ -1401,15 +1417,21 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       if (held.source !== "claim") {
         throw new ConnectError("this task was assigned to you by a person - ask them to unassign it", Code.PermissionDenied);
       }
-
-      const handoffNote = parsed.handoffNote !== undefined && principal.kind === "agent"
-        ? await recordTaskNote(db, isStandalone, nc, { taskId: parsed.taskId, agentId: principal.agentId, content: parsed.handoffNote, noteType: "handoff" })
-        : undefined;
+      if (parsed.expectedAttemptId !== undefined && parsed.expectedAttemptId !== held.id) {
+        throw new ConnectError('claim generation changed - inspect the current claim before releasing', Code.FailedPrecondition);
+      }
 
       // By row id, so a concurrent release, unassign or re-claim cannot make
       // this delete someone else's assignment.
       const deleted = await db.delete(assignments).where(eq((assignments as any).id, held.id));
       const removed = isStandalone ? (deleted as any).changes : (deleted as any)[0]?.affectedRows;
+      if (!removed) throw new ConnectError('claim changed during release - retry', Code.Aborted);
+      await endClaimReceipts(db, isStandalone, [held.id], 'released', principal);
+      const handoffAttemptId = parsed.handoffNote !== undefined
+        ? await assignmentReceiptId(db, isStandalone, { taskId: parsed.taskId, orgId, principal, attemptId: held.id }) : undefined;
+      const handoffNote = parsed.handoffNote !== undefined && principal.kind === "agent"
+        ? await recordTaskNote(db, isStandalone, nc, { taskId: parsed.taskId, agentId: principal.agentId, content: parsed.handoffNote, noteType: "handoff", ...(handoffAttemptId !== undefined ? { attemptId: handoffAttemptId } : {}) })
+        : undefined;
       if (removed) {
         const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
         const [task] = await db.select({ projectId: (tasksTable as any).projectId }).from(tasksTable).where(eq((tasksTable as any).id, parsed.taskId)).limit(1);
@@ -1730,6 +1752,8 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     createTask: transactionalOperation(db, handlers.createTask),
     claimTask: transactionalOperation(db, handlers.claimTask),
     claimNextTask: transactionalOperation(db, handlers.claimNextTask),
+    releaseTask: transactionalOperation(db, handlers.releaseTask),
+    unassignTask: transactionalOperation(db, handlers.unassignTask),
   }, createDigestHandlers(db, nc, isStandalone, {
     getTask: (req, ctx) => handlers.getTask(req, ctx),
     listInputRequests: (req, ctx) => handlers.listInputRequests(req, ctx),

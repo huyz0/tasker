@@ -46,7 +46,7 @@ const READS: Record<string, string[]> = {
   projects: ['getProject', 'listProjects'],
   projectTemplates: ['getTemplate', 'listTemplates'],
   tasks: ['getTaskType', 'listTaskTypes'],
-  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks', 'listTaskLinks', 'getInputRequest', 'listInputRequests', 'getTransitionApproval', 'listTransitionApprovals', 'listUsageRecords', 'getTaskDigest', 'listCompactionCandidates'],
+  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks', 'listTaskLinks', 'getInputRequest', 'listInputRequests', 'getTransitionApproval', 'listTransitionApprovals', 'listUsageRecords', 'listTaskAttempts', 'getTaskDigest', 'listCompactionCandidates'],
   // Read-only supervision console; a viewer may look at it.
   dashboard: ['getDashboard'],
   // Same read-only reasoning as dashboard. getReportTrends is M24-T06's

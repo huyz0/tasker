@@ -4,6 +4,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCanonicalResourceScope, useScopedTo } from '../../hooks/useScope';
 import { PriorityBadge, BlockedBadge, NeedsInputBadge, AwaitingApprovalBadge } from './PriorityBadge';
 import { TaskContext } from './TaskContext';
+import { TaskNotesPanel } from './TaskNotesPanel';
+import { TaskReportScopeProvider, useTaskReportScope } from './TaskReportScope';
+import { useTaskReportPages } from './useTaskReportPages';
 import { TaskInputRequests, QuestionsQueue } from './InputRequests';
 import { TaskApprovals, ApprovalsQueue } from './Approvals';
 import { PRIORITY_OPTIONS } from './priority';
@@ -26,7 +29,6 @@ import { TaskRepositorySignals } from './TaskRepositorySignals';
 import { relationshipAccessLost } from './useArtifactRelationships';
 import { useAuthSession } from '../../hooks/useAuthSession';
 import { Dialog } from '../../components/ui/Dialog';
-import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { Breadcrumbs } from '../../components/layout/Breadcrumbs';
@@ -44,190 +46,36 @@ const taskNoteClient = createClient(TaskNoteService, transport);
 const projectClient = createClient(ProjectService, transport);
 
 
-/** A note's author: the name the server resolved, or the id if the agent is gone. */
-const agentLabel = (note: { agentId: string; agentName?: string }) => note.agentName || `Agent ${note.agentId}`;
-
-function TaskNotesPanel({ taskId }: { taskId: string }) {
-  const { confirm, confirmDialog } = useConfirm();
-  const queryClient = useQueryClient();
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [editNoteContent, setEditNoteContent] = useState('');
-  const queryKey = ['taskNotes', taskId];
-
-  // A deliberate remaining use of `fetchAllPages` (M07 exit criterion 1). The
-  // set is one task's notes — bounded by what agents wrote about a single task,
-  // not by the size of the project — and the panel is a chronological record
-  // that reads wrongly if it silently stops partway. Unlike a folder, there is
-  // no realistic shape where this is tens of thousands of rows; if agents ever
-  // make it one, this becomes a paged list like the artifacts one.
-  const { data: notesData, isLoading, error: notesError, refetch: refetchNotes } = useQuery({
-    queryKey,
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await taskNoteClient.listTaskNotes({ taskId, page: cursor ? { cursor } : undefined });
-      return { items: resp.taskNotes, nextCursor: resp.page?.nextCursor || undefined };
-    }),
-  });
-
-  const updateNoteMutation = useMutation({
-    mutationFn: async (variables: { taskNoteId: string; content: string }) => {
-      await taskNoteClient.updateTaskNote(variables);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-      setEditingNoteId(null);
-    },
-  });
-
-  const deleteNoteMutation = useMutation({
-    mutationFn: async (taskNoteId: string) => {
-      await taskNoteClient.deleteTaskNote({ taskNoteId });
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-  });
-
-  if (isLoading || notesError || !notesData || notesData.length === 0) {
-    return (
-      <ListState
-        isLoading={isLoading}
-        error={notesError}
-        isEmpty
-        loadingMessage="Loading notes…"
-        emptyMessage="No agent notes yet."
-        emptyAction={<p className="text-xs">Agents working this task record what they did here.</p>}
-        onRetry={() => refetchNotes()}
-      />
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {notesData.map(note => (
-        editingNoteId === note.id ? (
-          <form
-            key={note.id}
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (editNoteContent.trim()) updateNoteMutation.mutate({ taskNoteId: note.id, content: editNoteContent.trim() });
-            }}
-            className="flex flex-col gap-2 p-3 rounded-lg bg-muted/50 border"
-          >
-            <textarea
-              autoFocus
-              name="note-content"
-              autoComplete="off"
-              aria-label="Note"
-              value={editNoteContent}
-              onChange={(e) => setEditNoteContent(e.target.value)}
-              rows={3}
-              className="text-sm rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
-            />
-            {updateNoteMutation.isError && (
-              <p className="text-xs text-destructive-subtle-foreground">Failed to update note: {(updateNoteMutation.error as Error).message}</p>
-            )}
-            <div className="flex gap-2 self-end">
-              <button type="submit" disabled={!editNoteContent.trim() || updateNoteMutation.isPending} className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium">Save</button>
-              <button type="button" onClick={() => setEditingNoteId(null)} className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium">Cancel</button>
-            </div>
-          </form>
-        ) : (
-          <div key={note.id} className="p-3 rounded-lg bg-muted/50 border flex flex-col gap-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-xs text-muted-foreground">{agentLabel(note)}</span>
-              <span className="flex items-center gap-2">
-                <button
-                  onClick={() => { setEditingNoteId(note.id); setEditNoteContent(note.content); }}
-                  className="text-muted-foreground hover:text-foreground text-xs"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={async () => {
-                    if (await confirm({
-                      title: 'Delete this note?',
-                      consequence: 'The note is removed from the task for everyone.',
-                      undo: null,
-                      confirmLabel: 'Delete',
-                    })) {
-                      deleteNoteMutation.mutate(note.id);
-                    }
-                  }}
-                  className="text-muted-foreground hover:text-destructive-subtle-foreground text-xs"
-                >
-                  Delete
-                </button>
-              </span>
-            </div>
-            {/* Handoff notes are written as "tried / blocked / next" on
-                separate lines, often in Markdown; one <p> collapsed them
-                into a single paragraph (M32-T06). */}
-            <MarkdownRenderer content={note.content} />
-          </div>
-        )
-      ))}
-      {deleteNoteMutation.isError && (
-        <p className="text-xs text-destructive-subtle-foreground">Failed to delete note: {(deleteNoteMutation.error as Error).message}</p>
-      )}
-      {confirmDialog}
-    </div>
-  );
-}
-
-/**
- * A compact summary, not the full history (M22-T05) - count plus the last
- * few, truncated, each linking to the full picture on the dedicated
- * Handoffs screen rather than growing this rail into a second notes panel.
- * Shares TaskNotesPanel's own query key/cache entry (`['taskNotes', taskId]`)
- * so this costs no extra request - just a client-side filter over data the
- * detail dialog is already fetching.
- */
+/** Task-wide latest handoffs, independently bounded rather than a fetch-all notes side effect. */
 function HandoffsSummary({ taskId }: { taskId: string }) {
-  const navigate = useNavigate();
-  const scopedTo = useScopedTo();
-  const queryKey = ['taskNotes', taskId];
-  const { data: notesData } = useQuery({
-    queryKey,
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await taskNoteClient.listTaskNotes({ taskId, page: cursor ? { cursor } : undefined });
-      return { items: resp.taskNotes, nextCursor: resp.page?.nextCursor || undefined };
-    }),
-  });
-
-  const handoffs = (notesData ?? [])
-    .filter((n) => n.noteType === 'handoff')
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
-  // No summary section at all when there's nothing to summarize - the same
-  // "don't show a badge for the unremarkable state" choice Memory's own
-  // StatusBadge makes for `active`.
-  if (handoffs.length === 0) return null;
-
-  // Its own labelled region: handoff-typed notes still also appear in the
-  // full chronological Agent Notes record below (this is a highlighted
-  // excerpt of that same data, not a different data set), so a note's
-  // content can legitimately appear twice on the page. Scoping queries to
-  // this region is how a test - or an assistive-tech user - tells them apart.
-  return (
-    <section aria-label="Handoffs summary">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold tracking-tight">
-          Handoffs <span className="text-muted-foreground font-normal">({handoffs.length})</span>
-        </h3>
-        <button onClick={() => navigate(scopedTo('/handoffs'))} className="text-xs text-primary hover:underline">
-          View all
-        </button>
-      </div>
-      <div className="flex flex-col gap-2">
-        {handoffs.slice(0, 3).map((n) => (
-          <div key={n.id} className="rounded-lg border bg-muted/50 p-2">
-            <p className="line-clamp-2 text-xs">{n.content}</p>
-            <p className="mt-1 text-2xs text-muted-foreground">
-              {agentLabel(n)} · <time dateTime={n.createdAt}>{formatDateTime(n.createdAt)}</time>
-            </p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+  const scope = useTaskReportScope();
+  if (!scope || scope.taskId !== taskId) return null;
+  return <HandoffPreview key={JSON.stringify([scope.accountId, scope.orgId, taskId])} scope={scope} />;
+}
+function HandoffPreview({ scope }: { scope: NonNullable<ReturnType<typeof useTaskReportScope>> }) {
+  const navigate = useNavigate(), scopedTo = useScopedTo();
+  const { query, response, error, blocked, refresh, canRetry } = useTaskReportPages(scope, 'notes',
+    ['taskNotes', scope.taskId, scope.accountId, scope.orgId, 'handoff-summary'],
+    (cursor, signal) => taskNoteClient.listTaskNotes({ taskId: scope.taskId, noteType: 'handoff',
+      page: { limit: 3, ...(cursor ? { cursor } : {}) } }, { signal }));
+  const handoffs = response?.taskNotes.filter(note => note.noteType === 'handoff') ?? [];
+  if (!canRetry) return null;
+  if (error) return <section aria-label="Handoffs summary" className="type-caption space-y-2">
+    <p role="alert">Could not load handoff summary: {(error as Error).message}</p>
+    <button type="button" disabled={query.isFetching} onClick={() => { void refresh(); }} className="text-primary hover:underline">Retry handoff summary</button>
+  </section>;
+  if (blocked) return <p role="status" className="type-caption text-muted-foreground">Loading handoff summary…</p>;
+  if (!handoffs.length) return null;
+  return <section aria-label="Handoffs summary">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <h3 className="type-section-title">Handoffs <span className="text-muted-foreground font-normal">({response?.page?.totalCount ?? handoffs.length}{response?.page ? '' : ' shown'})</span></h3>
+      <button type="button" onClick={() => navigate(scopedTo('/handoffs'))} className="type-caption text-primary hover:underline">View all</button>
+    </div>
+    <div className="flex flex-col gap-2">{handoffs.slice(0, 3).map(note => <div key={note.id} className="rounded-lg border bg-muted/50 p-2">
+      <p className="line-clamp-2 type-caption">{note.content}</p>
+      <p className="mt-1 type-caption text-muted-foreground">{note.agentName || `Agent ${note.agentId}`} · <time dateTime={note.createdAt}>{formatDateTime(note.createdAt)}</time></p>
+    </div>)}</div>
+  </section>;
 }
 
 // Fallback status set for tasks with no taskTypeId, or whose task type has
@@ -1109,6 +957,8 @@ export function TasksWorkbench() {
         </Dialog>
       )}
       {expandedTask && taskScopeReady && (
+        <TaskReportScopeProvider key={JSON.stringify([account.userId, activeOrgId, expandedTask.id])}
+          accountId={account.userId || ''} orgId={activeOrgId} taskId={expandedTask.id}>
         <Dialog
           open
           onClose={closeTask}
@@ -1316,6 +1166,7 @@ export function TasksWorkbench() {
            </div>
            </div>
         </Dialog>
+        </TaskReportScopeProvider>
       )}
       {showQuestions && (
         <Dialog

@@ -2,6 +2,7 @@ import { eq, and, or, inArray } from "drizzle-orm";
 import { withUnitOfWork } from "../db/access";
 import * as schemaMysql from "../db/schema.mysql";
 import * as schemaSqlite from "../db/schema.sqlite";
+import { endClaimReceipts } from '../modules/tasks/taskAttempts';
 
 function getSchema() {
   return process.env.STANDALONE === "true" ? schemaSqlite : schemaMysql;
@@ -51,6 +52,7 @@ export async function purgeTaskCascade(db: any, taskId: string): Promise<void> {
   await db.delete(schema.inputRequests).where(eq(schema.inputRequests.taskId, taskId));
   await db.delete(schema.transitionApprovals).where(eq(schema.transitionApprovals.taskId, taskId));
   await db.delete(schema.usageRecords).where(eq(schema.usageRecords.taskId, taskId));
+  await db.delete(schema.taskClaimAttempts).where(eq(schema.taskClaimAttempts.taskId, taskId));
   await db.delete(schema.tasks).where(eq(schema.tasks.id, taskId));
 }
 
@@ -108,14 +110,23 @@ export async function purgeFolderCascade(db: any, folderId: string): Promise<voi
 }
 
 export async function purgeAgentCascade(db: any, agentId: string): Promise<void> {
-  const schema = getSchema();
-  const existing = await db.select().from(schema.agents).where(eq(schema.agents.id, agentId)).limit(1);
-  if (!existing || existing.length === 0) return;
-
-  await db.delete(schema.taskAssignments).where(eq(schema.taskAssignments.agentId, agentId));
-  await db.delete(schema.taskNotes).where(eq(schema.taskNotes.agentId, agentId));
-  await db.update(schema.comments).set({ agentId: null }).where(eq(schema.comments.agentId, agentId));
-  await db.delete(schema.agents).where(eq(schema.agents.id, agentId));
+  return withUnitOfWork(db, async () => {
+    const schema = getSchema();
+    const standalone = process.env.STANDALONE === 'true';
+    const currentRows = (query: any) => standalone ? query : query.for('update');
+    const existing = await currentRows(db.select().from(schema.agents).where(eq(schema.agents.id, agentId))).limit(1);
+    if (!existing.length) return;
+    const rows = await currentRows(db.select({ id: schema.taskAssignments.id }).from(schema.taskAssignments)
+      .where(eq(schema.taskAssignments.agentId, agentId)));
+    const ids = rows.map((row: any) => row.id);
+    if (ids.length) {
+      await db.delete(schema.taskAssignments).where(inArray(schema.taskAssignments.id, ids));
+      await endClaimReceipts(db, standalone, ids, 'owner_purged', { kind: 'system' });
+    }
+    await db.delete(schema.taskNotes).where(eq(schema.taskNotes.agentId, agentId));
+    await db.update(schema.comments).set({ agentId: null }).where(eq(schema.comments.agentId, agentId));
+    await db.delete(schema.agents).where(eq(schema.agents.id, agentId));
+  });
 }
 
 /** All project cleanup paths serialize with schedule admission/execution. */
@@ -151,6 +162,7 @@ export async function purgeProjectCascade(db: any, projectId: string,
       await db.delete(schema.inputRequests).where(inArray(schema.inputRequests.taskId, taskIds));
       await db.delete(schema.transitionApprovals).where(inArray(schema.transitionApprovals.taskId, taskIds));
       await db.delete(schema.usageRecords).where(inArray(schema.usageRecords.taskId, taskIds));
+      await db.delete(schema.taskClaimAttempts).where(inArray(schema.taskClaimAttempts.taskId, taskIds));
       await db.delete(schema.tasks).where(inArray(schema.tasks.id, taskIds));
     }
 

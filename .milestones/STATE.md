@@ -1,8 +1,8 @@
 ---
-active_milestone: M57
-active_task: M57-T01
+active_milestone: M58
+active_task: null
 last_updated: 2026-11-10
-last_commit: fd378da
+last_commit: e09993b
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,28 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M57 complete locally:5/5 tasks,4/4 exit criteria.** Exact-generation receipts, owner-bound delayed/legacy reports and bounded history/source flows pass all36 checks (backend2377/zero failures; GUI1657/95.14% branches), actual both-dialect85/427, real socket11/47, both CLI/MCP and MCP-only browser journeys, old SDK18 decodes and restored faults. CODE-v5/UX-v4 approve. Public worker/read/unsafe old-writer rollback guidance is current. Draft PR #10 passes all8 preliminary e09993b CI jobs, but final T05 head CI/main publication remains required.384 done/12 pending; next eligible M58-T01 owns URL and named operational views. Keep original worktrees/services intact; owned credentials were memory-only and revoked in finally.
+
+**2026-11-10 — M57-T05 in progress.** T04 is committed/pushed as e09993b after all36 source/closure/pre-commit checks and CODE-v4/UX-v4. Draft PR #10 is created/attached. Add permanent real worker/wire/browser proof and public integration/unsafe old-writer rollback guidance before final-head CI/main publication. API/security plus TDD apply; reuse approved ADR/UX/TC001–010 with process-memory-only owned credentials and finally revocation.383 done/13 pending; M57 remains unpublished. Original branches/WIP/services are preserved.
+
+**2026-11-10 — M57-T04 verified:4/5 tasks.** Bounded history/source filters and GUI/CLI/MCP readers pass all36 checks (backend2377/zero failures; GUI1657/95.14% branches), native40/275 and old SDK448/1303/186/18. CODE-v4/UX-v4 approve;134 focused UI cases, four restored faults,57 final previews/228 accessibility/114 overflow checks and six final real browser journeys pass. Human notes correctly remain exact-agent-author-only; real eventless older-page ownership refresh preserves page/draft/focus.383 done/13 pending; M57 is unpublished. T05 next adds permanent worker/wire/E2E proof and public integration/rollback guidance before final-head/main publication. M56 main681dc20/all10 post-main jobs are verified; original branches/WIP/services are preserved.
+
+**2026-11-10 — M57-T03 verified:3/5 tasks.** Explicit owner/task/org-bound report association, unchanged legacy omission, stable keyed usage/link provenance, exact release handoffs and optional CLI/MCP arguments pass all36 checks (backend2350/zero failures; GUI1622/95.13% branches). CODE-v2 approves. Real MySQL8-way retries/lock-conflict rollback, populated upgrades, actual old SDK18 decodes and3 restored refusal faults pass. Four unchanged search/navigation failures and one auth timeout in the concurrent run pass in isolation; final suites are green with heavy jobs separated and generated CLI docs current. T04 next builds bounded history/source filters and real task-detail UI.382 done/14 pending overall; M57 is still unpublished. M56 main681dc20 and all10 post-main jobs are verified. Original branches/WIP/services remain preserved.
+
+**2026-11-10 — M57-T03 implemented, under review.** Explicit owner/task/org-bound note, usage and artifact associations, nullable both-dialect migrations and optional CLI/MCP arguments pass26 SQLite cases,95 affected cases, real MySQL3 cases/88 assertions, full CLI cmd and24 MCP cases. Actual old SDK448 messages/1297 fields/18 decodes remain compatible. Observed concurrent MySQL link duplication and unnormalized lock-conflict errors are fixed with parent locking/current reads and transactionalOperation; no historical rows are removed. Independent CODE-v2, restored fault checks and full36 still gate completion. M56 all8 main CI42822658627 and both integration42822658587 jobs passed after publication681dc20.381 done/15 pending; history UI is still T04. Earlier branches, user WIP and services remain preserved.
+
+**2026-11-10 — M57-T02 verified:2/5 tasks.** Atomic winning-ID receipts, stale-release fencing and exact human/retention closure pass all36 checks (backend2318/zero failures/95.89% functions/96.83% lines; GUI1622/95.13% branches). CODE-v1 approves;15 SQLite cases,46 real MySQL assertions,4 populated both-dialect upgrades,15 actual old-client decodes and3 restored rollback faults pass. M56 is published as681dc20 after all8 final-head jobs with identical tested/main trees; post-main CI42822658627/integration42822658587 remain pending. T03 next adds explicit owner/task-bound report association and worker arguments.381 done/15 pending; history UI is not delivered yet. Reconcile this clean checkpoint onto published main in a new owned delivery branch; preserve earlier pushed checkpoint and original user WIP/services.
+
+**2026-11-10 — M56 published; M57-T02 source approved.** PR #9 passes all8 final-head jobs and merges as681dc20; fetched main exactly matches tested daab6a1's tree. Post-main CI42822658627/integration42822658587 remain pending. M57 CODE-v1 approves receipt persistence/closure after15 SQLite cases, real MySQL/race/fault and both-dialect upgrade proof, actual old-client compatibility and restored rollback faults. Explicit backend types pass. Full1 stops only on TypeSpec formatting; whitespace is corrected and full2 still gates T02 completion.380 done/16 pending; original user WIP/services are preserved. Reconcile the owned M57 branch onto published main after a clean checkpoint without rewriting its earlier pushed checkpoint.
+
+**2026-11-10 — M57-T02 implementation under verification.** Real receipts and exact-generation release/closure pass15 SQLite cases,59 affected cases,46 real MySQL assertions,4 both-dialect populated upgrade/reboot cases and15 actual old-client decodes preserving447 messages/1283 fields. Three restored source faults prove transaction rollback assertions. Final type fixes, independent CODE review and full36 still gate completion; no report correlation/history UI is delivered yet.380 done/16 pending overall. M56 final CI has3 successes and its GUI job running; main publication/base reconciliation remain pending.
+
+**2026-11-10 — M57-T02 in progress.** T01 is committed/pushed as52c7ba4 after approved design and all36 source/closure/pre-commit checks. Drive real receipt/stale-release/closure regressions before compatible contracts and additive migrations; API/security plus TDD apply. No M57 runtime feature is implemented yet.380 done/16 pending overall. M56 PR #9 final-head CI remains2 success/6 queued, so its main publication/base reconciliation still gates publication of this branch. Original user WIP/services remain preserved.
+
+**2026-11-10 — M57-T01 verified:1/5 tasks.** Accepted ADR0043/UX/TC001–010 and ARCH-v3/UX-v2 define durable exact-generation ownership receipts, optional authenticated-owner reporting, real retention closure and bounded visible history. All36 checks pass (GUI1622/95.13% branches; backend2302/zero failures). Nine initial-render/deadline failures under fresh-build load pass unchanged in168 isolated cases and the full rerun with limited parallelism; no assertions/timeouts/product source changed. No M57 runtime feature exists yet. T02 is next;380 done/16 pending overall. Ready PR #9 remains at daab6a1 with final-head CI42812207225 at2 success/6 queued; main publication and base reconciliation remain pending. Original user WIP/services are preserved.
+
+**2026-11-10 — M57-T01 in progress.** Define durable claim generations, exact stale-release fencing and optional authenticated-owner evidence attribution before runtime changes. M46/M54 dependencies are done. Isolated branch starts from locally complete M56 daab6a1; PR #9 is ready and final-head CI42812207225 is queued, so M56 main publication and subsequent base reconciliation remain pending. API/security standards and static-design TDD exception apply;17 tasks remain.
 
 **2026-11-10 — M56 complete locally:4/4 tasks,4/4 exit criteria.** Registration, scoped one-time configuration and exact bearer proof pass all36 gates (GUI1622/95.13% branches; backend2302/zero failures),128 focused cases, full305 baseline/final39 rendered matrices and real mobile development/production CLI/MCP journeys. CODE-v8/ARCH-v3 approve. Reproduced focus, pre-emission validation and cached-destination defects are fixed with restored behavioral faults; public connection guidance is linked. Draft PR #9 still requires actual final-head CI/main publication. M57-T01 is next eligible, with base reconciliation after M56 merge.379 done/17 pending overall; original user WIP/services remain preserved.
 
@@ -1986,10 +2008,10 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
-| M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
+| M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 379 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 384 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

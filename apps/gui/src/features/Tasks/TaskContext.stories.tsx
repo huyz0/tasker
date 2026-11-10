@@ -25,6 +25,7 @@ function ContextCache({ children }: { children: ReactNode }) {
 }
 const meta = {
   title: 'Features/Tasks/Optional context', component: TaskContext,
+  parameters: { docs: { description: { component: 'Summary drafts retain their existing lifetime. The assembled Claim reports previews show bounded ownership history and independently scoped evidence, notes and usage records with task-wide totals.' } } },
   args: { taskId: 'task-story' },
   decorators: [(Story) => <ContextOwner><ContextCache><div className="max-w-2xl p-panel"><Story /></div></ContextCache></ContextOwner>],
 } satisfies Meta<typeof TaskContext>;

@@ -7,6 +7,10 @@ import {
   OrgService,
   TaskService,
   EventService,
+  AgentService,
+  ProjectService,
+  ProjectTemplateService,
+  TaskNoteService,
 } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { join } from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -63,6 +67,7 @@ testIf('the real server over a real socket', () => {
         ENABLE_TEST_LOGIN: 'true',
         LOG_LEVEL: 'silent',
         NODE_ENV: 'development',
+        SHUTDOWN_PRE_DRAIN_MS: '0',
       },
       stdout: 'pipe',
       stderr: 'pipe',
@@ -80,10 +85,13 @@ testIf('the real server over a real socket', () => {
     throw new Error('the server never became ready');
   }, 60_000);
 
-  afterAll(() => {
+  afterAll(async () => {
     server?.kill();
+    // Wait for the owned listener to close before deleting its database or
+    // starting the next real-socket run on this port.
+    if (server) await server.exited;
     if (dataDir) rmSync(dataDir, { recursive: true, force: true });
-  });
+  }, 60_000);
 
   it('answers an RPC through the generated client and the real codec', async () => {
     // The whole point: this request was serialized by the same code the GUI and
@@ -233,5 +241,92 @@ testIf('the real server over a real socket', () => {
       await iterator.return?.();
     }
   }, 45_000);
+
+  it('retains claim receipts, fences stale generations and binds delayed reports through real auth and codecs', async () => {
+    const registered = await fetch(`${BASE_URL}/api/auth/password/register`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: `wire-claims-${crypto.randomUUID()}`, password: crypto.randomUUID() + 'Wire!9' }),
+    });
+    expect(registered.ok).toBe(true);
+    const cookie = registered.headers.get('set-cookie')?.split(';')[0];
+    if (!cookie) throw new Error('Owned wire session was not issued');
+    const { userId } = await registered.json() as { userId: string };
+    const human = transportWith({ cookie }), orgs = createClient(OrgService, human);
+    const agents = createClient(AgentService, human), tasks = createClient(TaskService, human);
+    const org = (await orgs.seedOrg({ name: 'Wire receipt scope', slug: `wire-claims-${crypto.randomUUID()}` })).organization!;
+    const template = (await createClient(ProjectTemplateService, human).createTemplate({ orgId: org.id, name: 'Wire receipt template' })).template!;
+    const project = (await createClient(ProjectService, human).createProject({ orgId: org.id, templateId: template.id, ownerId: userId, name: 'Wire receipts' })).project!;
+    const task = (await tasks.createTask({ projectId: project.id, title: 'Wire claim and delayed reports', status: 'todo' })).task!;
+    const other = (await tasks.createTask({ projectId: project.id, title: 'Different task', status: 'todo' })).task!;
+    const role = (await agents.createAgentRole({ orgId: org.id, name: 'Wire worker', systemPrompt: 'Report authorized work.', capabilities: '[]' })).role!;
+    const owned: { agentId: string; name: string; tokenId: string }[] = [];
+    const issue = async (name: string) => {
+      const agent = (await agents.createAgent({ orgId: org.id, agentRoleId: role.id, name })).agent!;
+      const metadata = { agentId: agent.id, name: `wire-owned-${crypto.randomUUID()}`, tokenId: '' }; owned.push(metadata);
+      const issued = await agents.createAgentToken({ agentId: agent.id, name: metadata.name, scopes: ['tasks:read', 'tasks:write', 'comments:write'] });
+      metadata.tokenId = issued.token?.id ?? '';
+      if (!metadata.tokenId || !issued.plaintext) throw new Error('Owned wire credential was not issued');
+      return { agent, transport: transportWith({ authorization: `Bearer ${issued.plaintext}` }) };
+    };
+    try {
+      const a = await issue('Prior wire worker'), b = await issue('Current wire worker');
+      const workerA = createClient(TaskService, a.transport), workerB = createClient(TaskService, b.transport);
+      const notesA = createClient(TaskNoteService, a.transport);
+      const request = { taskId: task.id, externalRunId: 'wire/pipeline/prior', idempotencyKey: `wire-key-${crypto.randomUUID()}` };
+      const first = await workerA.claimTask(request);
+      if (!first.attempt?.id) throw new Error('Winning wire claim did not return a receipt');
+      expect(first.attempt.id).toMatch(/^ta-/);
+      expect((await tasks.getTask({ taskId: task.id })).task?.assignees[0]?.agentId).toBe(a.agent.id);
+      expect(first.attempt.owner?.id).toBe(a.agent.id);
+      expect(first.attempt.externalRunId).toBe(request.externalRunId);
+      expect((await workerA.claimTask(request)).attempt?.id).toBe(first.attempt.id);
+      await expect(workerA.claimTask({ ...request, externalRunId: 'changed' })).rejects.toMatchObject({ code: Code.InvalidArgument });
+      await workerA.releaseTask({ taskId: task.id, expectedAttemptId: first.attempt.id, handoffNote: 'Original ownership ended' });
+      const second = await workerA.claimTask({ taskId: task.id });
+      if (!second.attempt?.id) throw new Error('Reclaim did not return its own receipt');
+      expect(second.attempt.id).not.toBe(first.attempt.id);
+      await expect(workerA.releaseTask({ taskId: task.id, expectedAttemptId: first.attempt.id, handoffNote: 'Must not be created' }))
+        .rejects.toMatchObject({ code: Code.FailedPrecondition });
+      expect((await tasks.getTask({ taskId: task.id })).task?.assignees[0]?.agentId).toBe(a.agent.id);
+      const heldReceipt = (await tasks.listTaskAttempts({ taskId: task.id })).attempts.find(receipt => receipt.id === second.attempt?.id);
+      expect(heldReceipt?.id).toBe(second.attempt.id);
+      expect(heldReceipt?.releasedAt).toBeUndefined();
+      expect((await notesA.listTaskNotes({ taskId: task.id })).taskNotes.some(note => note.content === 'Must not be created')).toBe(false);
+      // Legacy omission still releases the current generation on a new server.
+      await workerA.releaseTask({ taskId: task.id });
+      const current = await workerB.claimTask({ taskId: task.id, externalRunId: 'wire/pipeline/current' });
+      const delayed = await workerA.reportUsage({ taskId: task.id, attemptId: first.attempt.id, inputTokens: 11n, idempotencyKey: 'wire-delayed-report' });
+      expect(delayed.record?.attemptId).toBe(first.attempt.id);
+      expect((await workerA.reportUsage({ taskId: task.id, attemptId: first.attempt.id, inputTokens: 11n, idempotencyKey: 'wire-delayed-report' })).record?.id).toBe(delayed.record?.id);
+      await expect(workerB.reportUsage({ taskId: task.id, attemptId: first.attempt.id, inputTokens: 1n })).rejects.toMatchObject({ code: Code.NotFound });
+      await expect(workerA.reportUsage({ taskId: other.id, attemptId: first.attempt.id, inputTokens: 1n })).rejects.toMatchObject({ code: Code.NotFound });
+      const legacy = await workerA.reportUsage({ taskId: task.id, inputTokens: 2n });
+      expect(legacy.record?.attemptId).toBeUndefined();
+      const lateNote = await notesA.createTaskNote({ taskId: task.id, content: 'Late explicit report', attemptId: first.attempt.id });
+      expect(lateNote.taskNote?.attemptId).toBe(first.attempt.id);
+      await expect(createClient(TaskNoteService, b.transport).updateTaskNote({ taskNoteId: lateNote.taskNote!.id, content: 'Foreign edit' })).rejects.toMatchObject({ code: Code.PermissionDenied });
+      await expect(createClient(TaskNoteService, human).deleteTaskNote({ taskNoteId: lateNote.taskNote!.id })).rejects.toMatchObject({ code: Code.PermissionDenied });
+      expect((await tasks.listUsageRecords({ taskId: task.id, attemptId: first.attempt.id, page: { limit: 1 } })).records.map(record => record.id)).toEqual([delayed.record!.id]);
+      expect((await tasks.listUsageRecords({ taskId: task.id, uncorrelatedOnly: true })).records.map(record => record.id)).toEqual([legacy.record!.id]);
+      const foreignOrg = (await orgs.seedOrg({ name: 'Foreign wire scope', slug: `wire-foreign-${crypto.randomUUID()}` })).organization!;
+      const foreignTemplate = (await createClient(ProjectTemplateService, human).createTemplate({ orgId: foreignOrg.id, name: 'Foreign' })).template!;
+      const foreignProject = (await createClient(ProjectService, human).createProject({ orgId: foreignOrg.id, templateId: foreignTemplate.id, ownerId: userId, name: 'Foreign' })).project!;
+      const foreignTask = (await tasks.createTask({ projectId: foreignProject.id, title: 'Foreign task' })).task!;
+      await expect(workerA.listTaskAttempts({ taskId: foreignTask.id })).rejects.toMatchObject({ code: Code.PermissionDenied });
+      await tasks.unassignTask({ taskId: task.id, agentId: b.agent.id });
+      const history = await tasks.listTaskAttempts({ taskId: task.id, page: { limit: 100 } });
+      expect(history.attempts).toHaveLength(3);
+      expect(history.attempts.find(receipt => receipt.id === current.attempt?.id)?.releaseReason).toBe('unassigned');
+      expect(history.attempts.find(receipt => receipt.id === first.attempt?.id)?.releasedAt).toBeTruthy();
+      expect((await workerA.claimTask(request)).attempt?.id).toBe(first.attempt.id);
+      expect((await tasks.getTask({ taskId: task.id })).task?.assignees).toHaveLength(0);
+    } finally {
+      for (const entry of owned) {
+        const ids = entry.tokenId ? [entry.tokenId] : (await agents.listAgentTokens({ agentId: entry.agentId })).tokens
+          .filter(token => token.name === entry.name && !token.revokedAt).map(token => token.id);
+        for (const tokenId of ids) await agents.revokeAgentToken({ tokenId });
+      }
+    }
+  }, 60_000);
 
 });

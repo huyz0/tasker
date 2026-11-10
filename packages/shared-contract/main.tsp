@@ -1098,6 +1098,19 @@ model AssignTaskResponse {
   @field(1) success: boolean;
 }
 
+// Durable ownership facts, not external process status (ADR-0043).
+model TaskAttempt {
+  @field(1) id: string;
+  @field(2) taskId: string;
+  @field(3) orgId: string;
+  @field(4) owner: EvidenceActor;
+  @field(5) claimedAt: string;
+  @field(6) externalRunId?: string;
+  @field(7) releasedAt?: string;
+  @field(8) releaseReason?: string;
+  @field(9) releasedBy?: EvidenceActor;
+}
+
 // Agent self-service (M14-T06): claims the task for the *calling* principal
 // only, atomically - there is no field to name a different assignee, unlike
 // AssignTaskRequest. Succeeds only if the task currently has no assignee at
@@ -1109,6 +1122,8 @@ model ClaimTaskRequest {
 
   // Retry-safety (M14-T07), same contract as CreateTaskRequest.idempotencyKey.
   @field(2) idempotencyKey?: string;
+
+  @field(3) externalRunId?: string;
 }
 
 model ClaimTaskResponse {
@@ -1118,6 +1133,8 @@ model ClaimTaskResponse {
   // populated in the same round trip as the claim itself succeeding, so the
   // caller sees prior continuity context without a second call.
   @field(2) latestHandoffNote?: TaskNote;
+
+  @field(3) attempt?: TaskAttempt;
 }
 
 // M33-T02: claims the oldest open (non-terminal), unassigned task in the
@@ -1136,11 +1153,14 @@ model ClaimNextTaskRequest {
 
   // M35: only tasks carrying this label - label-based routing.
   @field(4) labelId?: string;
+
+  @field(5) externalRunId?: string;
 }
 
 model ClaimNextTaskResponse {
   @field(1) task?: Task;
   @field(2) latestHandoffNote?: TaskNote;
+  @field(3) attempt?: TaskAttempt;
 }
 
 // M33-T03 (ADR-0027): gives back a task the caller holds by its own claim.
@@ -1150,6 +1170,7 @@ model ClaimNextTaskResponse {
 model ReleaseTaskRequest {
   @field(1) taskId: string;
   @field(2) handoffNote?: string;
+  @field(3) expectedAttemptId?: string;
 }
 
 model ReleaseTaskResponse {
@@ -1354,6 +1375,7 @@ model UsageRecord {
   @field(9) outputTokens: int64;
   @field(10) costMicros: int64;
   @field(11) createdAt: string;
+  @field(12) attemptId?: string;
 }
 
 // Replaying an idempotencyKey on the same task returns the original record
@@ -1365,6 +1387,7 @@ model ReportUsageRequest {
   @field(4) outputTokens: int64;
   @field(5) costMicros: int64;
   @field(6) idempotencyKey?: string;
+  @field(7) attemptId?: string;
 }
 model ReportUsageResponse {
   @field(1) record: UsageRecord;
@@ -1375,6 +1398,8 @@ model ReportUsageResponse {
 model ListUsageRecordsRequest {
   @field(1) taskId: string;
   @field(2) page?: PageRequest;
+  @field(3) attemptId?: string;
+  @field(4) uncorrelatedOnly?: boolean;
 }
 model ListUsageRecordsResponse {
   @field(1) records: UsageRecord[];
@@ -1519,6 +1544,16 @@ interface TaskService {
   listCompactionCandidates(
     request: ListCompactionCandidatesRequest,
   ): ListCompactionCandidatesResponse;
+  listTaskAttempts(request: ListTaskAttemptsRequest): ListTaskAttemptsResponse;
+}
+
+model ListTaskAttemptsRequest {
+  @field(1) taskId: string;
+  @field(2) page?: PageRequest;
+}
+model ListTaskAttemptsResponse {
+  @field(1) attempts: TaskAttempt[];
+  @field(2) page: PageResponse;
 }
 
 // ==== Artifacts ====
@@ -1620,6 +1655,7 @@ model TaskArtifactLink {
   @field(6) linkedAt?: string;
 
   @field(7) linkedBy?: EvidenceActor;
+  @field(8) attemptId?: string;
 }
 
 model EvidenceActor {
@@ -1677,6 +1713,7 @@ model UpdateArtifactContentResponse {
 model LinkTaskArtifactRequest {
   @field(1) taskId: string;
   @field(2) artifactId: string;
+  @field(3) attemptId?: string;
 }
 model LinkTaskArtifactResponse {
   @field(1) link: TaskArtifactLink;
@@ -1697,6 +1734,8 @@ model ListTaskArtifactLinksRequest {
   @field(1) taskId?: string;
   @field(2) artifactId?: string;
   @field(3) page?: PageRequest;
+  @field(4) attemptId?: string;
+  @field(5) uncorrelatedOnly?: boolean;
 }
 model ListTaskArtifactLinksResponse {
   @field(1) links: TaskArtifactLink[];
@@ -1901,6 +1940,8 @@ model TaskNote {
   // not have to load the org's whole agent list to label a note. Empty when
   // the agent has since been purged.
   @field(7) agentName: string;
+
+  @field(8) attemptId?: string;
 }
 
 model CreateTaskNoteRequest {
@@ -1911,6 +1952,8 @@ model CreateTaskNoteRequest {
   // proto3-optional unset-vs-cleared distinction, just an ordinary optional
   // field with a Zod default, since there is no "clear the type" operation.
   @field(4) noteType?: string;
+
+  @field(5) attemptId?: string;
 }
 
 model CreateTaskNoteResponse {
@@ -1920,6 +1963,9 @@ model CreateTaskNoteResponse {
 model ListTaskNotesRequest {
   @field(1) taskId: string;
   @field(2) page?: PageRequest;
+  @field(3) attemptId?: string;
+  @field(4) uncorrelatedOnly?: boolean;
+  @field(5) noteType?: string;
 }
 
 model ListTaskNotesResponse {
