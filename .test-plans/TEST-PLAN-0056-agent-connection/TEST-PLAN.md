@@ -12,7 +12,8 @@ Given a successful create, then show the registered agent and its token next ste
 without asserting a running worker, even when its row is beyond loaded pages.
 Given existing Tokens selection or Close, then one shared connection section
 opens/closes with useful once-only focus return. Existing editing/archive actions
-still work.
+still work; own and remote agent changes reconcile recorded activity and current
+selected identity labels.
 Given no organization, loading, read error or denied administration, then show
 accurate scoped guidance rather than an authorized empty/create state.
 

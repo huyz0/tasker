@@ -38,7 +38,7 @@ const KEYS_BY_ENTITY: Record<string, string[]> = {
   project: ['projects', 'project', 'dashboard', 'attention'],
   project_template: ['templates'],
   org: ['orgs', 'orgMembers', 'orgInvitations', 'attention'],
-  agent: ['agents', 'agentTokens', 'attention'],
+  agent: ['agents', 'agentTokens', 'attention', 'dashboard'],
   agent_role: ['agentRoles', 'agents'],
   artifact: ['artifacts', 'artifactContent', 'artifactLocate'],
   folder: ['folders', 'artifacts'],
