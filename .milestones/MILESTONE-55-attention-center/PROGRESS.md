@@ -143,3 +143,37 @@ and actual backend browser journeys still gate T03. An owned M55 fixture runs on
 8096/5184 without touching earlier worktrees/services; private credentials stay
 outside the repository. This is a recoverable in-progress checkpoint, not task
 completion.24 tasks remain.
+
+Independent CODE-v3 catches a Back-lifetime blocker: an initial failed return
+read leaves its intent pending, so later polling/recovery can steal focus/scroll.
+Two transient/denied return regressions are being observed before correction;
+consume the first reconciliation outcome and retire pending intent on subsequent
+interaction. The review also catches impossible preview-only mixed-project and
+user approval/holder rows; fixtures must match real source ownership. Shared
+authority epochs/recovery receipts, native navigation and scope/paging otherwise
+match the accepted design. All22 focused screen cases pass before these newly
+added regressions; full GUI coverage is still running. T03 stays in-progress.
+
+CODE-v3's two actual Back-failure regressions fail on old focus-stealing
+behavior, then pass after first-reconciliation settlement and superseding-user-
+interaction handling. Canceled/paused returns and a committed in-flight
+background refresh are also covered.30 focused cases pass; CODE-v4 approves
+source amendments. Preview fixtures now enforce selected project and valid
+question/review/requester/holder actor kinds.
+
+Nine deliberate faults produce behavioral assertion failures and are restored:
+missing next page, task-ID source collapse, project-local rather than org-wide
+authority, stale request epoch, the complete unsafe cached-success/old-page path,
+failed-return deferral, ignored pending interaction, missing restoration and
+missing visible polling. Isolated redundant-guard probes that remained defended
+and timeout-only probes are not counted. A first complete GUI run passes1522/
+95.03% branches before the review amendments; final full checks must rerun.
+
+Current Storybook build succeeds. Full rendered accessibility/overflow matrices
+and an actual isolated-org browser journey are in progress. The denial/offline/
+per-group recovery browser case passes. Paging creates51 real questions through
+current authenticated RPCs across2 owned projects, reaches the canonical Beta
+task, then its first attempt incorrectly looks for an inert sidebar control in
+the accessibility tree while a dialog is open. Correct that harness assertion;
+Back/extent/viewport proof still awaits the rerun. No product defect is inferred
+from that locator failure. No new credentials are minted by these browser cases.

@@ -41,7 +41,7 @@ function AttentionView({ scope }: AttentionViewProps) {
   const stalled = useAttention(scope, 'stalled_claim', kind === 'stalled_claim');
   const groups = { question, approval, review, stalled_claim: stalled };
   const current = groups[kind], source = sources[kind], heading = useRef<HTMLHeadingElement>(null);
-  const remember = useAttentionReturn(scope, kind, !current.blocked && current.query.isSuccess && current.query.isFetchedAfterMount && !current.query.isFetching, heading);
+  const remember = useAttentionReturn(scope, kind, { fetching: current.query.isFetching, observed: current.query.isFetchedAfterMount, successful: current.query.isSuccess && current.query.isFetchedAfterMount, unavailable: current.blocked || !!current.query.error }, heading);
   const groupLink = (next: AttentionKind) => { const query = new URLSearchParams(params); query.set('kind', next); return `/attention?${query}`; };
   return <div className="flex min-w-0 flex-col gap-6">
     <PageHeader title="Attention" description="Current work from task sources. Open a task to inspect it and use its existing actions." />

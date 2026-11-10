@@ -6,7 +6,7 @@ import { focusManager, onlineManager, QueryClient } from '@tanstack/react-query'
 import { AttentionService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { http, HttpResponse } from 'msw';
 import { BACKEND_URL } from '../../lib/backendUrl';
-import { mockRpc, server } from '../../test/mockRpc';
+import { mockRpc, mockRpcPending, server } from '../../test/mockRpc';
 import { renderScoped } from '../../test/renderScoped';
 import { AttentionScreen } from './AttentionScreen';
 
@@ -23,7 +23,7 @@ function view(entry = '/attention?org=org-1', client = new QueryClient({ default
   client.setQueryData(['authSession'], { authenticated: true, userId: 'user-1' });
   return renderScoped(content, { initialEntry: entry, queryClient: client });
 }
-beforeEach(() => { mockRpc(AttentionService, 'ListAttention', request => result(request.kind)); });
+beforeEach(() => { server.use(http.post(`${BACKEND_URL}/api/client-errors`, () => HttpResponse.json({}))); mockRpc(AttentionService, 'ListAttention', request => result(request.kind)); });
 
 describe('Attention source navigation and layout', () => {
   it('reads each bounded source independently and links actual project scope', async () => {
@@ -204,13 +204,17 @@ describe('Attention current authority lifetime', () => {
     const ui = view(); await screen.findByText('Question 0');
     server.use(http.post(endpoint, () => fail('permission_denied', 'Access removed')));
     fireEvent.click(screen.getByRole('button', { name: 'Refresh questions' })); await screen.findByRole('alert');
+    const cached = ui.queryClient.getQueryData(['attention', 'user-1', 'org-1', '', 'question']);
+    act(() => ui.queryClient.setQueryData(['attention', 'user-1', 'org-1', '', 'question'], cached));
     let pendingStarted = false;
     server.use(http.post(endpoint, async ({ request }) => {
       pendingStarted = true;
       return new Promise<Response>((_resolve, reject) => request.signal.addEventListener('abort', () => reject(request.signal.reason), { once: true }));
     }));
     fireEvent.click(screen.getByRole('button', { name: 'Try again' })); await waitFor(() => expect(pendingStarted).toBe(true));
-    await act(async () => { await ui.queryClient.cancelQueries({ queryKey: ['attention'] }); await ui.queryClient.invalidateQueries(); });
+    await act(async () => ui.queryClient.cancelQueries({ queryKey: ['attention'] }));
+    expect(screen.queryByText('Question 0')).not.toBeInTheDocument();
+    await act(async () => ui.queryClient.invalidateQueries());
     expect(screen.queryByText('Question 0')).not.toBeInTheDocument();
     expect(screen.queryByText('1 loaded of 1')).not.toBeInTheDocument();
   });
@@ -225,11 +229,11 @@ function ReturnHarness() {
 
 describe('Attention canonical task and Back navigation', () => {
   it.each([false, true])('restores extent and useful focus once after current pages settle (source gone: %s)', async gone => {
-    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {}); let returning = false;
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {}); let returning = false, snapshot = 0;
     mockRpc(AttentionService, 'ListAttention', request => {
       if (request.kind !== 'question') return result(request.kind);
-      const start = request.page?.cursor ? 20 : 0;
-      return result('question', { items: Array.from({ length: 20 }, (_, i) => row('question', start + i)).filter(item => !(returning && gone && item.sourceId === 'question-20')),
+      const start = request.page?.cursor ? 20 : 0; if (!start) snapshot++;
+      return result('question', { items: Array.from({ length: 20 }, (_, i) => ({ ...row('question', start + i), reason: `Question ${start + i} · snapshot ${snapshot}` })).filter(item => !(returning && gone && item.sourceId === 'question-20')),
         page: { totalCount: returning && gone ? 39 : 40, ...(!start ? { nextCursor: 'page-2' } : {}) } });
     });
     const ui = view('/attention?org=org-1&kind=question', undefined, <ReturnHarness />);
@@ -241,6 +245,7 @@ describe('Attention canonical task and Back navigation', () => {
     await waitFor(() => expect(gone ? screen.getByRole('heading', { name: 'Questions', level: 2 }) : screen.getByRole('link', { name: 'Open task WORK-20' })).toHaveFocus());
     expect(ui.location.url).toBe('/attention?org=org-1&kind=question'); expect(scroll).toHaveBeenCalledTimes(1);
     const refresh = screen.getByRole('button', { name: 'Refresh questions' }); refresh.focus(); fireEvent.click(refresh);
+    await screen.findByText('Question 0 · snapshot 3');
     await waitFor(() => expect(refresh).toBeEnabled()); expect(refresh).toHaveFocus(); expect(scroll).toHaveBeenCalledTimes(1);
   });
 });
@@ -317,4 +322,114 @@ describe('Attention independent freshness and honest states', () => {
     await act(async () => resolveOld()); expect(screen.queryByText('Private project-a')).not.toBeInTheDocument();
     expect(ui.location.search).toContain('project=project-b');
   });
+});
+
+describe('Attention return reconciliation failure lifetime', () => {
+  it.each(['unavailable', 'permission_denied'])('consumes a %s Back failure before background/explicit recovery can steal focus', async code => {
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {}); let phase = 'initial';
+    server.use(http.post(endpoint, async ({ request }) => {
+      const body = await request.json() as { kind: string };
+      if (phase === 'failed' && body.kind === 'question') return fail(code, 'Return read failed');
+      return HttpResponse.json(result(body.kind, { items: [row(body.kind)], page: { totalCount: 1 } }));
+    }));
+    const ui = view('/attention?org=org-1', undefined, <ReturnHarness />);
+    fireEvent.click(await screen.findByRole('link', { name: 'Open task WORK-0' }));
+    phase = 'failed'; fireEvent.click(screen.getByRole('button', { name: 'Back to attention' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Return read failed'));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Questions', level: 2 })).toHaveFocus());
+    const sourceLink = screen.getByRole('link', { name: /Questions/ }); sourceLink.focus(); const priorScrolls = scroll.mock.calls.length;
+    phase = 'recovered';
+    if (code === 'permission_denied') fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    else await act(async () => ui.queryClient.invalidateQueries({ queryKey: ['attention'] }));
+    await screen.findByText('Question 0');
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(sourceLink).toHaveFocus(); expect(scroll.mock.calls).toHaveLength(priorScrolls);
+  });
+});
+
+describe('Attention pending return and account guards', () => {
+  it('retires pending return intent when the person focuses another control', async () => {
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    let phase = 'initial', started = false, resolveReturn!: () => void;
+    const pending = new Promise<void>(resolve => { resolveReturn = resolve; });
+    server.use(http.post(endpoint, async ({ request }) => {
+      const body = await request.json() as { kind: string };
+      if (phase === 'returning' && body.kind === 'question') { started = true; await pending; }
+      return HttpResponse.json(result(body.kind));
+    }));
+    view('/attention?org=org-1', undefined, <ReturnHarness />);
+    fireEvent.click(await screen.findByRole('link', { name: 'Open task WORK-0' }));
+    phase = 'returning'; fireEvent.click(screen.getByRole('button', { name: 'Back to attention' })); await waitFor(() => expect(started).toBe(true));
+    const navigation = screen.getByRole('link', { name: /Questions/ }); navigation.focus();
+    await act(async () => resolveReturn()); await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh questions' })).toBeEnabled());
+    expect(navigation).toHaveFocus(); expect(scroll).not.toHaveBeenCalled();
+  });
+
+  it('settles a cancelled initial Back read once before a later recovery', async () => {
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {}); let phase = 'initial', started = false;
+    server.use(http.post(endpoint, async ({ request }) => {
+      const body = await request.json() as { kind: string };
+      if (phase === 'returning' && body.kind === 'question') {
+        started = true; return new Promise<Response>((_resolve, reject) => request.signal.addEventListener('abort', () => reject(request.signal.reason), { once: true }));
+      }
+      return HttpResponse.json(result(body.kind));
+    }));
+    const ui = view('/attention?org=org-1', undefined, <ReturnHarness />);
+    fireEvent.click(await screen.findByRole('link', { name: 'Open task WORK-0' }));
+    phase = 'returning'; fireEvent.click(screen.getByRole('button', { name: 'Back to attention' })); await waitFor(() => expect(started).toBe(true));
+    await act(async () => ui.queryClient.cancelQueries({ queryKey: ['attention'] }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Questions', level: 2 })).toHaveFocus());
+    const navigation = screen.getByRole('link', { name: /Questions/ }); navigation.focus(); const prior = scroll.mock.calls.length;
+    phase = 'recovered'; await act(async () => ui.queryClient.invalidateQueries({ queryKey: ['attention'] }));
+    expect(navigation).toHaveFocus(); expect(scroll.mock.calls).toHaveLength(prior);
+  });
+
+  it('waits for the verified account and does not read sources after sign-out', async () => {
+    let resolveAccount!: () => void, reads = 0; const pending = new Promise<void>(resolve => { resolveAccount = resolve; });
+    server.use(http.get(`${BACKEND_URL}/api/auth/session`, async () => { await pending; return HttpResponse.json({ authenticated: false }); }));
+    mockRpc(AttentionService, 'ListAttention', request => { reads++; return result(request.kind); });
+    renderScoped(<AttentionScreen />, { initialEntry: '/attention?org=org-1' });
+    expect(await screen.findByText('Checking account…')).toBeVisible();
+    await act(async () => resolveAccount()); expect(await screen.findByText('Sign in to view attention.')).toBeVisible(); expect(reads).toBe(0);
+  });
+});
+
+describe('Attention source and request generation identity', () => {
+  it('keeps two questions on the same task as separate source rows', async () => {
+    mockRpc(AttentionService, 'ListAttention', request => result(request.kind, { items: [row(request.kind), { ...row(request.kind), sourceId: `${request.kind}-second`, reason: 'A different source on the same task' }], page: { totalCount: 2 } }));
+    view(); expect(await screen.findByText('2 loaded of 2')).toBeVisible();
+    expect(screen.getByText('Question 0')).toBeVisible(); expect(screen.getByText('A different source on the same task')).toBeVisible();
+    expect(screen.getAllByRole('link', { name: 'Open task WORK-0' })).toHaveLength(2);
+  });
+
+  it('ignores a pre-denial sibling failure after a fresh explicit read has restored a group', async () => {
+    let resolveOld!: () => void, approvalStarted = false, phase = 'initial'; const pending = new Promise<void>(resolve => { resolveOld = resolve; });
+    server.use(http.post(endpoint, async ({ request }) => {
+      const body = await request.json() as { kind: string };
+      if (body.kind === 'approval') { approvalStarted = true; await pending; return fail('permission_denied', 'Old approval refusal'); }
+      if (body.kind === 'question' && phase === 'denied') return fail('permission_denied', 'Current access removed');
+      return HttpResponse.json(result(body.kind));
+    }));
+    view(); await screen.findByText('Question 0'); await waitFor(() => expect(approvalStarted).toBe(true));
+    phase = 'denied'; fireEvent.click(screen.getByRole('button', { name: 'Refresh questions' })); await screen.findByRole('alert');
+    phase = 'restored'; fireEvent.click(screen.getByRole('button', { name: 'Try again' })); expect(await screen.findByText('Question 0')).toBeVisible();
+    await act(async () => resolveOld());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh questions' })).toBeEnabled());
+    expect(screen.getByText('Question 0')).toBeVisible();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+it('never repeats return scrolling during a later background refresh without new interaction', async () => {
+  const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  const ui = view('/attention?org=org-1', undefined, <ReturnHarness />);
+  fireEvent.click(await screen.findByRole('link', { name: 'Open task WORK-0' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Back to attention' }));
+  await waitFor(() => expect(screen.getByRole('link', { name: 'Open task WORK-0' })).toHaveFocus());
+  expect(scroll).toHaveBeenCalledTimes(1);
+  const pending = mockRpcPending(AttentionService, 'ListAttention'); let refresh!: Promise<void>;
+  act(() => { refresh = ui.queryClient.invalidateQueries({ queryKey: ['attention'] }); });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh questions' })).toBeDisabled());
+  await act(async () => { pending.resolve(result('question')); await refresh; });
+  expect(scroll).toHaveBeenCalledTimes(1);
 });
