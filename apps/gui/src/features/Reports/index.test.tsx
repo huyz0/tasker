@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ReportService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 import { ReportsScreen } from './index';
@@ -86,11 +86,17 @@ const EMPTY_TRENDS = {
   taskTypeOptions: [{ id: 'untyped', name: 'Untyped', taskCount: '0' }],
 };
 
-function renderPage() {
+function HistoryControls() {
+  const location = useLocation(), navigate = useNavigate();
+  return <><output aria-label="Fixture location">{location.pathname + location.search}</output>
+    <button onClick={() => navigate(-1)}>Fixture Back</button><button onClick={() => navigate(1)}>Fixture Forward</button></>;
+}
+function renderPage(entry = '/reports', history = false) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/reports']}>
+      <MemoryRouter initialEntries={[entry]}>
+        {history && <HistoryControls />}
         <Routes>
           <Route path="/reports" element={<ReportsScreen />} />
           <Route path="/tasks/:taskId" element={<div>Task detail page</div>} />
@@ -107,6 +113,38 @@ describe('ReportsScreen', () => {
     mockRpc(ReportService, 'GetReportExceptions', RESPONSE);
     mockRpc(ReportService, 'GetReportTrends', EMPTY_TRENDS);
     mockRpc(ReportService, 'GetUsageReport', { totals: { reports: '0' }, byAgent: [], byProject: [], byDay: [], since: '' });
+  });
+
+  it('uses a deep-linked report window for exceptions, trends and spend', async () => {
+    const requests: { source: string; windowDays?: number; days?: number }[] = [];
+    mockRpc(ReportService, 'GetReportExceptions', body => { requests.push({ source: 'exceptions', ...body });return RESPONSE; });
+    mockRpc(ReportService, 'GetReportTrends', body => { requests.push({ source: 'trends', ...body });return EMPTY_TRENDS; });
+    mockRpc(ReportService, 'GetUsageReport', body => { requests.push({ source: 'spend', ...body });return { totals: { reports: '0' }, byAgent: [], byProject: [], byDay: [], since: '' }; });
+    renderPage('/reports?org=org-1&project=proj-1&days=90');
+    expect(screen.getByRole('button', { name: '90 days' })).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(requests).toHaveLength(3));
+    expect(requests.every(request => request.windowDays === 90 || request.days === 90)).toBe(true);
+  });
+  it('restores report windows with browser history and keeps unrelated parameters', async () => {
+    renderPage('/reports?org=org-1&project=proj-1&marker=keep', true);
+    fireEvent.click(screen.getByRole('button', { name: '7 days' }));
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('days=7');
+    fireEvent.click(screen.getByRole('button', { name: '90 days' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fixture Back' }));
+    expect(screen.getByRole('button', { name: '7 days' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Fixture Forward' }));
+    expect(screen.getByRole('button', { name: '90 days' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('org=org-1');
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('project=proj-1');
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('marker=keep');
+  });
+  it('recovers an unsupported report window using the existing default and a scoped reset', async () => {
+    renderPage('/reports?org=org-1&project=proj-1&days=999&marker=keep', true);
+    expect(screen.getByRole('button', { name: '30 days' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
+    expect(screen.getByLabelText('Fixture location')).not.toHaveTextContent('days=');
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('project=proj-1');
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('marker=keep');
   });
 
   it('asks the user to select an organization when none is active', () => {

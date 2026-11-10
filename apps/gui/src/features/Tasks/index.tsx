@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTaskView } from '../../hooks/useOperationalView';
+import { TASK_SORT_FIELDS, taskViewPath, type TaskSortKey as SortKey } from '../../lib/operationalView';
+import { currentLocation } from '../../lib/liveRouterLocation';
 import { useDebounce } from 'use-debounce';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCanonicalResourceScope, useScopedTo } from '../../hooks/useScope';
 import { PriorityBadge, BlockedBadge, NeedsInputBadge, AwaitingApprovalBadge } from './PriorityBadge';
 import { TaskContext } from './TaskContext';
@@ -88,7 +91,6 @@ const TABLE_COLUMN_WIDTHS = '32px 110px 110px minmax(200px, 1fr) 140px minmax(18
 /** Carries a dragged card's own status, so a drop on its own column is a no-op. */
 const DRAG_STATUS_TYPE = 'application/x-tasker-status';
 
-type SortKey = 'displayId' | 'priority' | 'title' | 'status';
 const SORT_LABELS: Record<SortKey, string> = { displayId: 'ID', priority: 'Priority', title: 'Title', status: 'Status' };
 
 /** One screenful of cards. A column is a queue to work, not a catalogue. */
@@ -334,24 +336,29 @@ export function TasksWorkbench() {
   // state, so a shared link, a browser reload and the back button all land on
   // the same detail view instead of an empty board.
   const { taskId: expandedTaskId = null } = useParams<{ taskId: string }>();
-  const navigate = useNavigate();
-  const setExpandedTaskId = (id: string | null) => navigate(scopedTo(id ? `/tasks/${id}` : '/tasks'));
+  const view = useTaskView();
+  const { viewMode, sort, search, priorityFilter, readyOnly } = view.value;
+  const location = useLocation();
+  const [searchInput, setSearchInput] = useState(search);
+  // Router transitions cannot own urgent keystrokes. Only the current live
+  // URL may acknowledge the editing value, including Back/Forward changes.
+  useEffect(() => {
+    const live = currentLocation(location);
+    if (live.pathname === location.pathname && live.search === location.search) setSearchInput(search);
+  }, [location, search]);
+  const setExpandedTaskId = (id: string | null) => view.navigateWithinView(id ? `/tasks/${id}` : '/tasks');
 
   const [addingToColumnId, setAddingToColumnId] = useState<string | null>(null);
   const [isEditingTask, setIsEditingTask] = useState(false);
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
-  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' } | null>(null);
-  const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebounce(search, 250);
-  const [priorityFilter, setPriorityFilter] = useState('');
-  const [readyOnly, setReadyOnly] = useState(false);
   const [showQuestions, setShowQuestions] = useState(false);
   const facets: TaskFacets = { priority: priorityFilter === '' ? undefined : Number(priorityFilter), ready: readyOnly };
+  const hasFilters = search.length > 0 || priorityFilter !== '' || readyOnly;
   // Table-view bulk selection. Applies only to loaded rows - the table
   // virtualizes, so "select all" means all rows fetched so far, not every
   // task in the project; the count in the toolbar makes that explicit.
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
-  useEffect(() => { setSelectedTaskIds(new Set()); }, [activeProjectId, debouncedSearch, priorityFilter, readyOnly]);
+  useEffect(() => { setSelectedTaskIds(new Set()); }, [activeOrgId, activeProjectId, search, priorityFilter, readyOnly, viewMode, sort?.key, sort?.dir]);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -372,15 +379,8 @@ export function TasksWorkbench() {
   // The server sorts by column name; the ID header maps to createdAt because
   // displayId is a string ("SEED-100" sorts before "SEED-99") and ids are
   // assigned in creation order, so createdAt is that ordering done correctly.
-  const SORT_FIELDS: Record<SortKey, string> = {
-    displayId: 'createdAt',
-    // M35: the server ranks "no priority" after "low", so ascending is
-    // most-important-first.
-    priority: 'priority',
-    title: 'title',
-    status: 'status',
-  };
-  const sortParam = sort ? `${SORT_FIELDS[sort.key]}:${sort.dir}` : undefined;
+
+  const sortParam = sort ? `${TASK_SORT_FIELDS[sort.key]}:${sort.dir}` : undefined;
 
   // The table view, one page at a time.
   //
@@ -649,13 +649,11 @@ export function TasksWorkbench() {
   // The server orders the rows. Sorting them again here would reorder one
   // page's worth of a paginated set and call the result sorted.
   const sortedTasks = tasksData ?? [];
+  const tableHasRows = !isLoading && !tasksError && sortedTasks.length > 0;
 
   const toggleSort = (key: SortKey) => {
-    setSort(prev => {
-      if (!prev || prev.key !== key) return { key, dir: 'asc' };
-      if (prev.dir === 'asc') return { key, dir: 'desc' };
-      return null;
-    });
+    view.update(current => ({ ...current, sort: !current.sort || current.sort.key !== key
+      ? { key, dir: 'asc' } : current.sort.dir === 'asc' ? { key, dir: 'desc' } : null }));
   };
 
   const rowVirtualizer = useVirtualizer({
@@ -691,14 +689,14 @@ export function TasksWorkbench() {
           <>
             <div className="flex rounded-md border overflow-hidden text-sm font-medium">
               <button
-                onClick={() => setViewMode('card')}
+                onClick={() => view.update({ viewMode: 'card' })}
                 aria-pressed={viewMode === 'card'}
                 className={`px-3 py-2 ${viewMode === 'card' ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
               >
                 Board
               </button>
               <button
-                onClick={() => setViewMode('table')}
+                onClick={() => view.update({ viewMode: 'table' })}
                 aria-pressed={viewMode === 'table'}
                 className={`px-3 py-2 border-l ${viewMode === 'table' ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
               >
@@ -709,11 +707,14 @@ export function TasksWorkbench() {
               <label className="sr-only" htmlFor="task-filter">Filter tasks</label>
               <input
                 id="task-filter"
+                maxLength={500}
                 name="task-filter"
                 type="search"
                 autoComplete="off"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={(e) => {
+                  const next = e.target.value;setSearchInput(next);view.update({ search: next }, { replace: true });
+                }}
                 placeholder="Filter tasks…"
                 className="w-full px-3 py-2 rounded-md border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/50"
               />
@@ -722,14 +723,14 @@ export function TasksWorkbench() {
             <select
               id="task-priority-filter"
               value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
+              onChange={(e) => view.update({ priorityFilter: e.target.value })}
               className="px-3 py-2 rounded-md border bg-background text-sm"
             >
               <option value="">Any priority</option>
               {PRIORITY_OPTIONS.map((o) => <option key={o.value} value={String(o.value)}>{o.label}</option>)}
             </select>
             <button
-              onClick={() => setReadyOnly((v) => !v)}
+              onClick={() => view.update(current => ({ ...current, readyOnly: !current.readyOnly }))}
               aria-pressed={readyOnly}
               title="Open, unassigned, and nothing unfinished blocking it"
               className={`px-3 py-2 rounded-md border text-sm font-medium ${readyOnly ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
@@ -745,6 +746,11 @@ export function TasksWorkbench() {
           </>
         }
       />
+
+      {view.invalid.length > 0 && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-surface-panel p-panel type-body">
+        <p>Some view settings couldn't be applied.</p>
+        <button type="button" onClick={view.reset} className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted">Reset view</button>
+      </div>}
 
       {viewMode === 'table' ? (
         <div className="flex flex-col gap-3 md:flex-1 md:min-h-0">
@@ -776,7 +782,9 @@ export function TasksWorkbench() {
           {/* The rows are virtualized, so the table always needs a bounded
               height: the rest of the screen from `md:`, most of a dynamic
               viewport (which tracks a phone's collapsing URL bar) below it. */}
-          <div className="h-[75dvh] md:h-auto md:flex-1 md:min-h-0 overflow-hidden border rounded-lg flex flex-col" role="table" aria-label="Tasks">
+          <div className="h-[75dvh] md:h-auto md:flex-1 md:min-h-0 overflow-hidden border rounded-lg flex flex-col">
+          <div className={`overflow-auto flex flex-col ${tableHasRows ? 'flex-1 min-h-0' : 'shrink-0'}`}>
+          <div className={`min-w-[772px] flex flex-col ${tableHasRows ? 'flex-1 min-h-0' : 'shrink-0'}`} role="table" aria-label="Tasks" aria-rowcount={tableHasRows ? taskTotalCount + 1 : 1}>
           <div
             role="row"
             className="grid bg-muted/30 text-left text-xs text-muted-foreground uppercase tracking-wide shrink-0"
@@ -794,35 +802,26 @@ export function TasksWorkbench() {
               />
             </div>
             {(['displayId', 'priority', 'title', 'status'] as const).map(key => (
-              <button
-                key={key}
-                role="columnheader"
-                onClick={() => toggleSort(key)}
-                className="px-4 py-2 font-medium text-left flex items-center gap-1 hover:text-foreground"
-              >
-                {SORT_LABELS[key]}
-                {sort?.key === key && <span>{sort.dir === 'asc' ? '▲' : '▼'}</span>}
-              </button>
+              <div key={key} role="columnheader" aria-sort={sort?.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+                <button
+                  type="button"
+                  onClick={() => toggleSort(key)}
+                  className="w-full px-4 py-2 font-medium text-left flex items-center gap-1 hover:text-foreground"
+                >
+                  {SORT_LABELS[key]}
+                  {sort?.key === key && <span aria-hidden="true">{sort.dir === 'asc' ? '▲' : '▼'}</span>}
+                </button>
+              </div>
             ))}
             <div role="columnheader" className="px-4 py-2 font-medium">Pull Requests</div>
           </div>
-          <ListState
-            isLoading={isLoading}
-            error={tasksError}
-            isEmpty={sortedTasks.length === 0}
-            loadingMessage="Loading tasks…"
-            emptyMessage="No tasks yet."
-            emptyAction={<p className="text-xs">Switch to the board and use “+” on a column to add the first one.</p>}
-            onRetry={() => refetchTasks()}
-          >
+          {tableHasRows && (
             <div
               ref={tableScrollRef}
-              // Only the visible rows exist in the DOM, so the real size is not
-              // discoverable by tabbing — aria-rowcount carries it, and it is
-              // the server's count of the whole project rather than the number
-              // of pages loaded so far.
+              // Only visible rows exist in the DOM. The table's aria-rowcount
+              // includes its header plus the server's full filtered result;
+              // each virtual row exposes its position within that table.
               role="rowgroup"
-              aria-rowcount={taskTotalCount}
               className="flex-1 overflow-auto"
             >
               <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
@@ -832,6 +831,7 @@ export function TasksWorkbench() {
                     <div
                       key={task.id}
                       role="row"
+                      aria-rowindex={virtualRow.index + 2}
                       tabIndex={0}
                       onClick={() => setExpandedTaskId(task.id)}
                       onKeyDown={(e) => {
@@ -888,7 +888,21 @@ export function TasksWorkbench() {
                 })}
               </div>
             </div>
-          </ListState>
+          )}
+          </div>
+          </div>
+          {!tableHasRows && <ListState
+            isLoading={isLoading}
+            error={tasksError}
+            isEmpty={sortedTasks.length === 0}
+            loadingMessage="Loading tasks…"
+            emptyMessage={hasFilters ? 'No tasks match these view settings.' : 'No tasks yet.'}
+            emptyAction={hasFilters
+              ? <button type="button" onClick={() => view.update({ search: '', priorityFilter: '', readyOnly: false })}
+                className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted">Clear filters</button>
+              : <p className="text-xs">Switch to the board and use “+” on a column to add the first one.</p>}
+            onRetry={() => refetchTasks()}
+           />}
           </div>
         </div>
       ) : (
@@ -1011,7 +1025,7 @@ export function TasksWorkbench() {
                // exact "a task link saved from project A opens under project
                // B" failure ADR-0025 exists to remove, arrived at from the
                // other direction. Caught by addressable.spec.ts (M28-T08).
-               { label: 'Tasks', to: scopedTo('/tasks') },
+               { label: 'Tasks', to: taskViewPath(scopedTo('/tasks'), view.value) },
                { label: expandedTask.displayId || expandedTask.title },
              ]}
            />

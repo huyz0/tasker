@@ -14,6 +14,8 @@ import { TrendCards, type TrendsData } from './TrendCards';
  * Memory and Handoffs stories. The cards themselves are presentational, so
  * every visual state is reachable here without protocol mocking. (The
  * QueryClientProvider exists for StalledWorkCard's unassign mutation hook.)
+ * ReportsScreen.stories.tsx separately covers the actual URL-owned screen with
+ * deterministic protocol-shaped cache fixtures.
  */
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 

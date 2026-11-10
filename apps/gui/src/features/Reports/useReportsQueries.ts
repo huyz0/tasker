@@ -11,7 +11,7 @@ export const reportClient = createClient(ReportService, transport);
 export const reportTaskClient = createClient(TaskService, transport);
 
 /** The selectable report windows, in days. T09's trend query shares them. */
-export const REPORT_WINDOWS = [7, 30, 90] as const;
+export { REPORT_WINDOWS } from '../../lib/operationalView';
 
 /**
  * "5h ago" / "3d ago" — compact relative time for exception rows.

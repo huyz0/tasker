@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useReportView } from '../../hooks/useOperationalView';
 import { useQuery } from '@tanstack/react-query';
 import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../../components/ui/ListState';
@@ -49,7 +50,8 @@ export function ReportsScreen() {
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   useEffect(() => setActivePageTitle('Reports'), [setActivePageTitle]);
 
-  const [windowDays, setWindowDays] = useState<number>(30);
+  const view = useReportView();
+  const { windowDays } = view.value;
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['reports', 'exceptions', activeProjectId, windowDays],
@@ -89,7 +91,7 @@ export function ReportsScreen() {
               <button
                 key={days}
                 aria-pressed={windowDays === days}
-                onClick={() => setWindowDays(days)}
+                onClick={() => view.update({ windowDays: days })}
                 className={`rounded px-2.5 py-1 text-xs font-medium tabular-nums transition-colors ${
                   windowDays === days
                     ? 'bg-primary-subtle text-primary-subtle-foreground'
@@ -102,6 +104,11 @@ export function ReportsScreen() {
           </div>
         }
       />
+
+      {view.invalid.length > 0 && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-surface-panel p-panel type-body">
+        <p>Some view settings couldn't be applied.</p>
+        <button type="button" onClick={view.reset} className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted">Reset view</button>
+      </div>}
 
       <ListState
         isLoading={isLoading}
