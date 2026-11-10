@@ -155,7 +155,7 @@ locally; no new M56 merge/main or credential-setup completion is implied.
 
 ## M56-T03 — Scoped configuration and exact credential verification
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-10
 - **Changed**: Implement one-time scoped token/configuration handling and a cookie-free identity probe using the exact issued credential.
 - **Verified**: Accepted ADR0049/UX/TC003–007 and ARCH-v2 endpoint amendment govern this task. T02 full gate is independently rerunning in its preserved source checkout; T02 is not claimed complete here.
@@ -265,3 +265,19 @@ revoked. Two probe-only field/method guesses (taskNote and CreateTemplate) are
 corrected against generated contracts before accepting the successful proof;
 these were not product regressions. Permanent external-client coverage/docs
 remain T04 work. Full3/final E2E type results gate T03 completion.
+
+T03 completes with all35 source checks (25 cached,4m10.5s final run). GUI1620
+cases/95.14% branches and backend2302/zero failures/95.85% functions/96.80% lines
+pass, alongside contract/CLI/standalone and unchanged authority gates. Strict
+app/E2E types pass. CODE-v6/UX-v3 approve;126 focused cases, eight source faults,
+39 previews/156 WCAG/78 overflow checks, dev/production real browser, three
+privacy failure modes and19 real CLI/MCP checks support completion. No raw issued
+credential is persisted in the browser, test artifacts or logs; all owned test
+credentials are revoked. The existing stale schedule-clock fixture is fixed
+without changing product behavior or weakening an assertion.
+
+M56 is3/4 tasks and3/4 exit criteria complete;378 done/18 pending overall. T04
+next commits permanent external-client/first-activity proof and public setup/
+recovery/deployment guidance, fixes only any reproduced remaining problem, then
+requires final source/rendered/head CI and publication. PR #9 remains draft;
+local task completion is not main publication or broader goal completion.

@@ -22,9 +22,9 @@ Identity registration currently looks like deployment and leaves the first succe
 
 ## 3. Exit Criteria
 
-- [ ] Registration and external runtime responsibilities are named accurately throughout the UI.
-- [ ] Scoped configuration can be copied without browser persistence of the secret.
-- [ ] Verified-at reflects a real request using that exact agent credential and its authorized identity.
+- [x] Registration and external runtime responsibilities are named accurately throughout the UI.
+- [x] Scoped configuration can be copied without browser persistence of the secret.
+- [x] Verified-at reflects a real request using that exact agent credential and its authorized identity.
 - [ ] Denied/revoked/offline states and full first-connection browser/MCP journeys pass.
 
 ## 4. Scope
@@ -43,7 +43,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/gui/src/features/Agents/; apps/gui/src/features/Agents/; apps/gui/src/components/; docs/.
   - **Verify**: Register accurately describes creation; role selection and permissions are clear; empty list leads to first registration; cancelling/returning preserves meaningful non-secret context; responsive keyboard stories pass.
 
-- [ ] **M56-T03** — Generate scoped external-worker configuration and verify the exact newly issued credential.
+- [x] **M56-T03** — Generate scoped external-worker configuration and verify the exact newly issued credential.
   - **Files**: apps/gui/src/features/Agents/; apps/backend/src/modules/agents/; apps/backend/src/lib/auth.ts; docs/mcp.md.
   - **Verify**: Scopes are explicit and least privilege; JSON/examples are correctly escaped; secret is shown once and copied explicitly; never stored in URL/localStorage/Zustand/logs; success requires an API request authenticated by that token and displays its real identity/org/scopes/time.
 
