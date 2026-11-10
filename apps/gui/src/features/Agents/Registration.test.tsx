@@ -12,17 +12,17 @@ import { confirmAction } from '../../test/confirm';
 
 const scope = vi.hoisted(() => ({ orgId: 'org-1' }));
 vi.mock('../../store/layout', () => ({ useLayoutStore: (selector: (state: { activeOrgId: string; activeProjectId: string; setActivePageTitle: () => void }) => unknown) => selector({ activeOrgId: scope.orgId, activeProjectId: '', setActivePageTitle: () => undefined }) }));
-const role = { id: 'role-1', name: 'Researcher', systemPrompt: 'Inspect work', capabilities: '[]' };
+const role = { id: 'role-1', orgId: 'org-1', name: 'Researcher', systemPrompt: 'Inspect work', capabilities: '[]' };
 const existing = { id: 'agent-1', name: 'Existing worker', orgId: 'org-1', agentRoleId: 'role-1' };
 function view(element = <AgentsDashboard />) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); client.setQueryData(['authSession'], { authenticated: true, userId: 'user-1' });
   return renderScoped(element, { queryClient: client, initialEntry: '/agents?org=org-1' });
 }
-async function registerDraft(name = 'Release worker') {
+async function registerDraft(name = 'Release worker', roleId = 'role-1') {
   fireEvent.click(await screen.findByRole('button', { name: 'Register agent' }));
   fireEvent.change(screen.getByRole('textbox', { name: 'Agent name' }), { target: { value: name } });
   await screen.findByRole('option', { name: 'Researcher' });
-  fireEvent.change(screen.getByRole('combobox', { name: 'Role' }), { target: { value: 'role-1' } });
+  fireEvent.change(screen.getByRole('combobox', { name: 'Role' }), { target: { value: roleId } });
 }
 function roleDraft() {
   fireEvent.change(screen.getByRole('textbox', { name: 'Role name' }), { target: { value: 'Release reviewer' } });
@@ -110,10 +110,11 @@ describe('registering an external worker identity', () => {
 
   it.each(['organization', 'account'])('keeps a new %s draft and current reads independent of a late old registration', async mode => {
     let identity = 'user-1'; const pending = mockRpcPending(AgentService, 'CreateAgent');
-    mockRpc(AgentService, 'ListAgents', request => ({ agents: [{ ...existing, id: `${identity}-${request.orgId}`, name: `${identity} ${request.orgId}` }], page: { totalCount: 1 } }));
+    mockRpc(AgentService, 'ListAgents', request => ({ agents: [{ ...existing, orgId: request.orgId, agentRoleId: request.orgId === 'org-1' ? 'role-1' : 'role-2', id: `${identity}-${request.orgId}`, name: `${identity} ${request.orgId}` }], page: { totalCount: 1 } }));
+    mockRpc(AgentService, 'ListAgentRoles', request => ({ roles: [{ ...role, orgId: request.orgId, id: request.orgId === 'org-1' ? 'role-1' : 'role-2' }] }));
     const ui = view(); await registerDraft('Old draft'); fireEvent.click(screen.getByRole('button', { name: 'Register' })); await waitFor(() => expect(pending.requests).toHaveLength(1));
     if (mode === 'organization') scope.orgId = 'org-2'; else { identity = 'user-2'; ui.queryClient.setQueryData(['authSession'], { authenticated: true, userId: identity }); }
-    ui.rerender(); await screen.findByText(`${identity} ${scope.orgId}`); await registerDraft('New scope draft');
+    ui.rerender(); await screen.findByText(`${identity} ${scope.orgId}`); await registerDraft('New scope draft', mode === 'organization' ? 'role-2' : 'role-1');
     await act(async () => pending.resolve({ agent: { ...existing, id: 'old-created', name: 'Old draft' } }));
     expect(screen.getByRole('textbox', { name: 'Agent name' })).toHaveValue('New scope draft'); expect(screen.queryByRole('region', { name: /^Connect / })).not.toBeInTheDocument();
   });

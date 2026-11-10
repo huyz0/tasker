@@ -115,3 +115,25 @@ full gates remain pending. T03 preflight must also reconcile the hardcoded API
 default with production/custom-port worker configuration, and real-token tests
 must clear secret DOM before automatic Playwright error-context snapshots as
 well as disabling trace/video. These are not implemented T02 claims.
+
+All twelve restored faults produce behavioral assertion failures: registration
+generation, account/org ownership, later role choice, role-form generation, later
+connection selection, ongoing writing focus, create activity, native agent-event
+activity, archive focus, pending role fields and return to registration. Source
+is restored. CODE-v2/UX-v2 approve, with low-severity polish for static roster
+name color and hidden role labels. Apply neutral foreground to data names and
+visible persistent role labels, retaining existing font/token roles. Refine the
+org-switch test fixture to return actual matching organization/role ownership
+rather than borrowing the original record's metadata. Current final checks
+follow these amendments; no secret/configuration verification is yet implemented.
+
+Final polished-source browser journey passes25.7s wall; all19 previews pass76
+WCAG/38 mobile checks. Design lint passes328 files/zero findings and27 gate
+regressions. The first full run passes1572/1573 GUI cases; one existing artifact
+picker test times out while evidence is still loading before its opener exists.
+The unchanged complete14-case artifact-link file immediately passes7.7s. No
+product/test timeout or assertion is relaxed; full2 reruns the required gate.
+T02 remains in-progress until all35 checks pass. ARCH-v2 separately approves
+the future T03 deployment-base amendment (development localhost, production
+page origin, trusted explicit override), with required endpoint/prefix/privacy
+proof. No T03 implementation or completed-task claim is introduced here.

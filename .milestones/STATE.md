@@ -15,7 +15,7 @@ blocker: null
 
 ## Now
 
-**2026-11-10 — M56-T02 in progress.** T01 is committed/pushed as52abf71 with accepted design and all35 source/closure checks; draft PR #9 is attached. Drive truthful registration, role guidance, scoped draft/callback lifetimes and a shared connection section outside virtualized rows through native regressions before code. Frontend/security standards plus TDD selected. Existing token secret/configuration/verification work remains T03.20 tasks remain; M55 is published81d2ab6 and all main/integration checks pass.
+**2026-11-10 — M56-T02 in progress.** Registration/role/shared-connection changes pass98 focused cases, all12 restored faults,19 previews (76 WCAG/38 mobile checks) and the actual keyboard/theme/mobile browser journey. CODE-v2/UX-v2 approve; visible role labels and neutral static actor names are applied. Full1 passes1572/1573 GUI cases, with one existing artifact-picker initial-load timeout; its unchanged14-case file passes immediately. Full2 is running; T02 is not complete. ARCH-v2 approves the future T03 deployment endpoint amendment.20 tasks remain; M55 is published81d2ab6 and all main/integration checks pass.
 
 **2026-11-10 — M56-T01 verified:1/4 tasks.** Accepted ADR0049/UX/TC001–009 and ARCH-v1/UX-v1 define truthful registration, scoped one-time credentials and exact GetIdentity bearer proof, with one connection section outside virtualized rows and trusted API configuration. All35 fresh-worktree gates pass (GUI1551/95.14% branches; backend2302/zero failures). No M56 runtime feature exists yet. T02 next builds registration/role/next-step flow under observed regressions.376 done/20 pending overall. M55 is published81d2ab6; final PR CI, both post-merge integration jobs and all eight main jobs pass.
 

@@ -395,7 +395,7 @@ function AgentsWorkspace({ accountId, orgId: activeOrgId }: WorkspaceProps) {
                 ) : (
                 <div key={a.id}>
                 <div className={`${AGENT_ROW_GRID} min-h-row p-3 text-sm`}>
-                  <span className="min-w-0 truncate font-medium text-primary" title={a.name}>
+                  <span className="min-w-0 truncate font-medium text-foreground" title={a.name}>
                     {a.name}
                   </span>
                   <span className={`min-w-0 truncate text-muted-foreground ${AGENT_ROLE_CELL}`} title={roleNameById.get(a.agentRoleId) ?? a.agentRoleId}>
@@ -518,7 +518,7 @@ function AgentsWorkspace({ accountId, orgId: activeOrgId }: WorkspaceProps) {
             onSubmit={(e) => { e.preventDefault(); createAgentRoleMutation.mutate({ orgId: activeOrgId, name: newRoleName.trim(), systemPrompt: newRoleSystemPrompt.trim(), capabilities: newRoleCapabilities.trim(), registration: intent.current.registration, selection: intent.current.selection, form: roleGeneration.current }); }}
             className="mb-4 p-3 border rounded-md flex flex-col gap-2 bg-muted/20"
           >
-            <label className="sr-only" htmlFor="new-role-name">Role name</label>
+            <label className="type-caption font-medium" htmlFor="new-role-name">Role name</label>
             <input
               id="new-role-name"
               disabled={createAgentRoleMutation.isPending}
@@ -529,7 +529,7 @@ function AgentsWorkspace({ accountId, orgId: activeOrgId }: WorkspaceProps) {
               required
               className="text-sm bg-transparent border rounded-md px-2 py-1"
             />
-            <label className="sr-only" htmlFor="new-role-prompt">System prompt</label>
+            <label className="type-caption font-medium" htmlFor="new-role-prompt">System prompt</label>
             <textarea
               id="new-role-prompt"
               disabled={createAgentRoleMutation.isPending}
@@ -540,7 +540,7 @@ function AgentsWorkspace({ accountId, orgId: activeOrgId }: WorkspaceProps) {
               required
               className="text-sm bg-transparent border rounded-md px-2 py-1"
             />
-            <label className="sr-only" htmlFor="new-role-capabilities">Capabilities</label>
+            <label className="type-caption font-medium" htmlFor="new-role-capabilities">Capabilities</label>
             <input
               id="new-role-capabilities"
               disabled={createAgentRoleMutation.isPending}
