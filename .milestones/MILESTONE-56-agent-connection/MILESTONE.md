@@ -1,13 +1,13 @@
 ---
 id: M56
 title: Agent Connection
-status: in-progress
+status: done
 goal: A person can register an agent, issue a least-privilege token, configure an external worker and verify that credential through an actual authenticated API request.
 depends_on: [M54]
 surfaces: [backend, gui, contract, cli, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-10
-completed_at: null
+completed_at: 2026-11-10
 ---
 
 # M56 — Agent Connection
@@ -25,7 +25,7 @@ Identity registration currently looks like deployment and leaves the first succe
 - [x] Registration and external runtime responsibilities are named accurately throughout the UI.
 - [x] Scoped configuration can be copied without browser persistence of the secret.
 - [x] Verified-at reflects a real request using that exact agent credential and its authorized identity.
-- [ ] Denied/revoked/offline states and full first-connection browser/MCP journeys pass.
+- [x] Denied/revoked/offline states and full first-connection browser/MCP journeys pass.
 
 ## 4. Scope
 
@@ -47,7 +47,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/gui/src/features/Agents/; apps/backend/src/modules/agents/; apps/backend/src/lib/auth.ts; docs/mcp.md.
   - **Verify**: Scopes are explicit and least privilege; JSON/examples are correctly escaped; secret is shown once and copied explicitly; never stored in URL/localStorage/Zustand/logs; success requires an API request authenticated by that token and displays its real identity/org/scopes/time.
 
-- [ ] **M56-T04** — Verify registration, token failure/revocation and first MCP activity journeys.
+- [x] **M56-T04** — Verify registration, token failure/revocation and first MCP activity journeys.
   - **Files**: apps/gui/tests/e2e/; apps/backend/src/test/wire/; docs/agent-integration.md; .milestones/MILESTONE-56-agent-connection/reviews/.
   - **Verify**: A real new token connects via CLI/MCP; invalid/revoked/wrong-origin credentials fail accurately; admin session success never marks token verified; inspection finds no secret persistence; full security/browser/gates pass.
 

@@ -284,7 +284,7 @@ local task completion is not main publication or broader goal completion.
 
 ## M56-T04 — First external worker, failure recovery and public guidance
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-10
 - **Changed**: Commit a full UI-issued/copied-configuration MCP/optional CLI journey, current refusal/revocation proof and public registration/configuration/recovery guidance.
 - **Verified**: T03 closes as0a2e5a3 after all35 source/closure checks,126 affected cases,39 previews, actual development/production browser and19 real CLI/MCP checks. Draft PR #9 includes that source;18 tasks remain.
@@ -349,3 +349,21 @@ configuration through HTTP MCP and Go CLI/stdio, with visible reveal focus and
 stable post-revoke focus. The ordinary endpoint build has been restored after
 all configuration probes, and no owned environment file remains. Full36 is
 running before task closure; actual final-head CI/main publication still follows.
+
+T04 completes with all36 local checks (23 cached,6m2s). GUI1622 cases/95.13%
+branches, backend2302/zero failures/95.85% functions/96.80% lines, strict
+app/node/E2E types, contract/CLI/standalone and the new pre-emission regression
+pass. CODE-v8/ARCH-v3 approve; full305 baseline1220/610 rendered scans and final39
+affected156/78 scans pass. Real mobile development/production copied-config
+HTTP MCP and Go CLI/stdio journeys, first read/note attribution, missing-scope
+refusal and restored CLI/focus/build/cache/privacy faults pass. Public setup,
+least-privilege scope, recovery and endpoint guidance is linked. All minted owned
+test credentials are revoked; no one-time plaintext appears in captured failure
+artifacts or browser persistence. No API, scope, schema, migration or dependency
+is introduced.
+
+M56 closes locally:4/4 tasks and4/4 exit criteria.379 done/17 pending overall.
+Draft PR #9 still needs actual final-head CI and main publication; local closure
+is not a published milestone or full-goal completion. M57-T01 is next eligible
+for receipt/generation design, with branch reconciliation after M56 publication.
+Original worktrees/services and the initial user's WIP remain preserved.
