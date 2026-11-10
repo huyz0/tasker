@@ -129,6 +129,6 @@ describe('domain.task.stalled (M29)', () => {
 });
 
 it('reconciles source eligibility, parents, actor names and current authority without mistaking edits for new activity', () => {
-  for (const subject of ['domain.task.input_answered', 'domain.task.approval_decided', 'domain.task.status_changed', 'domain.project.archived', 'domain.project.restored', 'domain.org.member_removed', 'domain.role.updated', 'domain.grant.revoked', 'domain.team.member_removed', 'domain.agent.updated', 'domain.comment.created', 'domain.tasknote.created']) expect(roots(subject)).toContain('attention');
+  for (const subject of ['domain.task.input_answered', 'domain.task.approval_decided', 'domain.task.status_updated', 'domain.project.archived', 'domain.project.restored', 'domain.org.member_removed', 'domain.role.updated', 'domain.grant.revoked', 'domain.team.member_removed', 'domain.agent.updated', 'domain.comment.created', 'domain.tasknote.created']) expect(roots(subject)).toContain('attention');
   for (const subject of ['domain.comment.updated', 'domain.comment.deleted', 'domain.tasknote.updated', 'domain.tasknote.deleted', 'domain.artifact.updated', 'domain.schedule.updated']) expect(roots(subject)).not.toContain('attention');
 });

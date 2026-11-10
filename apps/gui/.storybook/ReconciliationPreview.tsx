@@ -18,7 +18,7 @@ interface ReconciliationPreviewProps { kind: SourceActionKind; }
 /** Assembles existing controls beside the reader to demonstrate settlement. */
 export function ReconciliationPreview({ kind }: ReconciliationPreviewProps) {
   return <MemoryRouter initialEntries={[`/attention?org=org-storybook&project=project-storybook&kind=${kind}`]}>
-    <div className="flex flex-col gap-section"><AttentionScreen />
+    <div className="flex flex-col gap-6"><AttentionScreen />
       <section aria-label="Existing task controls" className="rounded-lg border bg-surface-panel p-panel">
         <h2 className="mb-3 type-section-title">Task detail · Inspect release evidence</h2>
         {kind === 'question' ? <TaskInputRequests taskId="task-storybook" /> : kind === 'approval' ? <TaskApprovals taskId="task-storybook" /> : kind === 'review'

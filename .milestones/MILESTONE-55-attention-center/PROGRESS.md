@@ -280,3 +280,11 @@ Current affected UI suite passes228 cases across10 files; explicit app TypeScrip
 check and Storybook build pass. Rendered accessibility/mobile matrices are now
 running independently against the compiled bundle. Independent CODE-v7 review
 is requested. This checkpoint retains pending preview/live tests and fixtures.
+
+CODE-v7/UX-v4 approve with two nonblocking precision/polish findings: use the
+actual task.status_updated fixture subject and a defined preview gap utility.
+Both are corrected;26 targeted event cases pass. The populated comment preview
+now reveals an actual agent timestamp contrast failure previously hidden by its
+empty fixture. The268-story overflow run fails on that settled axe result. Use
+the existing primary-subtle foreground for timestamp ink on agent-tinted cards;
+retain ordinary comment metadata styling. Re-run the rendered gate after fixing.

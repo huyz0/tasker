@@ -28,7 +28,7 @@ function open(kind = 'question') {
 beforeEach(() => server.use(http.post(`${BACKEND_URL}/api/client-errors`, () => HttpResponse.json({}))));
 
 describe('Attention consumes the existing real Connect event stream', () => {
-  it.each([{ subject: 'domain.task.status_changed', kind: 'review' }, { subject: 'domain.comment.created', kind: 'stalled_claim' }, { subject: 'domain.tasknote.created', kind: 'stalled_claim' }, { subject: 'domain.project.archived', kind: 'question' }, { subject: 'stream.resync', kind: 'question' }])('reads current source truth after $subject', async ({ subject, kind }) => {
+  it.each([{ subject: 'domain.task.status_updated', kind: 'review' }, { subject: 'domain.comment.created', kind: 'stalled_claim' }, { subject: 'domain.tasknote.created', kind: 'stalled_claim' }, { subject: 'domain.project.archived', kind: 'question' }, { subject: 'stream.resync', kind: 'question' }])('reads current source truth after $subject', async ({ subject, kind }) => {
     let present = true;
     mockRpc(AttentionService, 'ListAttention', request => ({ items: request.kind === kind && present ? [source(kind)] : [], page: { totalCount: request.kind === kind && present ? 1 : 0 } }));
     const ui = open(kind); await screen.findByText('1 loaded of 1'); await waitFor(() => expect(screen.getByLabelText('Event connection')).toHaveTextContent('live'));
