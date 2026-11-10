@@ -407,11 +407,81 @@ when its response is replayed.
 Without a key, each individual operation is atomic, but sending the request
 again asks for another operation. Workflow steps share their parent's
 transaction, including project task numbering and event buffering. Event
-publication is still best effort after commit; the database retry guarantee
-does not yet guarantee that an external runner received its webhook.
+records for a winning claim commit with its receipt. Live-feed and webhook
+delivery happens after commit and may lag or retry; the database retry guarantee
+does not establish that an external runner received a webhook.
 
 Every exit code, the `--json` shape and `--page-all` are in the
 [CLI reference](cli-reference.md#output-errors-and-exit-codes).
+
+### Claim receipts and delayed reports
+
+A winning claim returns `attempt.id`, the durable identity of that ownership
+generation. Save it in your worker's state with its task ID. The receipt records
+its authenticated owner, actual claim time and optional `externalRunId`; release
+or unassignment adds the ownership-end facts. These are not process liveness,
+success/failure or proof that an external runner stopped. Older claims may have
+no receipt, so an empty history does not establish that work never happened.
+
+```bash
+# Save the returned attempt.id as ATTEMPT_ID; keep CLAIM_KEY stable on retries.
+tasker tasks claim "$T" --idempotency-key "$CLAIM_KEY" \
+  --external-run-id "$RUN_ID" --json
+tasker tasks note-add "$T" --content "Verified the output" --attempt-id "$ATTEMPT_ID"
+tasker tasks release "$T" --expected-attempt-id "$ATTEMPT_ID" \
+  --handoff "Ownership ended; final usage will follow"
+# The same authenticated owner can report that generation after another worker claims.
+tasker tasks usage report "$T" --attempt-id "$ATTEMPT_ID" --input-tokens 100 \
+  --idempotency-key "$REPORT_KEY"
+tasker artifacts link-task --task "$T" --artifact "$A" --attempt-id "$ATTEMPT_ID"
+```
+
+Send `expectedAttemptId` on release (`--expected-attempt-id`, MCP
+`expected_attempt_id`). A stale same-agent generation is refused with
+`FailedPrecondition` before removing ownership or writing its handoff. Inspect
+the current claim instead of retrying without the fence. A new claim gets a new
+ID; replaying an old claim key still returns the original receipt, including
+after release, and does not establish that you currently hold the task.
+
+Report association is optional: `attemptId` on notes, usage and task-artifact
+links (`--attempt-id`, MCP `attempt_id`). The current credential must still have
+the operation's ordinary permissions and match the receipt's owner kind/ID,
+task and organization. Another token for the same agent can report its receipt;
+another agent cannot. An ID grants no permission. Omission keeps a report
+ungrouped, even while another claim is current; Tasker does not guess provenance.
+
+Keep association stable when retrying a keyed usage report. A changed or omitted
+receipt cannot relabel an already correlated keyed report. Note association is
+immutable on edit, and an existing artifact pair refuses explicit reassociation;
+a legacy omitted field never overwrites its recorded provenance. Agent notes
+remain editable/deletable only by their authoring agent, so the human task view
+shows them read-only, including for administrators.
+
+```bash
+tasker tasks attempts "$T" --limit 20 --json
+tasker tasks notes "$T" --attempt-id "$ATTEMPT_ID" --limit 20 --json
+tasker tasks usage show "$T" --attempt-id "$ATTEMPT_ID" --limit 20 --json
+tasker artifacts list-task-links --task "$T" --uncorrelated-only --limit 20 --json
+```
+
+History defaults to50 receipts and caps pages at100, newest first with stable
+ID ties. Follow `nextCursor` using `--cursor`, or explicitly request `--page-all`
+for NDJSON. Source reads choose either one receipt or `--uncorrelated-only`;
+discard the old cursor when changing task/filter. MCP exposes `list_task_attempts`,
+`list_task_notes`, `list_usage_records` and `list_task_artifact_links` with the
+same optional filters and paging. Read access does not require owning a receipt;
+each source retains its own permissions. Filtered usage records still accompany
+**task-wide totals**. In Task Details, All reports is the default; Claim history
+and Report scope filter existing evidence, agent notes and usage records.
+
+These guarantees require a receipt-capable backend. An older server may ignore
+new optional fields; sending them does not make that server enforce a fence or
+record attribution. For rollback, roll back GUI/CLI/MCP exposure first and retain
+the additive receipt/report data. Keep a receipt-capable backend for ownership
+writes. Before running an older backend, quiesce claim/release/unassignment and
+ownership-removing cleanup, or provide a forward-compatible repair: an old writer
+can remove assignments without closing receipts. Do not drop data or call that
+writer downgrade safe merely because old clients can decode the new responses.
 
 ## 12. Breaking work down: priority, dependencies, subtasks
 

@@ -1,13 +1,13 @@
 ---
 id: M57
 title: Attempt Correlation
-status: in-progress
+status: done
 goal: Claims leave durable generation receipts and workers can optionally associate notes, usage and artifacts with the correct claim after release.
 depends_on: [M46, M54]
 surfaces: [backend, gui, contract, cli, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-10
-completed_at: null
+completed_at: 2026-11-10
 ---
 
 # M57 — Attempt Correlation
@@ -22,10 +22,10 @@ Deleted assignment rows erase useful execution attribution, while a receipt avoi
 
 ## 3. Exit Criteria
 
-- [ ] A winning claim has one durable identity retained after ownership removal; idempotent replay returns that identity.
-- [ ] A stale expected generation cannot release a newer claim by the same agent.
-- [ ] Optional notes/usage/artifact correlation is bound to authenticated owner and task while legacy fields remain optional.
-- [ ] Paginated history states ownership facts only; both-dialect, wire and end-to-end tests pass.
+- [x] A winning claim has one durable identity retained after ownership removal; idempotent replay returns that identity.
+- [x] A stale expected generation cannot release a newer claim by the same agent.
+- [x] Optional notes/usage/artifact correlation is bound to authenticated owner and task while legacy fields remain optional.
+- [x] Paginated history states ownership facts only; both-dialect, wire and end-to-end tests pass.
 
 ## 4. Scope
 
@@ -51,7 +51,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/backend/src/modules/tasks/; apps/gui/src/features/Tasks/; packages/shared-contract/; apps/cli/cmd/.
   - **Verify**: tasks:read controls list; show claim/release timestamps, owner and optional external correlation; legacy ungrouped evidence remains visible; task status changes do not assert process stop/success; accessible loading/empty/error/page states.
 
-- [ ] **M57-T05** — Verify retry, reclaim, delayed reporting and cross-tenant attribution end to end.
+- [x] **M57-T05** — Verify retry, reclaim, delayed reporting and cross-tenant attribution end to end.
   - **Files**: apps/backend/src/test/wire/; apps/gui/tests/e2e/; docs/agent-integration.md; .milestones/MILESTONE-57-attempt-correlation/reviews/.
   - **Verify**: Run both-dialect migration/races, keyed response compatibility, stale release, preserved receipts, delayed owner usage, cross-task/agent denial and legacy omission; generated TS/Go/wire and full gates pass.
 

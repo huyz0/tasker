@@ -1,8 +1,8 @@
 ---
-active_milestone: M57
-active_task: M57-T05
+active_milestone: M58
+active_task: null
 last_updated: 2026-11-10
-last_commit: c9d4009
+last_commit: e09993b
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,10 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M57 complete locally:5/5 tasks,4/4 exit criteria.** Exact-generation receipts, owner-bound delayed/legacy reports and bounded history/source flows pass all36 checks (backend2377/zero failures; GUI1657/95.14% branches), actual both-dialect85/427, real socket11/47, both CLI/MCP and MCP-only browser journeys, old SDK18 decodes and restored faults. CODE-v5/UX-v4 approve. Public worker/read/unsafe old-writer rollback guidance is current. Draft PR #10 passes all8 preliminary e09993b CI jobs, but final T05 head CI/main publication remains required.384 done/12 pending; next eligible M58-T01 owns URL and named operational views. Keep original worktrees/services intact; owned credentials were memory-only and revoked in finally.
+
+**2026-11-10 — M57-T05 in progress.** T04 is committed/pushed as e09993b after all36 source/closure/pre-commit checks and CODE-v4/UX-v4. Draft PR #10 is created/attached. Add permanent real worker/wire/browser proof and public integration/unsafe old-writer rollback guidance before final-head CI/main publication. API/security plus TDD apply; reuse approved ADR/UX/TC001–010 with process-memory-only owned credentials and finally revocation.383 done/13 pending; M57 remains unpublished. Original branches/WIP/services are preserved.
 
 **2026-11-10 — M57-T04 verified:4/5 tasks.** Bounded history/source filters and GUI/CLI/MCP readers pass all36 checks (backend2377/zero failures; GUI1657/95.14% branches), native40/275 and old SDK448/1303/186/18. CODE-v4/UX-v4 approve;134 focused UI cases, four restored faults,57 final previews/228 accessibility/114 overflow checks and six final real browser journeys pass. Human notes correctly remain exact-agent-author-only; real eventless older-page ownership refresh preserves page/draft/focus.383 done/13 pending; M57 is unpublished. T05 next adds permanent worker/wire/E2E proof and public integration/rollback guidance before final-head/main publication. M56 main681dc20/all10 post-main jobs are verified; original branches/WIP/services are preserved.
 
@@ -2004,10 +2008,10 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
-| M57 | Attempt Correlation | in-progress | M46, M54 | 5 | 4 |
+| M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 383 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 384 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
