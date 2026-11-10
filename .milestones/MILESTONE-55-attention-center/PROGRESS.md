@@ -86,3 +86,14 @@ Independent CODE-v1 requests zero/default protobuf page normalization; actual
 empty-page HTTP first fails as reproduced. Omitted/zero now defaults20, negatives
 remain invalid and cursor-only HTTP coverage is added. Final re-runs, review and
 full gates are pending; T02 stays in-progress.
+
+Pagination amendment passes final SQLite19/7387 and MySQL18/7901 assertions;
+CODE-v2 independently approves. Initial full run and checkpoint CI correctly
+catch an omitted entry in the exhaustive registered-handler agent-denial sweep:
+2300 backend cases pass but its completeness case fails. Add Attention to that
+existing sweep with a human-only classification/sample, without adding an agent
+scope. Actual all-scopes agent refusal plus source cases now pass34/7404. This is
+a verification-map correction; runtime already denies agents. Full rerun remains
+pending. GUI1498 and contract1122 round trips pass; backend coverage95.85%
+functions/96.80% lines despite the failing completeness case. Main M54's eight
+post-merge CI jobs and both integration jobs are now all confirmed successful.
