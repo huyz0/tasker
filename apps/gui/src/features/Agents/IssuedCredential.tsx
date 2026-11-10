@@ -33,7 +33,7 @@ export function IssuedCredential({ credential, projectId, onDismiss, onVerified,
       await navigator.clipboard.writeText(configurationCopy ? configuration(credential.plaintext) : credential.plaintext);
       if (lifetime.current.active && current === lifetime.current.copy) setCopyStatus(configurationCopy ? 'Configuration copied, including the secret token.' : 'Token copied.');
     } catch {
-      if (lifetime.current.active && current === lifetime.current.copy) setCopyStatus('Could not copy automatically — select the token below or retry Copy.');
+      if (lifetime.current.active && current === lifetime.current.copy) setCopyStatus('Could not copy automatically — select the token above or retry Copy.');
     }
   };
   return <section className="flex flex-col gap-4 rounded-md border bg-card p-3" aria-label="Newly issued credential">

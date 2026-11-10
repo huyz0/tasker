@@ -2,7 +2,7 @@
 active_milestone: M56
 active_task: M56-T04
 last_updated: 2026-11-10
-last_commit: 6025308
+last_commit: 0a2e5a3
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M56-T04 in progress.** T03 is committed/pushed0a2e5a3 with all35 source/closure gates. Commit the copied-configuration first MCP task read/note and optional real CLI proof, preserve metadata-based owned-token cleanup, and write public registration/configuration/verification/recovery guidance. Frontend/security plus TDD apply; no new permission, API or dependency.18 tasks remain; PR #9 remains draft until closure and final-head CI/main publication.
 
 **2026-11-10 — M56-T03 verified:3/4 tasks.** One-time scoped configuration, trusted endpoint defaults and exact bearer verification pass all35 checks (GUI1620/95.14% branches; backend2302/zero failures). CODE-v6/UX-v3 approve;126 affected cases/eight restored faults,39 previews/156 WCAG/78 mobile scans, real development/built-production browser journeys, privacy assertion/timeout/lost-response proof and19 CLI/MCP checks pass. An observed older schedule-expiry date fixture is corrected relative to its actual key; no assertion is relaxed. T04 next commits permanent worker/MCP activity proof and public docs, then requires final-head CI/main publication.378 done/18 pending overall; PR #9 remains draft.
 

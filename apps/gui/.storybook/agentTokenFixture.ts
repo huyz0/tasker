@@ -7,7 +7,7 @@ export function agentTokenFixture(state: TokenState = 'empty') {
   const nativeFetch = globalThis.fetch.bind(globalThis);
   const token = { id: fixtureCredential.tokenId, agentId: fixtureCredential.agentId, orgId: fixtureCredential.orgId,
     name: state === 'long' ? `Release${'W'.repeat(120)}漢😀` : 'Release worker', scopes: fixtureCredential.scopes,
-    tokenPrefix: 'tskr_demo', expiresAt: '2030-11-10T10:00:00Z', revokedAt: state === 'revoked' ? '2026-11-10T10:00:00Z' : '', expired: state === 'expired' };
+    tokenPrefix: 'tskr_demo', expiresAt: new Date(Date.now() + (state === 'expired' ? -1 : 90) * 86400000).toISOString(), revokedAt: state === 'revoked' ? '2026-11-10T10:00:00Z' : '', expired: state === 'expired' };
   let issued = state === 'revoked' || state === 'expired', used = false;
   const mock = spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const request = new Request(input, init);

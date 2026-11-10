@@ -281,3 +281,31 @@ next commits permanent external-client/first-activity proof and public setup/
 recovery/deployment guidance, fixes only any reproduced remaining problem, then
 requires final source/rendered/head CI and publication. PR #9 remains draft;
 local task completion is not main publication or broader goal completion.
+
+## M56-T04 — First external worker, failure recovery and public guidance
+
+- **Status**: in-progress
+- **Date**: 2026-11-10
+- **Changed**: Commit a full UI-issued/copied-configuration MCP/optional CLI journey, current refusal/revocation proof and public registration/configuration/recovery guidance.
+- **Verified**: T03 closes as0a2e5a3 after all35 source/closure checks,126 affected cases,39 previews, actual development/production browser and19 real CLI/MCP checks. Draft PR #9 includes that source;18 tasks remain.
+- **Notes**: Frontend/security plus TDD reselected. Existing ADR0049/UX/TC008–009 bind this verification task; no new API, migration, scope or dependency. Extend the real browser's owned cleanup rather than introducing plaintext artifacts. Go CLI execution is explicitly enabled by a trusted binary path; ordinary CI still proves HTTP MCP without requiring a new Go toolchain in the browser job. Static public prose/copy and legal90-day preview expiry need no runtime TDD.
+- **Next**: Commit first task read/note attribution using the actual copied configuration, exercise the optional real CLI/stdio relay, keep secrets out of failures/stores, publish guidance and obtain final source/rendered/head gates before main.
+
+The permanent journey passes9.9s with the actual copied configuration and a real
+compiled CLI: create a project/task, issue only tasks:read/comments:write, read
+through HTTP MCP, author the first note as the returned agent, refuse task
+creation without tasks:write, then authenticate and read through CLI/MCP stdio.
+CI exercises the HTTP path without adding Go to its browser job; manual proof
+explicitly provides TASKER_CONNECTION_CLI_BINARY. A controlled wrong copied-token
+CLI fault fails at authentication, leaves no long-token artifact and zero active
+owned credentials; restore source. Strict E2E types pass after giving the child
+environment its standard ProcessEnv annotation. Keep parsed configuration/scope
+assertions boolean so unexpected sensitive field values are not printed.
+
+Public connection guidance is written and linked from README/agent/MCP guides;
+all490 Markdown files pass. One attempted standalone lint script path is stale,
+so use the actual Moon docs-lint gate. Static copy correctly points to the token
+above a failed Copy action; synthetic active expiry is90 days and expired rows
+use a past date. No product behavior/API changes are required. The final
+305-story full accessibility/mobile matrices are running, with source review,
+final production/CLI browser, full35 and actual final-head CI still pending.
