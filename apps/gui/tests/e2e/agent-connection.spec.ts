@@ -1,6 +1,12 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 const api = process.env.TASKER_E2E_BACKEND_URL ?? 'http://localhost:8080';
 test.use({ trace: 'off', video: 'off', screenshot: 'off' });
+test.beforeEach(async ({ context }) => {
+  if (process.env.TASKER_E2E_PRODUCTION === '1') {
+    const response = await context.request.get(`${api}/api/auth/test/inject?userId=dev-user`);
+    if (!response.ok()) throw new Error('Owned production-preview login failed.');
+  }
+});
 // Remove credential DOM before automatic failure context, also after timeouts.
 interface OwnedCredential { tokenId: string; agentId: string; tokenName: string; cookie: string; revoked: boolean; issuanceStarted: boolean; }
 const owned = new WeakMap<BrowserContext, OwnedCredential>();

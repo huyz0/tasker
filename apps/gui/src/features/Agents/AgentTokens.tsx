@@ -143,7 +143,10 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
 
   if (!authorized) return tokensQuery.isLoading
     ? <p role="status" className="p-3 type-caption text-muted-foreground">Loading tokens…</p>
-    : <div className="flex flex-col items-start gap-2 p-3"><p role="alert" className="type-caption text-muted-foreground">Token administration is unavailable. An authorized administrator can manage tokens; check your access or retry.</p><button type="button" className="type-caption text-primary underline underline-offset-2" onClick={() => void tokensQuery.refetch()}>Retry tokens</button></div>;
+    : <div className="flex flex-col items-start gap-2 p-3">
+      <p role="alert" className="type-caption text-muted-foreground">Token administration is unavailable. An authorized administrator can manage tokens; check your access or retry.</p>
+      <button type="button" className="type-caption text-primary underline underline-offset-2" onClick={() => void tokensQuery.refetch()}>Retry tokens</button>
+    </div>;
 
   return (
     <div className="p-3 bg-muted/20 border-t">
@@ -158,7 +161,10 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
         </button>
       </div>
 
-      {tokensQuery.isError && <div role="alert" className="mb-3 flex flex-col items-start gap-2 type-caption text-muted-foreground"><p>Could not refresh token metadata.{credential ? ' Your one-time token is still available.' : ''} Retry when connected.</p><button type="button" className="text-primary underline underline-offset-2" onClick={() => void tokensQuery.refetch()}>Retry tokens</button></div>}
+      {tokensQuery.isError && <div role="alert" className="mb-3 flex flex-col items-start gap-2 type-caption text-muted-foreground">
+        <p>Could not refresh token metadata.{credential ? ' Your one-time token is still available.' : ''} Retry when connected.</p>
+        <button type="button" className="text-primary underline underline-offset-2" onClick={() => void tokensQuery.refetch()}>Retry tokens</button>
+      </div>}
       {notice && <p role="status" className="mb-3 type-caption text-muted-foreground">{notice}</p>}
       {credential && !knownUnavailable && !credentialRetired && <IssuedCredential key={credential.tokenId} credential={credential} projectId={projectId} focusOnReveal={credential.focusOnReveal} onVerified={() => { void queryClient.invalidateQueries({ queryKey: ['agentTokens', agentId, orgId, accountId] }); void queryClient.invalidateQueries({ queryKey: ['dashboard', orgId] }); }} onDismiss={() => { retire(); createMutation.reset(); setNotice('Lost this token? Revoke it and issue a replacement; its secret cannot be recovered.'); newTokenButton.current?.focus(); }} />}
 

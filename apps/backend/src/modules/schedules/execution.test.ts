@@ -41,7 +41,11 @@ describe('leased schedule execution (M47-T03)', () => {
     expect(work[0]).toMatchObject({ title: 'Original task — 2026-11-09', description: 'Original description', priority: 2, scheduleId: schedule.id });
     const [receipt] = await db.select().from(S.scheduleRuns).where(eq(S.scheduleRuns.id, run.id));
     expect(receipt).toMatchObject({ outcome: 'created', taskId: work[0].id, attempts: 1, frozenInputs: null });
-    now = new Date('2026-11-11T10:00:00Z');
+    // The key adapter uses wall time, independently of the schedule clock.
+    // Expire the actual written key rather than a calendar date that goes stale.
+    const [key] = await db.select({ createdAt: S.idempotencyKeys.createdAt }).from(S.idempotencyKeys).limit(1);
+    expect(key).toBeDefined();
+    now = new Date(key.createdAt.getTime() + 48 * 60 * 60 * 1000);
     expect(await purgeExpiredIdempotencyKeys(db, true, now)).toBeGreaterThan(0);
     await createScheduleSweep(db, nc, clock)();
     expect((await db.select().from(S.tasks)).map((t: any) => t.id)).toEqual([work[0].id]);

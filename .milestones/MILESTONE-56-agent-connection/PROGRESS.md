@@ -241,3 +241,27 @@ response times out as intended, cleanup discovers/revokes exactly one token, no
 long-token artifact appears, and an independent metadata scan leaves zero active
 owned credentials. The test source is restored. Full35 runs against final source;
 final E2E types/re-review and gates remain pending.
+
+CODE-v6/UX-v3 approve source and all eight synthetic captures with no remaining
+blockers. Full1 stops at two static design-lint findings caused by native Retry
+buttons nested on the same line as their div wrappers. Format those native
+elements on separate lines; all27 lint regressions and333-file design scan pass
+without suppressions. Full2 passes all1620 GUI cases/95.14% branches, then the
+backend passes2301 cases but exposes an older M47 expiry fixture tied to
+2026-11-11T10:00Z. Real idempotency keys are created at wall time; that fixed
+cutoff now precedes their expiry. Derive the test's future clock from the actual
+written key plus48h, retaining its purge/receipt assertions. All26 schedule
+execution cases pass; full3 reruns the complete required gate.
+
+The built production GUI also passes the complete real connection browser
+journey7.1s through an owned same-origin5190 gateway to8098. Its copied endpoint
+is the serving origin, not localhost8080; dev8098 and native prefixed-override
+proof remain intact. The production preview injects its owned test session
+explicitly because production correctly omits development auto-login. Exact
+CLI/MCP proof passes19 checks with a compiled real CLI: matching identity,
+first task read and attributed note, missing scopes/foreign org/invalid/wrong
+backend/offline/revoked refusal, no credential file. Both minted credentials are
+revoked. Two probe-only field/method guesses (taskNote and CreateTemplate) are
+corrected against generated contracts before accepting the successful proof;
+these were not product regressions. Permanent external-client coverage/docs
+remain T04 work. Full3/final E2E type results gate T03 completion.

@@ -2,7 +2,7 @@
 active_milestone: M56
 active_task: M56-T03
 last_updated: 2026-11-10
-last_commit: d66c497
+last_commit: e974a5d
 blocked: false
 blocker: null
 ---
@@ -15,7 +15,7 @@ blocker: null
 
 ## Now
 
-**2026-11-10 — M56-T03 in progress.** Scoped one-time credentials, Shell/MCP config, trusted API destination and exact bearer identity proof pass126 affected native cases, eight restored source faults,39 previews/156 WCAG/78 mobile scans and the real issue/copy/no-cookie/refusal/revoke browser journey. Actual browser exposes/fixes missing Authorization CORS header;10 real wire cases pass. Assertion, timeout and withheld committed-response cleanup probes leave no long-token artifact and zero active owned test credentials. CODE-v5's unknown-response cleanup window is corrected and needs amendment review; full35 runs. T04 production-origin/CLI/MCP integration and docs remain outstanding.19 tasks remain; PR #9 stays draft.
+**2026-11-10 — M56-T03 in progress.** CODE-v6/UX-v3 approve.126 affected cases, eight source faults,39 previews/156 WCAG/78 mobile checks, real dev and built-production connection journeys, privacy assertion/timeout/lost-response faults and19 real CLI/MCP checks pass. Full2 passes GUI1620/95.14% branches, then catches an older schedule-expiry fixture whose fixed date has gone stale; its clock now follows the actual key, and all26 affected cases pass. Full3 runs; no gate or assertion is relaxed. T04 still owns permanent CLI/MCP coverage and public docs.19 tasks remain; PR #9 stays draft.
 
 **2026-11-10 — M56-T02 verified:2/4 tasks.** Truthful registration, role guidance, scoped drafts/callbacks, current source refresh and one reachable connection section pass all35 checks (GUI1573/95.14% branches; backend2302/zero failures).98 affected cases,12 restored faults,19 rendered previews and the actual375/1280 keyboard/theme journey pass; CODE-v2/UX-v2 approve. Full1 has one initial-read test timeout whose unchanged file passes; full2 passes GUI but catches ARCH-v2 bare-URL formatting, corrected in all-green full3. T03 prepares exact-credential configuration/lifetime work in an isolated checkout and must reconcile this closure before publication.377 done/19 pending overall; PR #9 remains draft.
 
