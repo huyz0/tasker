@@ -157,3 +157,13 @@ privacy-changing edits. An obsolete entry needs an explicit recovery action;
 it is never silently rewritten against the current project. A person without
 current organization access cannot use ownership alone to reopen old tenant
 configuration. Organization deletion still removes its entire configuration.
+
+## T03 empty-catalog administration hint
+
+List adds optional canCreateShared from the current server org:admin check,
+including when there are no rows. It is presentation metadata only: Create,
+Rename and Delete retain their existing independent policy checks. An omitted
+hint from an older server means no shared-create choice. This avoids deriving
+organization authority from a literal client role name or probing unrelated
+administrative data. Existing per-row canEdit remains authoritative metadata
+for its own row, not proof of current creation authority for an empty catalog.

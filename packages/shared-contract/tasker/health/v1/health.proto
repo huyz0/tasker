@@ -3092,6 +3092,7 @@ message ListSavedViewsRequest {
 message ListSavedViewsResponse {
   repeated SavedViewMetadata views = 1;
   PageResponse page = 2;
+  optional bool canCreateShared = 3;
 }
 
 message RenameSavedViewRequest {

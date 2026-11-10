@@ -1,7 +1,7 @@
 import { act, screen, fireEvent, waitFor, within, createEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  AttentionService, TaskService, CommentService, LabelService, RepositoryService, TaskTypeService,
+  SavedViewService, AttentionService, TaskService, CommentService, LabelService, RepositoryService, TaskTypeService,
   TaskNoteService, OrgService, AgentService, ArtifactService, SearchService, ProjectService,
 } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError, mockRpcPending, server } from '../../test/mockRpc';
@@ -143,6 +143,22 @@ describe('TasksWorkbench', () => {
   });
 
   afterEach(() => useSummaryDrafts.getState().endSession());
+
+
+  it('offers named views inside the current project toolbar', async () => {
+    withTasks([]);renderPage('/tasks?org=org-1&project=proj-1');
+    expect(await screen.findByRole('button', { name: 'Saved views' })).toBeEnabled();
+  });
+  it('clears bulk selection when explicitly applying even the same named table settings', async () => {
+    const view = { id: 'current-table', orgId: 'org-1', projectId: 'proj-1', ownerUserId: 'workbench-fixture-user', name: 'Current table', screen: 'tasks', visibility: 'personal', canEdit: true };
+    mockRpc(SavedViewService, 'ListSavedViews', body => ({ views: body.visibility === 'personal' ? [view] : [], page: { totalCount: body.visibility === 'personal' ? '1' : '0' }, canCreateShared: true }));
+    mockRpc(SavedViewService, 'GetSavedView', { view, definition: { version: 1, screen: 'tasks', tasks: { viewMode: 'table' } } });
+    withTasks([{ id: 'same-task', title: 'Same settings task', status: 'todo' }]);renderPage('/tasks?org=org-1&project=proj-1&view=table');
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select Same settings task' }));expect(screen.getByText('1 selected')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Saved views' }));fireEvent.click(await screen.findByRole('button', { name: 'Open Current table' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Saved views' })).not.toBeInTheDocument());
+    expect(screen.queryByText('1 selected')).not.toBeInTheDocument();expect(screen.getByRole('checkbox', { name: 'Select Same settings task' })).not.toBeChecked();
+  });
 
   it('restores supported task view settings from a deep URL, including no priority and ID sort', async () => {
     const requests = withTasks([{ id: 'task-1', title: 'URL state task', status: 'todo', priority: 0 }]);

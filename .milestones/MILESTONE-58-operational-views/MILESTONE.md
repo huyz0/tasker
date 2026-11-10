@@ -24,7 +24,7 @@ Useful operational views currently disappear when local screen state resets.
 
 - [x] Tasks and Reports use validated URLs as the source of view state across reload and history.
 - [x] Named definitions are personal by default; shared editing has an explicit checked server policy.
-- [ ] Saved definitions confer no data access and revalidate referenced resources when used.
+- [x] Saved definitions confer no data access and revalidate referenced resources when used.
 - [ ] Obsolete/malformed definitions recover clearly and tenant/history/browser/full-gate checks pass.
 
 ## 4. Scope
@@ -43,7 +43,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: .specs/adr/ADR-0044-saved-view-ownership.md; apps/backend/src/modules/views/; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/; packages/shared-contract/.
   - **Verify**: Private views are creator-only; organization-shared creation/edit/delete uses an explicit existing admin permission; never trust submitted owner/org; validate allowed query fields and referenced resources on save/load/use; ID guessing/cross-tenant access denied; store definitions only, never SQL/results/access rights.
 
-- [ ] **M58-T03** — Add personal/shared view save, open, rename and delete flows with recoverable obsolete filters.
+- [x] **M58-T03** — Add personal/shared view save, open, rename and delete flows with recoverable obsolete filters.
   - **Files**: apps/gui/src/features/Tasks/; apps/gui/src/features/Reports/; apps/gui/src/components/SavedViews/; packages/shared-contract/; apps/cli/gen/.
   - **Verify**: Applying a view updates URL intentionally; distinguish personal/shared ownership and editable state; removed statuses/labels/projects show recovery; no-access/error/empty/cancel and dirty naming states are usable; keyboard/mobile/a11y stories pass.
 

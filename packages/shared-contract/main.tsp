@@ -3670,6 +3670,7 @@ model ListSavedViewsRequest {
 model ListSavedViewsResponse {
   @field(1) views: SavedViewMetadata[];
   @field(2) page: PageResponse;
+  @field(3) canCreateShared?: boolean;
 }
 model RenameSavedViewRequest {
   @field(1) viewId: string;
