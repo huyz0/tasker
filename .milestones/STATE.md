@@ -2,7 +2,7 @@
 active_milestone: M55
 active_task: M55-T04
 last_updated: 2026-11-10
-last_commit: 6094c2c
+last_commit: f4dadcd
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M55-T04 in progress.** T03 is committed/pushed asf4dadcd after all35 source/closure gates,254-story matrices and reviewed real browser evidence. Seven source-action, two status and activity/event regressions are observed red; minimal existing settlement invalidations, exact combined-pair payload and event roots now pass127 native cases. Preview/live/contextual browser proof, controlled faults, review and full gates remain pending. Frontend/security standards plus TDD selected; preserve notices/drafts and distinguish write refusal from read-authority denial. Use owned isolated broker/runtime proof; original services stay untouched.23 tasks remain; no new resolution state machine or stale-generation guarantee is introduced.
 
 **2026-11-10 — M55-T03 verified:3/5 tasks.** Scoped Attention/All projects, native source navigation, persistent shared-authority fences and once-only canonical task/Back restoration pass all35 gates (GUI1532/95.13% branches; backend2302/zero failures). Final254 previews pass1016 accessibility/508 overflow checks, both real browser journeys pass with51 questions/two projects, and five settled captures receive UX-v3/CODE-v6 approval.76 focused UI cases/nine restored faults pass. A reproduced Memory label carryover is corrected, and the new RPC is genuinely used without its staged exception. T04 next reconciles existing contextual actions/events, including the preflight's combined assignment exact-pair omission; no stale-incarnation guarantee before M57.23 tasks remain; PR #8 is draft.
 

@@ -17,6 +17,7 @@ function useInvalidateQuestions() {
   const queryClient = useQueryClient();
   return () => {
     queryClient.invalidateQueries({ queryKey: ['inputRequests'] });
+    queryClient.invalidateQueries({ queryKey: ['attention'] });
     queryClient.invalidateQueries({ queryKey: ['task'] });
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
   };

@@ -228,3 +228,40 @@ while the server matches the exact pair. Reproduce and fix that client payload
 without promising assignment-generation safety (M57). No new resolution forms
 or state machine are authorized. Draft PR #8 remains unready until T04/T05 and
 actual applicable final-head CI. Closure gates follow these ledger changes.
+
+## M55-T04 — Existing source actions and current reconciliation
+
+- **Status**: in-progress
+- **Date**: 2026-11-10
+- **Changed**: Reconcile attention after existing contextual source mutations and relevant activity/authority events, preserving source rules, notices, writing and query lifetime protections.
+- **Verified**: T03 committed/pushed asf4dadcd after all35 source/closure checks,254-story matrices, both real browser journeys,76 focused UI cases and reviewed five captures.3/5 M55 tasks are complete;23 tasks remain.
+- **Notes**: Frontend/security standards plus TDD selected. Existing ADR0048/UX/TC001–012 govern this task; no new mutation form, permission or state machine. Independent preflight requires actual fresh source reads on settlement, including durably stale FailedPrecondition. A write denial is not lost read authority; only the attention reader can revoke its read lifetime. Carry both existing IDs on combined assignment unassign, matching the existing server's exact pair; no stale-incarnation claim before M57. Only new task comments/notes create qualifying activity, not artifact comments or edits/deletes. Relevant parent, terminal-definition, actor-name and authority events must reconcile bounded active reads while denied groups remain fenced.
+- **Next**: Observe missing settlement/event/pair regressions, add the minimum existing invalidations/payload correction, prove failed writes/current source actions and actual live reconciliation. Use an owned isolated NATS fixture for live proof rather than injecting another database's events into the preserved broker. Then independent review, current previews/browser and full gates.
+
+Seven native-transport source-action cases are observed red for missing fresh
+attention reads and the combined hold's missing user ID. Existing answer /
+approval settlement paths now reconcile success, answer conflict, stale closure
+and write denial without inventing lost read authority. Reviewer/assignment
+settlement preserves existing source invalidations; combined unassign carries
+both recorded IDs, matching the unchanged exact-pair server rule. Stateful
+original reviewer/task reads also reflect removal; no source row is optimistically
+resolved by Attention.
+
+Two task-status cases first fail at one stale source read, then pass for terminal
+success and rejected write with retained read. A new task comment's missing
+reconciliation and five event-map cases are also observed red. Add attention to
+existing status/title/priority/archive/bulk settlement and relevant parent,
+terminal-definition, actor-name and authority event roots. Only comment/note
+creation creates a qualifying activity signal; direct artifact comment creation
+keeps its existing behavior. A generic comment-created event may cause a bounded
+read, but never changes silence classification. Notes/summary/input/approval
+handlers were audited: new notes and task comments record task_activity;
+summary/input/approval writes do not invent that signal.
+
+The current native feature/action/event/workbench set passes127 cases, including
+nine source/action bridges. These are real serialized RPC reads, not invalidation
+spies. The original question/approval notices survive committed-closure errors.
+No source contract, new permission or backend classification is changed. Current
+preview updates, actual event/read-authority and contextual browser proof,
+controlled faults, independent review and full gates remain pending. T04 stays
+in-progress;23 tasks remain.

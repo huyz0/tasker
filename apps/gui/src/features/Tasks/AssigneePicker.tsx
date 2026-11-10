@@ -53,6 +53,7 @@ export function AssigneePicker({ taskId, orgId, assignees }: { taskId: string; o
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
     queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+    queryClient.invalidateQueries({ queryKey: ['attention'] });
   };
 
   const candidates = useQuery({
@@ -78,14 +79,15 @@ export function AssigneePicker({ taskId, orgId, assignees }: { taskId: string; o
     mutationFn: async (choice: { kind: 'user' | 'agent'; id: string }) => {
       await taskClient.assignTask(choice.kind === 'agent' ? { taskId, agentId: choice.id } : { taskId, userId: choice.id });
     },
-    onSuccess: () => { setIsPicking(false); setSearch(''); invalidate(); },
+    onSuccess: () => { setIsPicking(false); setSearch(''); },
+    onSettled: invalidate,
   });
 
   const unassignMutation = useMutation({
     mutationFn: async (a: Assignee) => {
-      await taskClient.unassignTask(a.agentId ? { taskId, agentId: a.agentId } : { taskId, userId: a.userId });
+      await taskClient.unassignTask({ taskId, agentId: a.agentId || undefined, userId: a.userId || undefined });
     },
-    onSuccess: invalidate,
+    onSettled: invalidate,
   });
 
   const assignedUserIds = new Set(assignees.filter((a) => a.userId).map((a) => a.userId));
