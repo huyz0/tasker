@@ -6,7 +6,7 @@ decision: approved
 # M56 API destination architecture amendment
 
 The proposed destination policy is approved: development defaults to
-http://localhost:8080, production defaults to the current document's HTTP(S)
+`http://localhost:8080`, production defaults to the current document's HTTP(S)
 origin, and an explicit trusted build-time VITE_BACKEND_URL overrides either.
 The backend already serves the embedded static GUI, so unconditional localhost
 in a production browser would address the viewer's own machine rather than that

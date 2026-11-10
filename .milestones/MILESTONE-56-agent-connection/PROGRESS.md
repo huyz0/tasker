@@ -44,7 +44,7 @@ No new endpoint, scope, dependency or hosted runtime is introduced.
 
 ## M56-T02 — Truthful registration, roles and next-step flow
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-10
 - **Changed**: Replace deployment claims with identity registration, guide role creation and open one reachable connection section with scoped non-secret intent and native focus behavior.
 - **Verified**: T01 committed/pushed as52abf71 after accepted ADR0049/UX/TC001–009, ARCH-v1/UX-v1 and all35 source/closure gates. Draft PR #9 is attached.1/4 tasks complete;20 tasks remain.
@@ -137,3 +137,18 @@ T02 remains in-progress until all35 checks pass. ARCH-v2 separately approves
 the future T03 deployment-base amendment (development localhost, production
 page origin, trusted explicit override), with required endpoint/prefix/privacy
 proof. No T03 implementation or completed-task claim is introduced here.
+
+T02 completes with all35 required checks (32 cached,37.2s final run). Full2
+passes all1573 GUI tests/95.14% branches; its only remaining failure is a bare
+URL in newly added ARCH-v2. Format that URL as code; full3 passes without any
+assertion, timeout or coverage relaxation. Backend2302/zero failures and the
+remaining contract/CLI/standalone gates pass. Independent CODE-v2/UX-v2 approve;
+all98 focused cases,12 restored faults,19 previews/76 WCAG/38 overflow checks
+and the final actual registration browser journey pass. Four final captures
+show both themes at375/1280 without an issued credential.
+
+M56 is2/4 tasks complete;377 done/19 pending overall. T03 is already preparing
+observed exact-token/configuration/lifetime regressions in an isolated checkout
+based on2fb704e, so this source remains stable under its full checks. Reconcile
+T03 onto this closure before final PR #9 publication. Registration is complete
+locally; no new M56 merge/main or credential-setup completion is implied.

@@ -1,8 +1,8 @@
 ---
 active_milestone: M56
-active_task: M56-T02
+active_task: M56-T03
 last_updated: 2026-11-10
-last_commit: 52abf71
+last_commit: 2fb704e
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M56-T02 verified:2/4 tasks.** Truthful registration, role guidance, scoped drafts/callbacks, current source refresh and one reachable connection section pass all35 checks (GUI1573/95.14% branches; backend2302/zero failures).98 affected cases,12 restored faults,19 rendered previews and the actual375/1280 keyboard/theme journey pass; CODE-v2/UX-v2 approve. Full1 has one initial-read test timeout whose unchanged file passes; full2 passes GUI but catches ARCH-v2 bare-URL formatting, corrected in all-green full3. T03 prepares exact-credential configuration/lifetime work in an isolated checkout and must reconcile this closure before publication.377 done/19 pending overall; PR #9 remains draft.
 
 **2026-11-10 — M56-T02 in progress.** Registration/role/shared-connection changes pass98 focused cases, all12 restored faults,19 previews (76 WCAG/38 mobile checks) and the actual keyboard/theme/mobile browser journey. CODE-v2/UX-v2 approve; visible role labels and neutral static actor names are applied. Full1 passes1572/1573 GUI cases, with one existing artifact-picker initial-load timeout; its unchanged14-case file passes immediately. Full2 is running; T02 is not complete. ARCH-v2 approves the future T03 deployment endpoint amendment.20 tasks remain; M55 is published81d2ab6 and all main/integration checks pass.
 
@@ -1975,11 +1977,11 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
-| M56 | Agent Connection | in-progress | M54 | 4 | 1 |
+| M56 | Agent Connection | in-progress | M54 | 4 | 2 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 376 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 377 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

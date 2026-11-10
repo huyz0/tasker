@@ -39,7 +39,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: .milestones/MILESTONE-56-agent-connection/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0056-agent-connection/.
   - **Verify**: Specify register, token issue, configuration and verified-at states; verification means one actual token-authenticated call, not runtime liveness; define loss/reissue/revocation and no-token/no-role/denied/error states.
 
-- [ ] **M56-T02** — Rename identity-only deployment actions and guide role/agent registration.
+- [x] **M56-T02** — Rename identity-only deployment actions and guide role/agent registration.
   - **Files**: apps/gui/src/features/Agents/; apps/gui/src/features/Agents/; apps/gui/src/components/; docs/.
   - **Verify**: Register accurately describes creation; role selection and permissions are clear; empty list leads to first registration; cancelling/returning preserves meaningful non-secret context; responsive keyboard stories pass.
 
