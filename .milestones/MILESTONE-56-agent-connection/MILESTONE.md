@@ -1,12 +1,12 @@
 ---
 id: M56
 title: Agent Connection
-status: todo
+status: in-progress
 goal: A person can register an agent, issue a least-privilege token, configure an external worker and verify that credential through an actual authenticated API request.
 depends_on: [M54]
 surfaces: [backend, gui, contract, cli, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-10
 completed_at: null
 ---
 
@@ -35,7 +35,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
 
 ## 5. Task Breakdown
 
-- [ ] **M56-T01** — Design registration-to-verification states and one-time secret handling.
+- [x] **M56-T01** — Design registration-to-verification states and one-time secret handling.
   - **Files**: .milestones/MILESTONE-56-agent-connection/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0056-agent-connection/.
   - **Verify**: Specify register, token issue, configuration and verified-at states; verification means one actual token-authenticated call, not runtime liveness; define loss/reissue/revocation and no-token/no-role/denied/error states.
 
