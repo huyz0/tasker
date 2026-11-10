@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { createClient } from '@connectrpc/connect';
+import { AuthService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/mockRpc';
 import { BACKEND_URL, resolveBackendUrl } from './backendUrl';
@@ -78,4 +80,20 @@ describe('exact issued credential identity proof', () => {
     const controller = new AbortController(); controller.abort();
     await expect(verifyAgentCredential('tskr_fixture', expected, controller.signal)).rejects.toThrow('Verification canceled.');
   });
+});
+
+
+it('uses one trusted prefixed API for normal sessions, cookie-free proof and worker configuration', async () => {
+  const prefix = 'https://api.example:9443/tasker'; const credentials: RequestCredentials[] = [];
+  server.use(http.get(`${prefix}/api/auth/session`, ({ request }) => { credentials.push(request.credentials); return HttpResponse.json({ authenticated: true, userId: 'user-1' }); }),
+    http.post(`${prefix}/tasker.health.v1.AuthService/GetIdentity`, ({ request }) => { credentials.push(request.credentials); return HttpResponse.json({ agent: identity }); }));
+  vi.stubEnv('VITE_BACKEND_URL', `${prefix}///`); vi.resetModules();
+  try {
+    const { BACKEND_URL: configured } = await import('./backendUrl');
+    const { transport } = await import('./connectTransport'); const { fetchAuthSession } = await import('./authSession');
+    const { verifyAgentCredential: verify, workerConfiguration: configuration } = await import('./agentCredential');
+    await fetchAuthSession(); await createClient(AuthService, transport).getIdentity({}); await verify('tskr_fixture', expected, new AbortController().signal);
+    expect(credentials).toEqual(['include', 'include', 'omit']);
+    expect(JSON.parse(configuration('mcp', { endpoint: configured, orgId: expected.orgId }, '<TOKEN>')).mcpServers.tasker.env.TASKER_BACKEND_URL).toBe(prefix);
+  } finally { vi.unstubAllEnvs(); vi.resetModules(); }
 });

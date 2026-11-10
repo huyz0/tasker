@@ -187,4 +187,13 @@ describe('one-time external worker connection', () => {
     expect(screen.queryByText(secret)).not.toBeInTheDocument(); noSecretCache(ui.client);
   });
 
+  it('aborts the actual pending verification request when its one-time panel is dismissed', async () => {
+    let requested = false, aborted = false;
+    server.use(http.post(`${BACKEND_URL}/tasker.health.v1.AuthService/GetIdentity`, ({ request }) => new Promise<Response>(resolve => {
+      requested = true; request.signal.addEventListener('abort', () => { aborted = true; resolve(HttpResponse.error()); }, { once: true });
+    })));
+    view(); await issue(); fireEvent.click(screen.getByRole('button', { name: 'Verify token' })); await waitFor(() => expect(requested).toBe(true));
+    fireEvent.click(screen.getByRole('button', { name: "I've saved it" })); await waitFor(() => expect(aborted).toBe(true));
+  });
+
 });

@@ -198,3 +198,32 @@ reports one MCP play exception. An unchanged focused MCP browser probe passes;
 replace that immediate assertion with waiting for actual rendered MCP JSON before
 accepting final preview evidence. Final matrices/re-review/faults/browser/full
 gates remain pending.
+
+CODE-v4 approves the authority/missing-identity/lost-secret amendments; its P3
+metadata-only copy note is corrected. Real browser proof exposes a production
+boundary absent from unit fixtures: CORS omits Authorization, so cross-origin
+exact-token probes fail preflight. A real-socket preflight regression is observed
+red, then permit that header without widening allowed origins. All10 actual wire
+cases pass (one existing optional live-feed case remains explicitly skipped).
+
+The initial browser response waiter races an ordinary human identity read; narrow
+it to bearer requests. The subsequent CORS-induced timeout interrupts cleanup
+that fetched cookies from an already-closed Playwright context. Revoke the one
+remaining owned test token through the private8098 fixture (one repaired, no
+original service touched). Capture cleanup credentials before issuance and move
+independent Node revocation plus browser clearing into afterEach. The corrected
+actual journey passes10.4s: least-privilege issue, explicit MCP copy, exact bearer
+and no cookie, real identity match, no local/session/URL/cookie persistence, invalid
+bearer refusal while admin session exists, fresh retry and actual revocation.
+No real credential is captured in screenshots/trace/video or printed assertions.
+
+Deliberate actual browser assertion and timeout faults both fail as intended,
+leave no long-token pattern in automatic failure context and leave zero active
+owned test credentials after independent cleanup checks. Restore the test source.
+Eight additional source faults each produce behavioral failures and are restored:
+cookie omission, redirect rejection, token ID, exact scopes, deployment prefix,
+production origin, pending abort and secret cache retention. The affected native
+set now passes126 cases, including actual pending request cancellation and one
+shared prefixed API across normal session/RPC, exact probe and generated config.
+Final source types,39-preview matrices, updated backend/privacy source review and
+all35 local gates remain pending. T03/T04 are not complete.

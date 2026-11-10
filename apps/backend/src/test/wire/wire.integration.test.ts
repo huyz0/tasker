@@ -119,6 +119,17 @@ testIf('the real server over a real socket', () => {
     expect(res.headers.get('x-request-id')).toBe('wire-test-request');
   });
 
+  it('permits a credential preflight from an allowed GUI origin without opening other origins', async () => {
+    const path = `${BASE_URL}/tasker.health.v1.AuthService/GetIdentity`;
+    const headers = { origin: 'http://localhost:5173', 'access-control-request-method': 'POST', 'access-control-request-headers': 'authorization,content-type,connect-protocol-version' };
+    const allowed = await fetch(path, { method: 'OPTIONS', headers });
+    expect(allowed.status).toBe(204);
+    expect(allowed.headers.get('access-control-allow-origin')).toBe(headers.origin);
+    expect(allowed.headers.get('access-control-allow-headers')?.toLowerCase().split(',').map(value => value.trim())).toContain('authorization');
+    const foreign = await fetch(path, { method: 'OPTIONS', headers: { ...headers, origin: 'https://foreign.example' } });
+    expect(foreign.headers.get('access-control-allow-origin')).toBeNull();
+  });
+
   it('reflects an allowed origin and no other', async () => {
     // Reflecting an arbitrary Origin with credentials would let any site read
     // authenticated responses using a visitor's cookie. The allowlist lives in
