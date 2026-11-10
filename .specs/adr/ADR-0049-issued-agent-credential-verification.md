@@ -73,6 +73,11 @@ prefix. Configuration is intentionally a build-time deployment setting.
   a server token in that scope, but cannot reveal its plaintext in another scope
   or reopen a dismissed panel. Metadata remains manageable through the normal
   token list; a lost secret must be revoked/reissued, not recovered.
+- Known token-administration read denial advances an account/org lifetime epoch.
+  Cached rows and pre-denial issuance cannot regain authority through a later
+  transport failure or batched render. Only a fresh, non-canceled metadata read
+  receives the current epoch; returning to another cached agent remains fenced.
+  Transient metadata failure without known denial preserves the only secret.
 - Creation responses must not remain in a long-lived mutation cache after the
   one-time panel retires. Use zero inactive retention and clear/reset the local
   response holder. Verification stores no credential in query/mutation cache.

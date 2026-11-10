@@ -142,4 +142,49 @@ describe('one-time external worker connection', () => {
     expect(screen.getByText(secret)).toBeVisible();
   });
 
+  it('rejects an issuance response missing the token identity needed for verification', async () => {
+    mockRpc(AgentService, 'CreateAgentToken', { token: { ...metadata, id: '' }, plaintext: secret }); view(); await form();
+    fireEvent.click(screen.getByRole('button', { name: 'Create' })); expect(await screen.findByText(/Failed to create token/)).toBeVisible();
+    expect(screen.queryByText(secret)).not.toBeInTheDocument(); expect(screen.getByLabelText('Name')).toHaveValue('Release worker');
+  });
+  it('explains revoke and replacement when reopening metadata after losing a secret', async () => {
+    const ui = view(); await issue(); fireEvent.click(screen.getByRole('button', { name: "I've saved it" })); ui.unmount();
+    mockRpc(AgentService, 'ListAgentTokens', { tokens: [metadata] }); view();
+    expect(await screen.findByText(/Secrets cannot be recovered/)).toBeVisible(); expect(screen.getByRole('button', { name: 'Revoke token Release worker' })).toBeVisible();
+    expect(screen.queryByText(secret)).not.toBeInTheDocument();
+  });
+
+  it('keeps cached administration fenced after denial, another agent and transient failures until a fresh read succeeds', async () => {
+    mockRpc(AgentService, 'ListAgentTokens', { tokens: [metadata] }); const ui = view();
+    await screen.findByRole('button', { name: 'New token' });
+    ui.change({ ...props, agentId: 'agent-2' }); await screen.findByRole('button', { name: 'New token' });
+    mockRpcError(AgentService, 'ListAgentTokens', 'permission_denied', 'Administrator role removed');
+    await act(async () => { await ui.client.invalidateQueries({ queryKey: ['agentTokens'] }); });
+    await screen.findByText(/Token administration is unavailable/);
+    mockRpcError(AgentService, 'ListAgentTokens', 'unavailable', 'Temporary outage');
+    ui.change(props); await screen.findByText(/Token administration is unavailable/);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry tokens' }));
+    await waitFor(() => expect(ui.client.isFetching({ queryKey: ['agentTokens'] })).toBe(0));
+    expect(screen.queryByRole('button', { name: 'New token' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Revoke token Release worker' })).not.toBeInTheDocument();
+    mockRpc(AgentService, 'ListAgentTokens', { tokens: [metadata] }); fireEvent.click(screen.getByRole('button', { name: 'Retry tokens' }));
+    expect(await screen.findByRole('button', { name: 'New token' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Revoke token Release worker' })).toBeVisible();
+  });
+
+  it('retires issuance across a denial and recovery even when rendering batches both read results', async () => {
+    const pending = mockRpcPending(AgentService, 'CreateAgentToken'); const ui = view(); await form(); fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(pending.requests).toHaveLength(1));
+    await act(async () => {
+      mockRpcError(AgentService, 'ListAgentTokens', 'permission_denied', 'Administrator role removed');
+      await ui.client.refetchQueries({ queryKey: ['agentTokens'] });
+      mockRpc(AgentService, 'ListAgentTokens', { tokens: [metadata] });
+      await ui.client.refetchQueries({ queryKey: ['agentTokens'] });
+      pending.resolve({ token: metadata, plaintext: secret });
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    await waitFor(() => expect(ui.client.isMutating()).toBe(0));
+    expect(screen.queryByText(secret)).not.toBeInTheDocument(); noSecretCache(ui.client);
+  });
+
 });

@@ -183,3 +183,18 @@ secret remains. All119 cases then pass. App types pass after correcting an
 unsupported confirmation-test helper argument. Final-source39 preview matrices
 are running; source review, controlled faults, real browser and full gates remain
 pending. No real test token has yet been minted.
+
+CODE-v3 identifies cached administration resurfacing after denied→unavailable
+reads, missing lost-secret guidance after remount and acceptance of empty token
+IDs. All three are reproduced red before corrections. Account/org metadata read
+receipts and a retained denial epoch fence cached sibling-agent data, cancellation
+and stale replies until actual fresh success; no server authority is added.
+Permanent metadata guidance and nonempty token identity checks correct the other
+two findings. An additional observed batched denial/recovery red reveals old
+issuance can outlive a skipped intermediate render; freeze/check its authority
+epoch and retire any prior credential whose epoch changed. All124 affected cases
+now pass. Both original matrices finish:39-preview overflow passes, accessibility
+reports one MCP play exception. An unchanged focused MCP browser probe passes;
+replace that immediate assertion with waiting for actual rendered MCP JSON before
+accepting final preview evidence. Final matrices/re-review/faults/browser/full
+gates remain pending.

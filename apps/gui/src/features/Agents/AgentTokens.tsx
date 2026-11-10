@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { Code, ConnectError, createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
 import { AgentService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
@@ -57,9 +57,21 @@ function expiryError(raw: string): string | null {
   return null;
 }
 
+// Remember known administration loss for the confirmed account/org across
+// panel changes. Only an actual non-canceled read can issue a current receipt.
+const administrationEpochs = new WeakMap<QueryClient, Map<string, { epoch: number }>>();
+function administrationLifetime(client: QueryClient, accountId: string, orgId: string) {
+  let scopes = administrationEpochs.get(client);
+  if (!scopes) { scopes = new Map(); administrationEpochs.set(client, scopes); }
+  const key = JSON.stringify([accountId, orgId]);
+  let state = scopes.get(key);
+  if (!state) { state = { epoch: 0 }; scopes.set(key, state); }
+  return state;
+}
+
 interface Props { agentId: string; agentName: string; accountId: string; orgId: string; projectId?: string; }
-interface IssueVariables { name: string; scopes: string[]; expiresInDays: number; revision: number; }
-type Credential = IssuedIdentity & { plaintext: string; focusOnReveal: boolean };
+interface IssueVariables { name: string; scopes: string[]; expiresInDays: number; revision: number; epoch: number; }
+type Credential = IssuedIdentity & { plaintext: string; focusOnReveal: boolean; epoch: number };
 
 export function AgentTokens(props: Props) {
   return <ScopedAgentTokens key={JSON.stringify([props.accountId, props.orgId, props.agentId])} {...props} />;
@@ -68,6 +80,7 @@ export function AgentTokens(props: Props) {
 function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: Props) {
   const { confirm, confirmDialog } = useConfirm();
   const queryClient = useQueryClient();
+  const administration = administrationLifetime(queryClient, accountId, orgId);
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
   const [scopes, setScopes] = useState<string[]>([]);
@@ -84,16 +97,26 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
   const retire = () => { intent.current.revision++; setCredential(null); };
   const tokensQuery = useQuery({
     queryKey: ['agentTokens', agentId, orgId, accountId], retry: false,
-    queryFn: async () => (await agentClient.listAgentTokens({ agentId })).tokens,
+    queryFn: async ({ signal }) => {
+      const epoch = administration.epoch;
+      try {
+        const response = await agentClient.listAgentTokens({ agentId }, { signal });
+        if (signal.aborted || epoch !== administration.epoch) throw new Error('Token administration requires a fresh read.');
+        return { tokens: response.tokens, epoch };
+      } catch (error) {
+        if (!signal.aborted && epoch === administration.epoch && error instanceof ConnectError && (error.code === Code.PermissionDenied || error.code === Code.Unauthenticated)) administration.epoch++;
+        throw error;
+      }
+    },
   });
   const createMutation = useMutation({
     gcTime: 0,
     mutationFn: async (variables: IssueVariables) => {
       const response = await agentClient.createAgentToken({ agentId, name: variables.name, scopes: variables.scopes, expiresInDays: variables.expiresInDays });
-      if (!intent.current.active || intent.current.revision !== variables.revision) return;
+      if (!intent.current.active || intent.current.revision !== variables.revision || administration.epoch !== variables.epoch) return;
       const token = response.token;
-      if (!token || !response.plaintext || token.agentId !== agentId || token.orgId !== orgId || token.scopes.length !== variables.scopes.length || [...token.scopes].sort().some((scope, index) => scope !== [...variables.scopes].sort()[index])) throw new Error('Could not confirm the issued token. Refresh the token list and revoke any unusable token.');
-      setCredential({ focusOnReveal: document.activeElement === document.body || !!issuanceForm.current?.contains(document.activeElement), plaintext: response.plaintext, tokenId: token.id, agentId, orgId, scopes: [...token.scopes] });
+      if (!token?.id || !response.plaintext || token.agentId !== agentId || token.orgId !== orgId || token.scopes.length !== variables.scopes.length || [...token.scopes].sort().some((scope, index) => scope !== [...variables.scopes].sort()[index])) throw new Error('Could not confirm the issued token. Refresh the token list and revoke any unusable token.');
+      setCredential({ epoch: variables.epoch, focusOnReveal: document.activeElement === document.body || !!issuanceForm.current?.contains(document.activeElement), plaintext: response.plaintext, tokenId: token.id, agentId, orgId, scopes: [...token.scopes] });
       setName(''); setScopes([]); setExpiresInDays(''); setIsCreating(false); setNotice('');
       // The mutation resolves without the response: its cache never receives a secret.
     },
@@ -106,17 +129,19 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
       if (intent.current.active && credential?.tokenId === tokenId) { retire(); setNotice('Token revoked. Issue a replacement to reconnect the worker.'); }
     },
   });
-  const administrationDenied = tokensQuery.isError && tokensQuery.error instanceof ConnectError && (tokensQuery.error.code === Code.PermissionDenied || tokensQuery.error.code === Code.Unauthenticated);
-  const tokens = tokensQuery.data ?? [];
-  const knownUnavailable = credential && tokensQuery.data?.some(token => token.id === credential.tokenId && (token.revokedAt || token.expired));
+  const administrationDenied = administration.epoch > 0 && tokensQuery.data?.epoch !== administration.epoch;
+  const authorized = tokensQuery.data?.epoch === administration.epoch;
+  const tokens = tokensQuery.data?.tokens ?? [];
+  const credentialRetired = credential && credential.epoch !== administration.epoch;
+  const knownUnavailable = credential && tokens.some(token => token.id === credential.tokenId && (token.revokedAt || token.expired));
   useEffect(() => {
-    if (administrationDenied || knownUnavailable) {
+    if (administrationDenied || knownUnavailable || credentialRetired) {
       intent.current.revision++; setCredential(null); createMutation.reset();
       if (knownUnavailable) setNotice('Token revoked or expired. Issue a replacement to reconnect the worker.');
     }
-  }, [administrationDenied, knownUnavailable]);
+  }, [administrationDenied, knownUnavailable, credentialRetired]);
 
-  if (!tokensQuery.isSuccess && (!tokensQuery.data || administrationDenied)) return tokensQuery.isLoading
+  if (!authorized) return tokensQuery.isLoading
     ? <p role="status" className="p-3 type-caption text-muted-foreground">Loading tokens…</p>
     : <div className="flex flex-col items-start gap-2 p-3"><p role="alert" className="type-caption text-muted-foreground">Token administration is unavailable. An authorized administrator can manage tokens; check your access or retry.</p><button type="button" className="type-caption text-primary underline underline-offset-2" onClick={() => void tokensQuery.refetch()}>Retry tokens</button></div>;
 
@@ -135,12 +160,12 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
 
       {tokensQuery.isError && <div role="alert" className="mb-3 flex flex-col items-start gap-2 type-caption text-muted-foreground"><p>Could not refresh token metadata. Your one-time token is still available; retry when connected.</p><button type="button" className="text-primary underline underline-offset-2" onClick={() => void tokensQuery.refetch()}>Retry tokens</button></div>}
       {notice && <p role="status" className="mb-3 type-caption text-muted-foreground">{notice}</p>}
-      {credential && !knownUnavailable && <IssuedCredential key={credential.tokenId} credential={credential} projectId={projectId} focusOnReveal={credential.focusOnReveal} onVerified={() => { void queryClient.invalidateQueries({ queryKey: ['agentTokens', agentId, orgId, accountId] }); void queryClient.invalidateQueries({ queryKey: ['dashboard', orgId] }); }} onDismiss={() => { retire(); createMutation.reset(); setNotice('Lost this token? Revoke it and issue a replacement; its secret cannot be recovered.'); newTokenButton.current?.focus(); }} />}
+      {credential && !knownUnavailable && !credentialRetired && <IssuedCredential key={credential.tokenId} credential={credential} projectId={projectId} focusOnReveal={credential.focusOnReveal} onVerified={() => { void queryClient.invalidateQueries({ queryKey: ['agentTokens', agentId, orgId, accountId] }); void queryClient.invalidateQueries({ queryKey: ['dashboard', orgId] }); }} onDismiss={() => { retire(); createMutation.reset(); setNotice('Lost this token? Revoke it and issue a replacement; its secret cannot be recovered.'); newTokenButton.current?.focus(); }} />}
 
       {isCreating && (
         <form
           ref={issuanceForm}
-          onSubmit={(e) => { e.preventDefault(); createMutation.mutate({ name: name.trim(), scopes: [...scopes], expiresInDays: expiresInDays ? Number(expiresInDays) : 0, revision: intent.current.revision }); }}
+          onSubmit={(e) => { e.preventDefault(); createMutation.mutate({ name: name.trim(), scopes: [...scopes], expiresInDays: expiresInDays ? Number(expiresInDays) : 0, revision: intent.current.revision, epoch: administration.epoch }); }}
           className="mb-3 p-3 border rounded-md flex flex-col gap-2 bg-card"
         >
           <label className="text-xs font-medium" htmlFor={`token-name-${agentId}`}>Name</label>
@@ -214,6 +239,7 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
         </p>
       )}
 
+      {tokens.length > 0 && <p className="my-3 type-caption text-muted-foreground">Secrets cannot be recovered. If you lose a token, revoke it and issue a replacement.</p>}
       {tokens.length === 0 ? (
         <p className="text-xs text-muted-foreground">No tokens for this agent.</p>
       ) : (
