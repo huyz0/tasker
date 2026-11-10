@@ -68,60 +68,62 @@ import path62 from '../../drizzle-sqlite/0062_webhook_lease_token.sql' with { ty
 import path63 from '../../drizzle-sqlite/0063_schedule_occurrences.sql' with { type: 'file' };
 import path64 from '../../drizzle-sqlite/0064_link_evidence.sql' with { type: 'file' };
 import path65 from '../../drizzle-sqlite/0065_task_claim_attempts.sql' with { type: 'file' };
-import path66 from '../../drizzle-mysql/0000_spooky_tana_nile.sql' with { type: 'file' };
-import path67 from '../../drizzle-mysql/0001_rapid_namorita.sql' with { type: 'file' };
-import path68 from '../../drizzle-mysql/0002_huge_dreaming_celestial.sql' with { type: 'file' };
-import path69 from '../../drizzle-mysql/0003_chubby_ricochet.sql' with { type: 'file' };
-import path70 from '../../drizzle-mysql/0004_thick_white_queen.sql' with { type: 'file' };
-import path71 from '../../drizzle-mysql/0005_jazzy_killmonger.sql' with { type: 'file' };
-import path72 from '../../drizzle-mysql/0006_add_roles_owner_viewer.sql' with { type: 'file' };
-import path73 from '../../drizzle-mysql/0007_backfill_org_owners.sql' with { type: 'file' };
-import path74 from '../../drizzle-mysql/0008_scope_agent_roles_to_org.sql' with { type: 'file' };
-import path75 from '../../drizzle-mysql/0009_invitation_expiry.sql' with { type: 'file' };
-import path76 from '../../drizzle-mysql/0010_api_tokens.sql' with { type: 'file' };
-import path77 from '../../drizzle-mysql/0011_task_status_position.sql' with { type: 'file' };
-import path78 from '../../drizzle-mysql/0012_fulltext_search_index.sql' with { type: 'file' };
-import path79 from '../../drizzle-mysql/0013_fulltext_projects_agents_comments.sql' with { type: 'file' };
-import path80 from '../../drizzle-mysql/0014_hot_query_indexes.sql' with { type: 'file' };
-import path81 from '../../drizzle-mysql/0015_users_email_optional_username.sql' with { type: 'file' };
-import path82 from '../../drizzle-mysql/0016_backfill_usernames.sql' with { type: 'file' };
-import path83 from '../../drizzle-mysql/0017_password_credentials_linked_identities.sql' with { type: 'file' };
-import path84 from '../../drizzle-mysql/0018_backfill_google_linked_identities.sql' with { type: 'file' };
-import path85 from '../../drizzle-mysql/0019_invitations_username.sql' with { type: 'file' };
-import path86 from '../../drizzle-mysql/0020_roles_teams_grants.sql' with { type: 'file' };
-import path87 from '../../drizzle-mysql/0021_seed_system_roles_and_migrate_grants.sql' with { type: 'file' };
-import path88 from '../../drizzle-mysql/0022_idempotency_keys.sql' with { type: 'file' };
-import path89 from '../../drizzle-mysql/0023_project_description.sql' with { type: 'file' };
-import path90 from '../../drizzle-mysql/0024_agent_roles_unique_name.sql' with { type: 'file' };
-import path91 from '../../drizzle-mysql/0025_artifacts_unique_names.sql' with { type: 'file' };
-import path92 from '../../drizzle-mysql/0026_task_statuses_reviewers_unique.sql' with { type: 'file' };
-import path93 from '../../drizzle-mysql/0027_project_templates_unique_name.sql' with { type: 'file' };
-import path94 from '../../drizzle-mysql/0028_seed_memory_permissions.sql' with { type: 'file' };
-import path95 from '../../drizzle-mysql/0029_beliefs_schema.sql' with { type: 'file' };
-import path96 from '../../drizzle-mysql/0030_task_notes_note_type.sql' with { type: 'file' };
-import path97 from '../../drizzle-mysql/0031_audit_log.sql' with { type: 'file' };
-import path98 from '../../drizzle-mysql/0032_task_activity.sql' with { type: 'file' };
-import path99 from '../../drizzle-mysql/0033_backfill_task_activity.sql' with { type: 'file' };
-import path100 from '../../drizzle-mysql/0034_stalled_claim_alerts.sql' with { type: 'file' };
-import path101 from '../../drizzle-mysql/0035_repair_audit_log.sql' with { type: 'file' };
-import path102 from '../../drizzle-mysql/0036_notifications.sql' with { type: 'file' };
-import path103 from '../../drizzle-mysql/0037_idempotency_request_hash.sql' with { type: 'file' };
-import path104 from '../../drizzle-mysql/0038_task_assignment_source.sql' with { type: 'file' };
-import path105 from '../../drizzle-mysql/0039_work_graph.sql' with { type: 'file' };
-import path106 from '../../drizzle-mysql/0040_webhooks.sql' with { type: 'file' };
-import path107 from '../../drizzle-mysql/0041_plans_and_input_requests.sql' with { type: 'file' };
-import path108 from '../../drizzle-mysql/0042_approval_gates.sql' with { type: 'file' };
-import path109 from '../../drizzle-mysql/0043_usage_records.sql' with { type: 'file' };
-import path110 from '../../drizzle-mysql/0044_task_summaries.sql' with { type: 'file' };
-import path111 from '../../drizzle-mysql/0045_workflow_templates.sql' with { type: 'file' };
-import path112 from '../../drizzle-mysql/0046_schedules.sql' with { type: 'file' };
-import path113 from '../../drizzle-mysql/0047_notification_dedupe_hash.sql' with { type: 'file' };
-import path114 from '../../drizzle-mysql/0048_domain_events.sql' with { type: 'file' };
-import path115 from '../../drizzle-mysql/0049_audit_event_identity.sql' with { type: 'file' };
-import path116 from '../../drizzle-mysql/0050_webhook_lease_token.sql' with { type: 'file' };
-import path117 from '../../drizzle-mysql/0051_schedule_occurrences.sql' with { type: 'file' };
-import path118 from '../../drizzle-mysql/0052_link_evidence.sql' with { type: 'file' };
-import path119 from '../../drizzle-mysql/0053_task_claim_attempts.sql' with { type: 'file' };
+import path66 from '../../drizzle-sqlite/0066_report_attempts.sql' with { type: 'file' };
+import path67 from '../../drizzle-mysql/0000_spooky_tana_nile.sql' with { type: 'file' };
+import path68 from '../../drizzle-mysql/0001_rapid_namorita.sql' with { type: 'file' };
+import path69 from '../../drizzle-mysql/0002_huge_dreaming_celestial.sql' with { type: 'file' };
+import path70 from '../../drizzle-mysql/0003_chubby_ricochet.sql' with { type: 'file' };
+import path71 from '../../drizzle-mysql/0004_thick_white_queen.sql' with { type: 'file' };
+import path72 from '../../drizzle-mysql/0005_jazzy_killmonger.sql' with { type: 'file' };
+import path73 from '../../drizzle-mysql/0006_add_roles_owner_viewer.sql' with { type: 'file' };
+import path74 from '../../drizzle-mysql/0007_backfill_org_owners.sql' with { type: 'file' };
+import path75 from '../../drizzle-mysql/0008_scope_agent_roles_to_org.sql' with { type: 'file' };
+import path76 from '../../drizzle-mysql/0009_invitation_expiry.sql' with { type: 'file' };
+import path77 from '../../drizzle-mysql/0010_api_tokens.sql' with { type: 'file' };
+import path78 from '../../drizzle-mysql/0011_task_status_position.sql' with { type: 'file' };
+import path79 from '../../drizzle-mysql/0012_fulltext_search_index.sql' with { type: 'file' };
+import path80 from '../../drizzle-mysql/0013_fulltext_projects_agents_comments.sql' with { type: 'file' };
+import path81 from '../../drizzle-mysql/0014_hot_query_indexes.sql' with { type: 'file' };
+import path82 from '../../drizzle-mysql/0015_users_email_optional_username.sql' with { type: 'file' };
+import path83 from '../../drizzle-mysql/0016_backfill_usernames.sql' with { type: 'file' };
+import path84 from '../../drizzle-mysql/0017_password_credentials_linked_identities.sql' with { type: 'file' };
+import path85 from '../../drizzle-mysql/0018_backfill_google_linked_identities.sql' with { type: 'file' };
+import path86 from '../../drizzle-mysql/0019_invitations_username.sql' with { type: 'file' };
+import path87 from '../../drizzle-mysql/0020_roles_teams_grants.sql' with { type: 'file' };
+import path88 from '../../drizzle-mysql/0021_seed_system_roles_and_migrate_grants.sql' with { type: 'file' };
+import path89 from '../../drizzle-mysql/0022_idempotency_keys.sql' with { type: 'file' };
+import path90 from '../../drizzle-mysql/0023_project_description.sql' with { type: 'file' };
+import path91 from '../../drizzle-mysql/0024_agent_roles_unique_name.sql' with { type: 'file' };
+import path92 from '../../drizzle-mysql/0025_artifacts_unique_names.sql' with { type: 'file' };
+import path93 from '../../drizzle-mysql/0026_task_statuses_reviewers_unique.sql' with { type: 'file' };
+import path94 from '../../drizzle-mysql/0027_project_templates_unique_name.sql' with { type: 'file' };
+import path95 from '../../drizzle-mysql/0028_seed_memory_permissions.sql' with { type: 'file' };
+import path96 from '../../drizzle-mysql/0029_beliefs_schema.sql' with { type: 'file' };
+import path97 from '../../drizzle-mysql/0030_task_notes_note_type.sql' with { type: 'file' };
+import path98 from '../../drizzle-mysql/0031_audit_log.sql' with { type: 'file' };
+import path99 from '../../drizzle-mysql/0032_task_activity.sql' with { type: 'file' };
+import path100 from '../../drizzle-mysql/0033_backfill_task_activity.sql' with { type: 'file' };
+import path101 from '../../drizzle-mysql/0034_stalled_claim_alerts.sql' with { type: 'file' };
+import path102 from '../../drizzle-mysql/0035_repair_audit_log.sql' with { type: 'file' };
+import path103 from '../../drizzle-mysql/0036_notifications.sql' with { type: 'file' };
+import path104 from '../../drizzle-mysql/0037_idempotency_request_hash.sql' with { type: 'file' };
+import path105 from '../../drizzle-mysql/0038_task_assignment_source.sql' with { type: 'file' };
+import path106 from '../../drizzle-mysql/0039_work_graph.sql' with { type: 'file' };
+import path107 from '../../drizzle-mysql/0040_webhooks.sql' with { type: 'file' };
+import path108 from '../../drizzle-mysql/0041_plans_and_input_requests.sql' with { type: 'file' };
+import path109 from '../../drizzle-mysql/0042_approval_gates.sql' with { type: 'file' };
+import path110 from '../../drizzle-mysql/0043_usage_records.sql' with { type: 'file' };
+import path111 from '../../drizzle-mysql/0044_task_summaries.sql' with { type: 'file' };
+import path112 from '../../drizzle-mysql/0045_workflow_templates.sql' with { type: 'file' };
+import path113 from '../../drizzle-mysql/0046_schedules.sql' with { type: 'file' };
+import path114 from '../../drizzle-mysql/0047_notification_dedupe_hash.sql' with { type: 'file' };
+import path115 from '../../drizzle-mysql/0048_domain_events.sql' with { type: 'file' };
+import path116 from '../../drizzle-mysql/0049_audit_event_identity.sql' with { type: 'file' };
+import path117 from '../../drizzle-mysql/0050_webhook_lease_token.sql' with { type: 'file' };
+import path118 from '../../drizzle-mysql/0051_schedule_occurrences.sql' with { type: 'file' };
+import path119 from '../../drizzle-mysql/0052_link_evidence.sql' with { type: 'file' };
+import path120 from '../../drizzle-mysql/0053_task_claim_attempts.sql' with { type: 'file' };
+import path121 from '../../drizzle-mysql/0054_report_attempts.sql' with { type: 'file' };
 
 export const EMBEDDED_SQLITE_MIGRATIONS: EmbeddedMigration[] = [
   { tag: "0000_mushy_kulan_gath", when: 1775866918648, hash: "337fc90e67c91e887a3596fc6c376ad0cede36ddb1ee2bbcd503b3690ec4a676", path: path0 },
@@ -190,61 +192,63 @@ export const EMBEDDED_SQLITE_MIGRATIONS: EmbeddedMigration[] = [
   { tag: "0063_schedule_occurrences", when: 1794096000004, hash: "073fb99efb601fb3b82d1285c08e419163d32eeccd9e6823459fde365fb31331", path: path63 },
   { tag: "0064_link_evidence", when: 1794096000005, hash: "a7553a8e1722a53232a77c156c604acc4b7a76e3fffeb3186a4ab4ad8d170fca", path: path64 },
   { tag: "0065_task_claim_attempts", when: 1794268800000, hash: "52c2403aba45986ed55eaf38479785326d788168b4527a84885421b1b39cc706", path: path65 },
+  { tag: "0066_report_attempts", when: 1794268800001, hash: "f463c74f8fb49aa9b9982bfe0ccfd8e13c6e6ae4d6b832f8693e1cf601cbbc81", path: path66 },
 ];
 
 export const EMBEDDED_MYSQL_MIGRATIONS: EmbeddedMigration[] = [
-  { tag: "0000_spooky_tana_nile", when: 1783851552271, hash: "0c390aee091493b713071d81aceae79960a61f198819a272faa42ff83ea53df7", path: path66 },
-  { tag: "0001_rapid_namorita", when: 1783933054771, hash: "5c72d64b3c59484325a98d48f4139d806d595c69638f6233c43ec2b436f8d3c8", path: path67 },
-  { tag: "0002_huge_dreaming_celestial", when: 1783936708277, hash: "2aebc4f5d6ac1b58a2161c85583cf73e6302cd1dea4f48e3fd62938e53cb2d75", path: path68 },
-  { tag: "0003_chubby_ricochet", when: 1784017981443, hash: "5fd8248c97bb206ec196c10cabca04b4fe48b1a6ff47a3dec9f9cf679cd71fec", path: path69 },
-  { tag: "0004_thick_white_queen", when: 1784038035530, hash: "952caf3cb59da1c8d21e4f5c8b6cf2404c6b77044457e7414aafde9965db3ce1", path: path70 },
-  { tag: "0005_jazzy_killmonger", when: 1784057548432, hash: "25f672590a8bf1334054447f0907ba2883c6381d4ef383d86b7f93d35be57b16", path: path71 },
-  { tag: "0006_add_roles_owner_viewer", when: 1784259397844, hash: "921e35263cbad593ce76c4edef78e4e04dda997e7f700678b1c29e9606975f21", path: path72 },
-  { tag: "0007_backfill_org_owners", when: 1784259407596, hash: "47f1a21b0a994bb4685a9258c9af7bb20785b3c33be92637bfa3c4461670138c", path: path73 },
-  { tag: "0008_scope_agent_roles_to_org", when: 1784259408596, hash: "9776c34cb60dc435135f32516d3ad60c690634776812b1f0d7998b2b5a5e3365", path: path74 },
-  { tag: "0009_invitation_expiry", when: 1784259409596, hash: "62698d2cd7c5e664be7061d42804b002f33df5df300a8a9cac432d4be4e2c49f", path: path75 },
-  { tag: "0010_api_tokens", when: 1786772053171, hash: "72f48554eb4d96ae06333b64f8b11a9b7b65b50f447cb4d896c7015e654e2584", path: path76 },
-  { tag: "0011_task_status_position", when: 1786790000000, hash: "bb493a74a5d9263af0acbd893b220c21a9fe4a385b66b260dd7724d61b37c044", path: path77 },
-  { tag: "0012_fulltext_search_index", when: 1786800000000, hash: "e22040069b6e4c2dd98c092b2b151192cf04a464c08801ab695e5a6eb092f556", path: path78 },
-  { tag: "0013_fulltext_projects_agents_comments", when: 1786800010000, hash: "9253d4192af1987a765c9c44a26c314ff3753efdf4c7d197fc3cf8d92097f092", path: path79 },
-  { tag: "0014_hot_query_indexes", when: 1786800020000, hash: "040fa605e0ece1b41aae0a66f28ac1e8d2e9efbcf4e1c9db96523f48ca30b6fb", path: path80 },
-  { tag: "0015_users_email_optional_username", when: 1786900000000, hash: "25d1090b615f9ee2cfeab024ed037664fa04352da3210b2fc2d8a593ed83b95e", path: path81 },
-  { tag: "0016_backfill_usernames", when: 1786900010000, hash: "fafe98412bd1b3ddf8840a6b9a89fb923281a52a3817e9331e5350815c0cf422", path: path82 },
-  { tag: "0017_password_credentials_linked_identities", when: 1786910000000, hash: "0177be6f3598eb5f9c9f8ea8d39cba91a3c4914ac3fc3673c76cf4d7c01cee65", path: path83 },
-  { tag: "0018_backfill_google_linked_identities", when: 1786920000000, hash: "91e04af84152af1622562d513c1a988662f4f1c34ea67ec7fd2abb0dbb938618", path: path84 },
-  { tag: "0019_invitations_username", when: 1786930000000, hash: "be0407e6aba4b6301813e9bb6bf84a684710e8d9dae8a42b3d06906629c78585", path: path85 },
-  { tag: "0020_roles_teams_grants", when: 1787000000000, hash: "29da679aeb07a75bdcd7e1e3024de046b0474dfc5dbb9ff1956f81d5f9f050c6", path: path86 },
-  { tag: "0021_seed_system_roles_and_migrate_grants", when: 1787100000000, hash: "2f103282bc886d8138261da9df7f60538a6640c47d6e42e80d363191964ab74c", path: path87 },
-  { tag: "0022_idempotency_keys", when: 1787200000000, hash: "df4b9812695921ac5837711fbadcd008840e1f23a605f287c066dc4463697837", path: path88 },
-  { tag: "0023_project_description", when: 1787300000000, hash: "d03d4e574a640b5deebf8f478f2791ad38cb99ef6882d35b4e19c3da5ed014cf", path: path89 },
-  { tag: "0024_agent_roles_unique_name", when: 1787400000000, hash: "9594e0169d9924e248c64ec5376493c50fc8f92e8bcff4b3b8e1338bd0d9fb8e", path: path90 },
-  { tag: "0025_artifacts_unique_names", when: 1787500000000, hash: "435099a3720a0f18bfcbb1f34460afd9869d17b16d4dcc2ea878972e279ce9fd", path: path91 },
-  { tag: "0026_task_statuses_reviewers_unique", when: 1787600000000, hash: "7dc10f30341837660036d3af1aa7103bf14fc88316542c223abc0732e6c18a26", path: path92 },
-  { tag: "0027_project_templates_unique_name", when: 1787700000000, hash: "ec5fce313361a2628a5be28d81f86350809a2bf84a54895957531da07dd72a60", path: path93 },
-  { tag: "0028_seed_memory_permissions", when: 1787800000000, hash: "cb167829fd30e8ee88814d86250fbe12e0eca886db7b476da3c0f32f48323c0e", path: path94 },
-  { tag: "0029_beliefs_schema", when: 1787900000000, hash: "2ea153137c5d731790a58820fb20524b4d7dd298f3a90cf631d3eda9321e9bce", path: path95 },
-  { tag: "0030_task_notes_note_type", when: 1788000000000, hash: "e7f35953eefb1cdf9012e25bf5b44318f872ef3b5e023156c61a34c008673259", path: path96 },
-  { tag: "0031_audit_log", when: 1788050000000, hash: "6b92ddd135d993c76fc7cabe735e3d0d1ce5048bb0acdfed255c73d713788828", path: path97 },
-  { tag: "0032_task_activity", when: 1788100000000, hash: "5b5d77254349e09939e52ad156d714da44689e87844c7f10f18c40112c9e4b49", path: path98 },
-  { tag: "0033_backfill_task_activity", when: 1788200000000, hash: "8f361a2695fa075c1eb282b43d6a8bf7d15dd225ed67ea2f564709a2a2f5eae5", path: path99 },
-  { tag: "0034_stalled_claim_alerts", when: 1788300000000, hash: "c090803e8679e557146ea8193e5502c2d972aaa5a45ab440e68a36130c4c1379", path: path100 },
-  { tag: "0035_repair_audit_log", when: 1788400000000, hash: "e60eff4bcd8f1c0cfc8f0f0f8e14c1a3128efc61efb5b0eb78562f96a6442646", path: path101 },
-  { tag: "0036_notifications", when: 1788500000000, hash: "371cf26c18b23b704ba2e0851df4747a865536e5c8a21783c1ea8c145f86c126", path: path102 },
-  { tag: "0037_idempotency_request_hash", when: 1788600000000, hash: "4b433a45fe593746b12cd5d7ceae8097e090e3151e850b8e357d4aeaca14a6c1", path: path103 },
-  { tag: "0038_task_assignment_source", when: 1788700000000, hash: "5e7747bc75b950bafdfe2a0825fb98ea696c1c812db42b49bc2559c2cd9168e7", path: path104 },
-  { tag: "0039_work_graph", when: 1788800000000, hash: "184c5b2ab3dc660d1fadf652dba8abfa4d40fe9f20f0f8ba3a4cdab0cf51e43d", path: path105 },
-  { tag: "0040_webhooks", when: 1788900000000, hash: "6806460513ebc7b9e12e46261579341e64bf443350e4239a613e4cd443aa45bb", path: path106 },
-  { tag: "0041_plans_and_input_requests", when: 1789000000000, hash: "d4c87d8b38a663e782c2c8ec0490bfce3623453f923ee9660c28dc0f9a953cbc", path: path107 },
-  { tag: "0042_approval_gates", when: 1789100000000, hash: "4a36ecf38d47de4eef8148ff60a29b215efc47743dfe7cf36813621c8c20684c", path: path108 },
-  { tag: "0043_usage_records", when: 1789200000000, hash: "b9b64a85d1e88805512ae4dfe3785d0c4d9f29d6f303f67191c97f84f47c2b3f", path: path109 },
-  { tag: "0044_task_summaries", when: 1789300000000, hash: "a636a51a3cebf62ad6df66916ccd812eb35b99bb7fd516e87535f6ba674af2fd", path: path110 },
-  { tag: "0045_workflow_templates", when: 1789400000000, hash: "204dca42bdfbe3e1d279ceddd2730c7c0dab15522555a772e07e419588caf7a1", path: path111 },
-  { tag: "0046_schedules", when: 1789500000000, hash: "99c63a10005e95adcd1fd13197e86aa8f44627c545f93709d199128b5adf99ce", path: path112 },
-  { tag: "0047_notification_dedupe_hash", when: 1794096000000, hash: "917b1b25dc4b76ffe412df224bd92c2f2417dd723ed58ae4607c296610d39d10", path: path113 },
-  { tag: "0048_domain_events", when: 1794096000001, hash: "2e105e3f52dcbe48cb0784fe3369aa3490bed613ab6c869e3125f11f75b4f2ba", path: path114 },
-  { tag: "0049_audit_event_identity", when: 1794096000002, hash: "4492b1489f55dc941b7d35990ce9fb2598f1b00396e3d550bd7ca230512954bc", path: path115 },
-  { tag: "0050_webhook_lease_token", when: 1794096000003, hash: "c568068ec4f42ec1e53b0d0fdf7b546d78279e6c5272d3a8af5fb8f4ce531442", path: path116 },
-  { tag: "0051_schedule_occurrences", when: 1794096000004, hash: "e7cf0b4af266e4cbee2391a965d7879aba5a5fa96db75e453c3cbd92ebfd0569", path: path117 },
-  { tag: "0052_link_evidence", when: 1794096000005, hash: "26abdaf40e83db1dadb1f195459b4a9a4b9860ae118fff884c6ef3106cc93c0b", path: path118 },
-  { tag: "0053_task_claim_attempts", when: 1794268800000, hash: "320482dbf93b74aff0b856add96f411f92026969f9f59a168dbc273ab9228935", path: path119 },
+  { tag: "0000_spooky_tana_nile", when: 1783851552271, hash: "0c390aee091493b713071d81aceae79960a61f198819a272faa42ff83ea53df7", path: path67 },
+  { tag: "0001_rapid_namorita", when: 1783933054771, hash: "5c72d64b3c59484325a98d48f4139d806d595c69638f6233c43ec2b436f8d3c8", path: path68 },
+  { tag: "0002_huge_dreaming_celestial", when: 1783936708277, hash: "2aebc4f5d6ac1b58a2161c85583cf73e6302cd1dea4f48e3fd62938e53cb2d75", path: path69 },
+  { tag: "0003_chubby_ricochet", when: 1784017981443, hash: "5fd8248c97bb206ec196c10cabca04b4fe48b1a6ff47a3dec9f9cf679cd71fec", path: path70 },
+  { tag: "0004_thick_white_queen", when: 1784038035530, hash: "952caf3cb59da1c8d21e4f5c8b6cf2404c6b77044457e7414aafde9965db3ce1", path: path71 },
+  { tag: "0005_jazzy_killmonger", when: 1784057548432, hash: "25f672590a8bf1334054447f0907ba2883c6381d4ef383d86b7f93d35be57b16", path: path72 },
+  { tag: "0006_add_roles_owner_viewer", when: 1784259397844, hash: "921e35263cbad593ce76c4edef78e4e04dda997e7f700678b1c29e9606975f21", path: path73 },
+  { tag: "0007_backfill_org_owners", when: 1784259407596, hash: "47f1a21b0a994bb4685a9258c9af7bb20785b3c33be92637bfa3c4461670138c", path: path74 },
+  { tag: "0008_scope_agent_roles_to_org", when: 1784259408596, hash: "9776c34cb60dc435135f32516d3ad60c690634776812b1f0d7998b2b5a5e3365", path: path75 },
+  { tag: "0009_invitation_expiry", when: 1784259409596, hash: "62698d2cd7c5e664be7061d42804b002f33df5df300a8a9cac432d4be4e2c49f", path: path76 },
+  { tag: "0010_api_tokens", when: 1786772053171, hash: "72f48554eb4d96ae06333b64f8b11a9b7b65b50f447cb4d896c7015e654e2584", path: path77 },
+  { tag: "0011_task_status_position", when: 1786790000000, hash: "bb493a74a5d9263af0acbd893b220c21a9fe4a385b66b260dd7724d61b37c044", path: path78 },
+  { tag: "0012_fulltext_search_index", when: 1786800000000, hash: "e22040069b6e4c2dd98c092b2b151192cf04a464c08801ab695e5a6eb092f556", path: path79 },
+  { tag: "0013_fulltext_projects_agents_comments", when: 1786800010000, hash: "9253d4192af1987a765c9c44a26c314ff3753efdf4c7d197fc3cf8d92097f092", path: path80 },
+  { tag: "0014_hot_query_indexes", when: 1786800020000, hash: "040fa605e0ece1b41aae0a66f28ac1e8d2e9efbcf4e1c9db96523f48ca30b6fb", path: path81 },
+  { tag: "0015_users_email_optional_username", when: 1786900000000, hash: "25d1090b615f9ee2cfeab024ed037664fa04352da3210b2fc2d8a593ed83b95e", path: path82 },
+  { tag: "0016_backfill_usernames", when: 1786900010000, hash: "fafe98412bd1b3ddf8840a6b9a89fb923281a52a3817e9331e5350815c0cf422", path: path83 },
+  { tag: "0017_password_credentials_linked_identities", when: 1786910000000, hash: "0177be6f3598eb5f9c9f8ea8d39cba91a3c4914ac3fc3673c76cf4d7c01cee65", path: path84 },
+  { tag: "0018_backfill_google_linked_identities", when: 1786920000000, hash: "91e04af84152af1622562d513c1a988662f4f1c34ea67ec7fd2abb0dbb938618", path: path85 },
+  { tag: "0019_invitations_username", when: 1786930000000, hash: "be0407e6aba4b6301813e9bb6bf84a684710e8d9dae8a42b3d06906629c78585", path: path86 },
+  { tag: "0020_roles_teams_grants", when: 1787000000000, hash: "29da679aeb07a75bdcd7e1e3024de046b0474dfc5dbb9ff1956f81d5f9f050c6", path: path87 },
+  { tag: "0021_seed_system_roles_and_migrate_grants", when: 1787100000000, hash: "2f103282bc886d8138261da9df7f60538a6640c47d6e42e80d363191964ab74c", path: path88 },
+  { tag: "0022_idempotency_keys", when: 1787200000000, hash: "df4b9812695921ac5837711fbadcd008840e1f23a605f287c066dc4463697837", path: path89 },
+  { tag: "0023_project_description", when: 1787300000000, hash: "d03d4e574a640b5deebf8f478f2791ad38cb99ef6882d35b4e19c3da5ed014cf", path: path90 },
+  { tag: "0024_agent_roles_unique_name", when: 1787400000000, hash: "9594e0169d9924e248c64ec5376493c50fc8f92e8bcff4b3b8e1338bd0d9fb8e", path: path91 },
+  { tag: "0025_artifacts_unique_names", when: 1787500000000, hash: "435099a3720a0f18bfcbb1f34460afd9869d17b16d4dcc2ea878972e279ce9fd", path: path92 },
+  { tag: "0026_task_statuses_reviewers_unique", when: 1787600000000, hash: "7dc10f30341837660036d3af1aa7103bf14fc88316542c223abc0732e6c18a26", path: path93 },
+  { tag: "0027_project_templates_unique_name", when: 1787700000000, hash: "ec5fce313361a2628a5be28d81f86350809a2bf84a54895957531da07dd72a60", path: path94 },
+  { tag: "0028_seed_memory_permissions", when: 1787800000000, hash: "cb167829fd30e8ee88814d86250fbe12e0eca886db7b476da3c0f32f48323c0e", path: path95 },
+  { tag: "0029_beliefs_schema", when: 1787900000000, hash: "2ea153137c5d731790a58820fb20524b4d7dd298f3a90cf631d3eda9321e9bce", path: path96 },
+  { tag: "0030_task_notes_note_type", when: 1788000000000, hash: "e7f35953eefb1cdf9012e25bf5b44318f872ef3b5e023156c61a34c008673259", path: path97 },
+  { tag: "0031_audit_log", when: 1788050000000, hash: "6b92ddd135d993c76fc7cabe735e3d0d1ce5048bb0acdfed255c73d713788828", path: path98 },
+  { tag: "0032_task_activity", when: 1788100000000, hash: "5b5d77254349e09939e52ad156d714da44689e87844c7f10f18c40112c9e4b49", path: path99 },
+  { tag: "0033_backfill_task_activity", when: 1788200000000, hash: "8f361a2695fa075c1eb282b43d6a8bf7d15dd225ed67ea2f564709a2a2f5eae5", path: path100 },
+  { tag: "0034_stalled_claim_alerts", when: 1788300000000, hash: "c090803e8679e557146ea8193e5502c2d972aaa5a45ab440e68a36130c4c1379", path: path101 },
+  { tag: "0035_repair_audit_log", when: 1788400000000, hash: "e60eff4bcd8f1c0cfc8f0f0f8e14c1a3128efc61efb5b0eb78562f96a6442646", path: path102 },
+  { tag: "0036_notifications", when: 1788500000000, hash: "371cf26c18b23b704ba2e0851df4747a865536e5c8a21783c1ea8c145f86c126", path: path103 },
+  { tag: "0037_idempotency_request_hash", when: 1788600000000, hash: "4b433a45fe593746b12cd5d7ceae8097e090e3151e850b8e357d4aeaca14a6c1", path: path104 },
+  { tag: "0038_task_assignment_source", when: 1788700000000, hash: "5e7747bc75b950bafdfe2a0825fb98ea696c1c812db42b49bc2559c2cd9168e7", path: path105 },
+  { tag: "0039_work_graph", when: 1788800000000, hash: "184c5b2ab3dc660d1fadf652dba8abfa4d40fe9f20f0f8ba3a4cdab0cf51e43d", path: path106 },
+  { tag: "0040_webhooks", when: 1788900000000, hash: "6806460513ebc7b9e12e46261579341e64bf443350e4239a613e4cd443aa45bb", path: path107 },
+  { tag: "0041_plans_and_input_requests", when: 1789000000000, hash: "d4c87d8b38a663e782c2c8ec0490bfce3623453f923ee9660c28dc0f9a953cbc", path: path108 },
+  { tag: "0042_approval_gates", when: 1789100000000, hash: "4a36ecf38d47de4eef8148ff60a29b215efc47743dfe7cf36813621c8c20684c", path: path109 },
+  { tag: "0043_usage_records", when: 1789200000000, hash: "b9b64a85d1e88805512ae4dfe3785d0c4d9f29d6f303f67191c97f84f47c2b3f", path: path110 },
+  { tag: "0044_task_summaries", when: 1789300000000, hash: "a636a51a3cebf62ad6df66916ccd812eb35b99bb7fd516e87535f6ba674af2fd", path: path111 },
+  { tag: "0045_workflow_templates", when: 1789400000000, hash: "204dca42bdfbe3e1d279ceddd2730c7c0dab15522555a772e07e419588caf7a1", path: path112 },
+  { tag: "0046_schedules", when: 1789500000000, hash: "99c63a10005e95adcd1fd13197e86aa8f44627c545f93709d199128b5adf99ce", path: path113 },
+  { tag: "0047_notification_dedupe_hash", when: 1794096000000, hash: "917b1b25dc4b76ffe412df224bd92c2f2417dd723ed58ae4607c296610d39d10", path: path114 },
+  { tag: "0048_domain_events", when: 1794096000001, hash: "2e105e3f52dcbe48cb0784fe3369aa3490bed613ab6c869e3125f11f75b4f2ba", path: path115 },
+  { tag: "0049_audit_event_identity", when: 1794096000002, hash: "4492b1489f55dc941b7d35990ce9fb2598f1b00396e3d550bd7ca230512954bc", path: path116 },
+  { tag: "0050_webhook_lease_token", when: 1794096000003, hash: "c568068ec4f42ec1e53b0d0fdf7b546d78279e6c5272d3a8af5fb8f4ce531442", path: path117 },
+  { tag: "0051_schedule_occurrences", when: 1794096000004, hash: "e7cf0b4af266e4cbee2391a965d7879aba5a5fa96db75e453c3cbd92ebfd0569", path: path118 },
+  { tag: "0052_link_evidence", when: 1794096000005, hash: "26abdaf40e83db1dadb1f195459b4a9a4b9860ae118fff884c6ef3106cc93c0b", path: path119 },
+  { tag: "0053_task_claim_attempts", when: 1794268800000, hash: "320482dbf93b74aff0b856add96f411f92026969f9f59a168dbc273ab9228935", path: path120 },
+  { tag: "0054_report_attempts", when: 1794268800001, hash: "94de1eac49ff2da3767990b9186de44533f936899625874d08b7e5416da5e43e", path: path121 },
 ];

@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import * as SQ from '../../db/schema.sqlite';
 import * as MY from '../../db/schema.mysql';
 import type { Principal } from '../auth/session';
+import { ConnectError, Code } from '@connectrpc/connect';
 
 const recordedNow = () => new Date(Math.floor(Date.now() / 1000) * 1000);
 
@@ -39,3 +40,27 @@ export async function endClaimReceipts(db: any, standalone: boolean, ids: string
     releasedById: actor.kind === 'system' ? null : actor.kind === 'agent' ? actor.agentId : actor.userId,
   }).where(and(inArray(attempts.id, ids), isNull(attempts.releasedAt)));
 }
+
+type ReportAttemptScope = { taskId: string; orgId: string; principal: Principal; attemptId?: string };
+
+async function reportReceiptId(db: any, standalone: boolean, input: ReportAttemptScope, legacyAssignment: boolean) {
+  if (input.attemptId === undefined) return undefined;
+  const attempts = (standalone ? SQ : MY).taskClaimAttempts;
+  const [receipt] = await db.select({ id: attempts.id, taskId: attempts.taskId, orgId: attempts.orgId,
+    ownerKind: attempts.ownerKind, ownerId: attempts.ownerId }).from(attempts).where(eq(attempts.id, input.attemptId)).limit(1);
+  if (!receipt && legacyAssignment) return undefined;
+  const ownerId = input.principal.kind === 'agent' ? input.principal.agentId : input.principal.userId;
+  if (!receipt || receipt.taskId !== input.taskId || receipt.orgId !== input.orgId
+    || receipt.ownerKind !== input.principal.kind || receipt.ownerId !== ownerId) {
+    throw new ConnectError('claim receipt is not valid for this report', Code.NotFound);
+  }
+  return receipt.id as string;
+}
+
+/** Caller checks current operation access; closed receipts are valid for delayed reports. */
+export const validatedReportAttemptId = (db: any, standalone: boolean, input: ReportAttemptScope) =>
+  reportReceiptId(db, standalone, input, false);
+
+/** Only a server-selected held assignment may use the pre-upgrade missing-receipt path. */
+export const assignmentReceiptId = (db: any, standalone: boolean, input: ReportAttemptScope & { attemptId: string }) =>
+  reportReceiptId(db, standalone, input, true);

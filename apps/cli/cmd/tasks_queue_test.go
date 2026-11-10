@@ -22,6 +22,7 @@ type fakeQueue struct {
 	mine       *healthv1.ListMyTasksRequest
 	empty      bool
 	releaseErr error
+	attempt    *healthv1.TaskAttempt
 }
 
 func (f *fakeQueue) ClaimNextTask(_ context.Context, req *connect.Request[healthv1.ClaimNextTaskRequest]) (*connect.Response[healthv1.ClaimNextTaskResponse], error) {
@@ -32,6 +33,7 @@ func (f *fakeQueue) ClaimNextTask(_ context.Context, req *connect.Request[health
 	return connect.NewResponse(&healthv1.ClaimNextTaskResponse{
 		Task:              &healthv1.Task{Id: "t1", DisplayId: "T-1", Title: "Fix it"},
 		LatestHandoffNote: &healthv1.TaskNote{AgentId: "a0", AgentName: "Scout", Content: "tried X"},
+		Attempt:           f.attempt,
 	}), nil
 }
 

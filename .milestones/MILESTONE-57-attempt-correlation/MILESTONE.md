@@ -43,7 +43,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/; packages/shared-contract/; apps/cli/gen/.
   - **Verify**: Keyed replay returns same receipt; changed correlation with same key fails; racing claims create one receipt; reclaim creates another; expectedAttemptId fences stale release before handoff/deletion; human unassignment closes receipt transactionally; both migrations preserve old clients.
 
-- [ ] **M57-T03** — Accept optional task/owner-validated correlation on notes, usage and artifact links.
+- [x] **M57-T03** — Accept optional task/owner-validated correlation on notes, usage and artifact links.
   - **Files**: apps/backend/src/modules/tasks/task_notes.handler.ts; apps/backend/src/modules/tasks/usage.ts; apps/backend/src/modules/artifacts/; apps/backend/src/modules/mcp/; apps/cli/cmd/; packages/shared-contract/.
   - **Verify**: Same task and credential-derived receipt owner required; ID confers no authority; delayed final usage after release works; other-task/agent/org rejected; omitted correlation remains ungrouped; do not auto-attach late legacy reports to current claim.
 

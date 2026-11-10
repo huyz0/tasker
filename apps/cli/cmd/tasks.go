@@ -253,6 +253,7 @@ var tasksClaimCmd = &cobra.Command{
 		res, err := client.ClaimTask(cmd.Context(), connect.NewRequest(&healthv1.ClaimTaskRequest{
 			TaskId:         args[0],
 			IdempotencyKey: idempotencyKey,
+			ExternalRunId:  optionalString(cmd, "external-run-id"),
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to claim task: %w", err)
@@ -267,6 +268,9 @@ var tasksClaimCmd = &cobra.Command{
 			}
 		} else {
 			cmd.Printf("Task %s claimed\n", res.Msg.Task.Id)
+			if receipt := res.Msg.Attempt; receipt != nil && receipt.Id != "" {
+				cmd.Printf("Claim receipt: %s\n", receipt.Id)
+			}
 			if res.Msg.LatestHandoffNote != nil {
 				cmd.Printf("Handoff note (%s): %s\n", noteAuthor(res.Msg.LatestHandoffNote), res.Msg.LatestHandoffNote.Content)
 			}
@@ -567,6 +571,7 @@ func init() {
 	tasksCmd.AddCommand(tasksCreateCmd)
 	tasksCmd.AddCommand(tasksUpdateCmd)
 	tasksCmd.AddCommand(tasksClaimCmd)
+	tasksClaimCmd.Flags().String("external-run-id", "", "Optional external job/run correlation recorded with the claim")
 	tasksCmd.AddCommand(tasksAssignCmd)
 	tasksCmd.AddCommand(tasksUnassignCmd)
 	tasksCmd.AddCommand(tasksReviewerAddCmd)

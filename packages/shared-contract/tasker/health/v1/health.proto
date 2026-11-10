@@ -1123,6 +1123,7 @@ message UsageRecord {
   int64 outputTokens = 9;
   int64 costMicros = 10;
   string createdAt = 11;
+  optional string attemptId = 12;
 }
 message ReportUsageRequest {
   string taskId = 1;
@@ -1131,6 +1132,7 @@ message ReportUsageRequest {
   int64 outputTokens = 4;
   int64 costMicros = 5;
   optional string idempotencyKey = 6;
+  optional string attemptId = 7;
 }
 message ReportUsageResponse {
   UsageRecord record = 1;
@@ -1332,6 +1334,7 @@ message TaskArtifactLink {
   string taskTitle = 5;
   optional string linkedAt = 6;
   EvidenceActor linkedBy = 7;
+  optional string attemptId = 8;
 }
 
 message EvidenceActor {
@@ -1392,6 +1395,7 @@ message UpdateArtifactContentResponse {
 message LinkTaskArtifactRequest {
   string taskId = 1;
   string artifactId = 2;
+  optional string attemptId = 3;
 }
 
 message LinkTaskArtifactResponse {
@@ -1589,6 +1593,7 @@ message TaskNote {
   string noteType = 6;
   // M32-T06: the author's display name, resolved server-side.
   string agentName = 7;
+  optional string attemptId = 8;
 }
 
 message CreateTaskNoteRequest {
@@ -1599,6 +1604,7 @@ message CreateTaskNoteRequest {
   string content = 3;
   // M22-T02: defaults to "comment" server-side when omitted.
   string noteType = 4;
+  optional string attemptId = 5;
 }
 
 message CreateTaskNoteResponse {

@@ -1,8 +1,8 @@
 ---
 active_milestone: M57
-active_task: M57-T03
+active_task: M57-T04
 last_updated: 2026-11-10
-last_commit: 52c7ba4
+last_commit: f66b287
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,10 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M57-T03 verified:3/5 tasks.** Explicit owner/task/org-bound report association, unchanged legacy omission, stable keyed usage/link provenance, exact release handoffs and optional CLI/MCP arguments pass all36 checks (backend2350/zero failures; GUI1622/95.13% branches). CODE-v2 approves. Real MySQL8-way retries/lock-conflict rollback, populated upgrades, actual old SDK18 decodes and3 restored refusal faults pass. Four unchanged search/navigation failures and one auth timeout in the concurrent run pass in isolation; final suites are green with heavy jobs separated and generated CLI docs current. T04 next builds bounded history/source filters and real task-detail UI.382 done/14 pending overall; M57 is still unpublished. M56 main681dc20 and all10 post-main jobs are verified. Original branches/WIP/services remain preserved.
+
+**2026-11-10 — M57-T03 implemented, under review.** Explicit owner/task/org-bound note, usage and artifact associations, nullable both-dialect migrations and optional CLI/MCP arguments pass26 SQLite cases,95 affected cases, real MySQL3 cases/88 assertions, full CLI cmd and24 MCP cases. Actual old SDK448 messages/1297 fields/18 decodes remain compatible. Observed concurrent MySQL link duplication and unnormalized lock-conflict errors are fixed with parent locking/current reads and transactionalOperation; no historical rows are removed. Independent CODE-v2, restored fault checks and full36 still gate completion. M56 all8 main CI42822658627 and both integration42822658587 jobs passed after publication681dc20.381 done/15 pending; history UI is still T04. Earlier branches, user WIP and services remain preserved.
 
 **2026-11-10 — M57-T02 verified:2/5 tasks.** Atomic winning-ID receipts, stale-release fencing and exact human/retention closure pass all36 checks (backend2318/zero failures/95.89% functions/96.83% lines; GUI1622/95.13% branches). CODE-v1 approves;15 SQLite cases,46 real MySQL assertions,4 populated both-dialect upgrades,15 actual old-client decodes and3 restored rollback faults pass. M56 is published as681dc20 after all8 final-head jobs with identical tested/main trees; post-main CI42822658627/integration42822658587 remain pending. T03 next adds explicit owner/task-bound report association and worker arguments.381 done/15 pending; history UI is not delivered yet. Reconcile this clean checkpoint onto published main in a new owned delivery branch; preserve earlier pushed checkpoint and original user WIP/services.
 
@@ -1998,10 +2002,10 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
-| M57 | Attempt Correlation | in-progress | M46, M54 | 5 | 2 |
+| M57 | Attempt Correlation | in-progress | M46, M54 | 5 | 3 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 381 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 382 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

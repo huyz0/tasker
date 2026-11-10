@@ -8,6 +8,7 @@ import { requirePrincipal, authorizePrincipal, getTaskOrgId, getProjectOrgId } f
 import { recordTaskActivity, currentAssignee } from "./taskActivity";
 import type { Principal } from "../auth/session";
 import { ConnectError, Code } from "@connectrpc/connect";
+import { validatedReportAttemptId } from './taskAttempts';
 
 // --- Zod Request Schema ---
 
@@ -21,7 +22,8 @@ import { ConnectError, Code } from "@connectrpc/connect";
 const CreateTaskNoteSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   content: z.string().min(1, "content is required").max(8192),
-  noteType: z.enum(["comment", "handoff"]).default("comment"),
+  noteType: z.preprocess(value => value === '' ? undefined : value, z.enum(["comment", "handoff"]).default("comment")),
+  attemptId: z.string().min(1).max(256).optional(),
 });
 
 const ListHandoffNotesSchema = z.object({
@@ -89,7 +91,7 @@ export async function recordTaskNote(
   db: any,
   isStandalone: boolean,
   nc: any,
-  note: { taskId: string; agentId: string; content: string; noteType: string },
+  note: { taskId: string; agentId: string; content: string; noteType: string; attemptId?: string },
 ) {
   const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
   // M19-T02: set explicitly rather than left to insertRecord's default -
@@ -169,12 +171,14 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
         );
       }
       await authorizePrincipal(db, principal, orgId, { scope: "comments:write", permission: "tasknote:write" });
+      const attemptId = await validatedReportAttemptId(db, isStandalone, { taskId: parsed.taskId, orgId, principal, attemptId: parsed.attemptId });
 
       const noteResp = await recordTaskNote(db, isStandalone, nc, {
         taskId: parsed.taskId,
         agentId: principal.agentId,
         content: parsed.content,
         noteType: parsed.noteType,
+        ...(attemptId !== undefined ? { attemptId } : {}),
       });
       return { taskNote: noteResp };
     },
@@ -232,6 +236,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
           content: (notes as any).content,
           createdAt: (notes as any).createdAt,
           noteType: (notes as any).noteType,
+          attemptId: (notes as any).attemptId,
         },
       });
 

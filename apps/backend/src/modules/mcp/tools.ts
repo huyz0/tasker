@@ -143,8 +143,8 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "link_task_artifact", title: "Link task evidence",
     description: "Attach a mutable artifact reference to a task in the same organization. This records the current linker, not content authorship or verified completion.",
-    inputSchema: schema({ task_id: str("Task id"), artifact_id: str("Artifact id") }, ["task_id", "artifact_id"]), annotations: { readOnlyHint: false },
-    service: ArtifactService, method: "LinkTaskArtifact", request: (a) => ({ taskId: a.task_id, artifactId: a.artifact_id }),
+    inputSchema: schema({ task_id: str("Task id"), artifact_id: str("Artifact id"), attempt_id: str("Caller-owned claim receipt", { maxLength: 256 }) }, ["task_id", "artifact_id"]), annotations: { readOnlyHint: false },
+    service: ArtifactService, method: "LinkTaskArtifact", request: (a) => defined({ taskId: a.task_id, artifactId: a.artifact_id, attemptId: a.attempt_id }),
   },
   {
     name: "list_task_artifact_links", title: "List task evidence",
@@ -234,21 +234,22 @@ export const TOOL_SPECS: ToolSpec[] = [
     inputSchema: schema({
       project_id: str("Project id"), task_type_id: str("Only this task type"), label_id: str("Only tasks with this label"),
       idempotency_key: str("Retry with the same key to get the original claim back"),
+      external_run_id: str("Optional external job/run correlation", { maxLength: 256 }),
     }, ["project_id"]),
     service: TaskService, method: "ClaimNextTask",
-    request: (a) => defined({ projectId: a.project_id, taskTypeId: a.task_type_id, labelId: a.label_id, idempotencyKey: a.idempotency_key }),
+    request: (a) => defined({ projectId: a.project_id, taskTypeId: a.task_type_id, labelId: a.label_id, idempotencyKey: a.idempotency_key, externalRunId: a.external_run_id }),
   },
   {
     name: "claim_task", title: "Claim a task",
     description: "Claims one named task, if nobody holds it.",
-    inputSchema: schema({ task_id: str("Task id"), idempotency_key: str("Retry key") }, ["task_id"]),
-    service: TaskService, method: "ClaimTask", request: (a) => defined({ taskId: a.task_id, idempotencyKey: a.idempotency_key }),
+    inputSchema: schema({ task_id: str("Task id"), idempotency_key: str("Retry key"), external_run_id: str("Optional external job/run correlation", { maxLength: 256 }) }, ["task_id"]),
+    service: TaskService, method: "ClaimTask", request: (a) => defined({ taskId: a.task_id, idempotencyKey: a.idempotency_key, externalRunId: a.external_run_id }),
   },
   {
     name: "release_task", title: "Release a task",
     description: "Gives back a task you claimed, optionally recording a handoff note first (what you tried, what is blocked, the next step).",
-    inputSchema: schema({ task_id: str("Task id"), handoff_note: str("Handoff note for the next claimant") }, ["task_id"]),
-    service: TaskService, method: "ReleaseTask", request: (a) => defined({ taskId: a.task_id, handoffNote: a.handoff_note }),
+    inputSchema: schema({ task_id: str("Task id"), handoff_note: str("Handoff note for the next claimant"), expected_attempt_id: str("Release only this claim generation", { maxLength: 256 }) }, ["task_id"]),
+    service: TaskService, method: "ReleaseTask", request: (a) => defined({ taskId: a.task_id, handoffNote: a.handoff_note, expectedAttemptId: a.expected_attempt_id }),
   },
   {
     name: "list_my_tasks", title: "List my tasks",
@@ -260,9 +261,9 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "add_task_note", title: "Add a task note",
     description: "Records an agent note on a task; handoff=true marks it as a handoff note the next claimant receives.",
-    inputSchema: schema({ task_id: str("Task id"), content: str("Markdown"), handoff: bool("A handoff note") }, ["task_id", "content"]),
+    inputSchema: schema({ task_id: str("Task id"), content: str("Markdown"), handoff: bool("A handoff note"), attempt_id: str("Caller-owned claim receipt", { maxLength: 256 }) }, ["task_id", "content"]),
     service: TaskNoteService, method: "CreateTaskNote",
-    request: (a) => ({ taskId: a.task_id, content: a.content, noteType: a.handoff ? "handoff" : "comment" }),
+    request: (a) => defined({ taskId: a.task_id, content: a.content, noteType: a.handoff ? "handoff" : "comment", attemptId: a.attempt_id }),
   },
   {
     name: "list_task_notes", title: "List task notes",
@@ -353,11 +354,12 @@ export const TOOL_SPECS: ToolSpec[] = [
       input_tokens: int("Input tokens", 0, 1_000_000_000), output_tokens: int("Output tokens", 0, 1_000_000_000),
       cost_micros: int("Cost in micro-dollars (USD x 1,000,000)", 0, 1_000_000_000),
       idempotency_key: str("Retry with the same key to get the original report back"),
+      attempt_id: str("Caller-owned claim receipt", { maxLength: 256 }),
     }, ["task_id"]),
     service: TaskService, method: "ReportUsage",
     request: (a) => defined({
       taskId: a.task_id, modelName: a.model_name, inputTokens: a.input_tokens ?? 0, outputTokens: a.output_tokens ?? 0,
-      costMicros: a.cost_micros ?? 0, idempotencyKey: a.idempotency_key,
+      costMicros: a.cost_micros ?? 0, idempotencyKey: a.idempotency_key, attemptId: a.attempt_id,
     }),
   },
   {

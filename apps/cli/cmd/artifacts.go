@@ -526,6 +526,7 @@ var artifactsLinkTaskCmd = &cobra.Command{
 		res, err := client.LinkTaskArtifact(cmd.Context(), connect.NewRequest(&healthv1.LinkTaskArtifactRequest{
 			TaskId:     taskID,
 			ArtifactId: artifactID,
+			AttemptId:  optionalString(cmd, "attempt-id"),
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to link artifact to task: %w", err)
@@ -633,6 +634,7 @@ func init() {
 	foldersCreateCmd.Flags().String("name", "", "Folder name")
 	artifactsLinkTaskCmd.Flags().String("task", "", "Task ID to link the artifact to")
 	artifactsLinkTaskCmd.Flags().String("artifact", "", "Artifact ID to link")
+	artifactsLinkTaskCmd.Flags().String("attempt-id", "", "Claim receipt owned by the caller; omit to leave this link ungrouped")
 	artifactsUnlinkTaskCmd.Flags().String("task", "", "Task ID to unlink the artifact from")
 	artifactsUnlinkTaskCmd.Flags().String("artifact", "", "Artifact ID to unlink")
 	artifactsListTaskLinksCmd.Flags().String("task", "", "List links for this task")

@@ -9,7 +9,8 @@ import { assertCan, can } from "../../lib/policy";
 import { setRequestProject } from "../../lib/requestContext";
 import { ConnectError, Code } from "@connectrpc/connect";
 
-import { withUnitOfWork } from "../../db/access";
+import { transactionalOperation } from "../../db/access";
+import { validatedReportAttemptId } from '../tasks/taskAttempts';
 import { storedBytesSql, contentPrefixSql, decodeContentPrefix, artifactContentValue, linkToWire, linkActor, evidenceMetadata } from "./evidence";
 
 // --- Zod Request Schemas ---
@@ -49,12 +50,13 @@ const UpdateArtifactContentSchema = z.object({
   contentType: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(128).optional()),
 });
 
-const LinkTaskArtifactSchema = z.object({
+const TaskArtifactPairSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   artifactId: z.string().min(1, "artifactId is required"),
 });
 
-const UnlinkTaskArtifactSchema = LinkTaskArtifactSchema;
+const LinkTaskArtifactSchema = TaskArtifactPairSchema.extend({ attemptId: z.string().min(1).max(256).optional() });
+const UnlinkTaskArtifactSchema = TaskArtifactPairSchema;
 
 const ListTaskArtifactLinksSchema = z
   .object({
@@ -307,13 +309,22 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     async linkTaskArtifact(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = LinkTaskArtifactSchema.parse(req);
-      return withUnitOfWork(db, async () => {
+      return transactionalOperation(db, async () => {
         const taskOrgId = await getTaskOrgId(db, parsed.taskId);
         const artifactOrgId = await getArtifactOrgId(db, parsed.artifactId);
         if (taskOrgId !== artifactOrgId) {
           throw new ConnectError("task and artifact belong to different organizations", Code.InvalidArgument);
         }
         await authorizePrincipal(db, principal, taskOrgId, { scope: 'artifacts:write', permission: 'artifact:write' });
+        const attemptId = await validatedReportAttemptId(db, isStandalone, { taskId: parsed.taskId, orgId: taskOrgId, principal, attemptId: parsed.attemptId });
+
+        if (!isStandalone) {
+          // Serialize pair creation without dropping historical duplicate rows.
+          const artifacts = schemaMysql.artifacts;
+          const [current] = await db.select({ id: artifacts.id }).from(artifacts)
+            .where(eq(artifacts.id, parsed.artifactId)).for('update').limit(1);
+          if (!current) throw new ConnectError('artifact not found', Code.NotFound);
+        }
 
         const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
         const newId = `tal-${crypto.randomUUID()}`;
@@ -323,21 +334,29 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
           artifactId: parsed.artifactId,
           linkedAt: new Date(Math.floor(Date.now() / 1000) * 1000),
           ...await linkActor(db, isStandalone, principal),
+          attemptId: attemptId ?? null,
         };
 
         // Clicking twice used to produce two rows, and the artifact then appeared
         // twice on the task. Same treatment as assignTask: a duplicate is
         // success, and the existing row is what comes back.
-        const existing = await db
+        const existingQuery = db
           .select()
           .from(links)
           .where(and(eq((links as any).taskId, parsed.taskId), eq((links as any).artifactId, parsed.artifactId)))
           .limit(1);
-        if (existing.length > 0) return { link: linkToWire(existing[0]) };
+        // MySQL authorization may have established an older consistent snapshot.
+        const existing = await (isStandalone ? existingQuery : existingQuery.for('update'));
+        if (existing.length > 0) {
+          if (attemptId !== undefined && existing[0].attemptId !== attemptId) {
+            throw new ConnectError('artifact is already linked with different claim association', Code.FailedPrecondition);
+          }
+          return { link: linkToWire(existing[0]) };
+        }
 
         await insertRecord(db, links, payload, isStandalone, false);
         return { link: linkToWire(payload) };
-      });
+      })();
     },
     async unlinkTaskArtifact(req: unknown, { values: contextValues }: { values: any }) {
       // requireUser, not requirePrincipal: an agent that can detach its own

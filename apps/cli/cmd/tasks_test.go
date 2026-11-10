@@ -99,6 +99,7 @@ type fakeTaskClaimHandler struct {
 	v1connect.UnimplementedTaskServiceHandler
 	gotReq            *healthv1.ClaimTaskRequest
 	latestHandoffNote *healthv1.TaskNote
+	attempt           *healthv1.TaskAttempt
 }
 
 func (f *fakeTaskClaimHandler) ClaimTask(
@@ -113,6 +114,7 @@ func (f *fakeTaskClaimHandler) ClaimTask(
 			Status:    "in-progress",
 		},
 		LatestHandoffNote: f.latestHandoffNote,
+		Attempt:           f.attempt,
 	}), nil
 }
 

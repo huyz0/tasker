@@ -379,6 +379,13 @@
       "when": 1794268800000,
       "tag": "0053_task_claim_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "5",
+      "when": 1794268800001,
+      "tag": "0054_report_attempts",
+      "breakpoints": true
     }
   ]
 }

@@ -124,6 +124,11 @@ authenticated owner on the same task and organization.
   new provenance, not an immutable artifact-content snapshot.
 - Add nullable association columns/indexes without rewriting old rows. Keep
   notes, usage and artifact metadata visible when association is absent.
+- Serialize MySQL link creation on the artifact parent and use a current locking
+  duplicate read after any wait. An earlier authorization snapshot must not let
+  simultaneous retries create competing task/artifact pairs. SQLite uses its
+  existing managed write unit. Retain historical duplicate rows rather than
+  imposing a new unique index that would require choosing/deleting old provenance.
 
 ### Bounded reads and compatible wire changes
 

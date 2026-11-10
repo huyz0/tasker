@@ -29,14 +29,19 @@ async function seedLegacy(db: any, S: typeof SQ | typeof MY) {
   await db.insert(S.agentRoles).values({ id: roleId, orgId, name: 'Legacy role', systemPrompt: '', capabilities: '[]', createdAt: now });
   await db.insert(S.agents).values({ id: agentId, orgId, agentRoleId: roleId, name: 'Legacy worker', createdAt: now });
   await db.insert(S.taskAssignments).values({ id: `ta-legacy-${suffix}`, taskId, agentId, source: 'claim' });
-  await db.insert(S.taskNotes).values({ id: `note-${suffix}`, taskId, agentId, content: 'Legacy report', noteType: 'comment', createdAt: now });
+  // This database predates the new nullable report column; seed the actual old shape.
+  const legacyNote = sql`INSERT INTO task_notes (id, task_id, agent_id, content, note_type, created_at)
+    VALUES (${`note-${suffix}`}, ${taskId}, ${agentId}, ${'Legacy report'}, ${'comment'}, ${S === SQ ? Math.floor(now.getTime() / 1000) : now})`;
+  if (S === SQ) await db.run(legacyNote); else await db.execute(legacyNote);
   return { orgId, taskId, agentId };
 }
 
 async function verifyUpgrade(db: any, S: typeof SQ | typeof MY, f: Awaited<ReturnType<typeof seedLegacy>>) {
   expect(await db.select().from(S.taskClaimAttempts)).toHaveLength(0);
   expect(await db.select().from(S.taskAssignments).where(eq(S.taskAssignments.taskId, f.taskId))).toHaveLength(1);
-  expect((await db.select().from(S.taskNotes).where(eq(S.taskNotes.taskId, f.taskId)))[0].content).toBe('Legacy report');
+  const legacyNote = (await db.select().from(S.taskNotes).where(eq(S.taskNotes.taskId, f.taskId)))[0];
+  expect(legacyNote.content).toBe('Legacy report');
+  expect(legacyNote.attemptId).toBeNull();
   const ctx = makeAuthContext(null);
   ctx.values.set(currentPrincipalKey, { kind: 'agent', agentId: f.agentId, orgId: f.orgId, tokenId: 'fixture-token', scopes: ['tasks:read', 'tasks:write'] });
   const tasks = createTaskManagementHandler(db);

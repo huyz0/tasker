@@ -16,7 +16,7 @@ import { createInputRequestHandlers, waitingOnPeopleCounts } from "./inputReques
 import { createApprovalHandlers, isGatedTransition } from "./approvals";
 import { createUsageHandlers, taskUsageTotals } from "./usage";
 import { createDigestHandlers, taskSummaryToWire } from "./digest";
-import { createClaimReceipt, endClaimReceipts } from "./taskAttempts";
+import { createClaimReceipt, endClaimReceipts, assignmentReceiptId } from "./taskAttempts";
 import { MAX_PRIORITY, priorityRankSql, LINK_KINDS, assertLinkAllowed, openBlockerCounts, hasOpenBlockerSql, newlyUnblocked, assertParentAllowed, insertLink, deleteLink, listLinks } from "./taskGraph";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -702,8 +702,8 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
    * The atomic claim (M14-T06): one `INSERT ... SELECT ... WHERE NOT EXISTS`,
    * so of several callers racing one task exactly one wins, with no gap
    * between check and write on either dialect. Shared by ClaimTask and
-   * ClaimNextTask (M33-T02). Records `source = 'claim'` (ADR-0027). True when
-   * this call won.
+   * ClaimNextTask (M33-T02). Records `source = 'claim'` (ADR-0027). Returns
+   * the winning assignment ID only when this call won.
    */
   async function insertClaim(taskId: string, principal: Principal): Promise<string | undefined> {
     const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
@@ -1388,9 +1388,9 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     /**
      * M33-T03 (ADR-0027): gives back a task the caller holds by its own
      * claim. An assignment a person made is theirs to change, not the
-     * holder's. With a handoff note, the note is written first - so the next
-     * claimant sees it - and refused up front if the caller may not write one,
-     * before anything is released.
+     * holder's. A handoff and ownership removal commit together so the next
+     * claimant sees continuity. Missing note permission is refused before
+     * anything is removed.
      */
     async releaseTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
@@ -1425,8 +1425,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const removed = isStandalone ? (deleted as any).changes : (deleted as any)[0]?.affectedRows;
       if (!removed) throw new ConnectError('claim changed during release - retry', Code.Aborted);
       await endClaimReceipts(db, isStandalone, [held.id], 'released', principal);
+      const handoffAttemptId = parsed.handoffNote !== undefined
+        ? await assignmentReceiptId(db, isStandalone, { taskId: parsed.taskId, orgId, principal, attemptId: held.id }) : undefined;
       const handoffNote = parsed.handoffNote !== undefined && principal.kind === "agent"
-        ? await recordTaskNote(db, isStandalone, nc, { taskId: parsed.taskId, agentId: principal.agentId, content: parsed.handoffNote, noteType: "handoff" })
+        ? await recordTaskNote(db, isStandalone, nc, { taskId: parsed.taskId, agentId: principal.agentId, content: parsed.handoffNote, noteType: "handoff", ...(handoffAttemptId !== undefined ? { attemptId: handoffAttemptId } : {}) })
         : undefined;
       if (removed) {
         const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;

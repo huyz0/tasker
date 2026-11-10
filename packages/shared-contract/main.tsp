@@ -1375,6 +1375,7 @@ model UsageRecord {
   @field(9) outputTokens: int64;
   @field(10) costMicros: int64;
   @field(11) createdAt: string;
+  @field(12) attemptId?: string;
 }
 
 // Replaying an idempotencyKey on the same task returns the original record
@@ -1386,6 +1387,7 @@ model ReportUsageRequest {
   @field(4) outputTokens: int64;
   @field(5) costMicros: int64;
   @field(6) idempotencyKey?: string;
+  @field(7) attemptId?: string;
 }
 model ReportUsageResponse {
   @field(1) record: UsageRecord;
@@ -1641,6 +1643,7 @@ model TaskArtifactLink {
   @field(6) linkedAt?: string;
 
   @field(7) linkedBy?: EvidenceActor;
+  @field(8) attemptId?: string;
 }
 
 model EvidenceActor {
@@ -1698,6 +1701,7 @@ model UpdateArtifactContentResponse {
 model LinkTaskArtifactRequest {
   @field(1) taskId: string;
   @field(2) artifactId: string;
+  @field(3) attemptId?: string;
 }
 model LinkTaskArtifactResponse {
   @field(1) link: TaskArtifactLink;
@@ -1922,6 +1926,8 @@ model TaskNote {
   // not have to load the org's whole agent list to label a note. Empty when
   // the agent has since been purged.
   @field(7) agentName: string;
+
+  @field(8) attemptId?: string;
 }
 
 model CreateTaskNoteRequest {
@@ -1932,6 +1938,8 @@ model CreateTaskNoteRequest {
   // proto3-optional unset-vs-cleared distinction, just an ordinary optional
   // field with a Zod default, since there is no "clear the type" operation.
   @field(4) noteType?: string;
+
+  @field(5) attemptId?: string;
 }
 
 model CreateTaskNoteResponse {

@@ -544,8 +544,10 @@ export const taskArtifactLinks = sqliteTable("task_artifact_links", {
   linkedByKind: text("linked_by_kind"),
   linkedById: text("linked_by_id"),
   linkedByName: text("linked_by_name"),
+  attemptId: text("attempt_id").references(() => taskClaimAttempts.id),
 }, (table) => {
   return {
+    attemptIdx: index("task_artifact_links_attempt_id_idx").on(table.attemptId),
     taskIdIdx: index("task_artifact_links_task_id_idx").on(table.taskId),
     artifactIdIdx: index("task_artifact_links_artifact_id_idx").on(table.artifactId),
   };
@@ -603,8 +605,10 @@ export const taskNotes = sqliteTable("task_notes", {
   // column. SQLite has no enum type - "comment" | "handoff" is enforced in
   // Zod only, same as every other enum-like column in this file.
   noteType: text("note_type").notNull().default("comment"),
+  attemptId: text("attempt_id").references(() => taskClaimAttempts.id),
 }, (table) => {
   return {
+    attemptIdx: index("task_notes_attempt_id_idx").on(table.attemptId),
     taskIdIdx: index("task_notes_task_id_idx").on(table.taskId),
     // M22-T03: listHandoffNotes filters to noteType = 'handoff' then groups
     // by taskId for the latest-per-task query - this composite index covers
@@ -1085,8 +1089,10 @@ export const usageRecords = sqliteTable("usage_records", {
   costMicros: integer("cost_micros").notNull().default(0),
   idempotencyKey: text("idempotency_key"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  attemptId: text("attempt_id").references(() => taskClaimAttempts.id),
 }, (table) => {
   return {
+    attemptIdx: index("usage_records_attempt_id_idx").on(table.attemptId),
     taskCreatedIdx: index("usage_records_task_id_created_idx").on(table.taskId, table.createdAt),
     orgCreatedIdx: index("usage_records_org_id_created_idx").on(table.orgId, table.createdAt),
     projectCreatedIdx: index("usage_records_project_id_created_idx").on(table.projectId, table.createdAt),

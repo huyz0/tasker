@@ -24,9 +24,10 @@ var tasksNoteAddCmd = &cobra.Command{
 
 		client := backend.NewTaskNoteServiceClient()
 		res, err := client.CreateTaskNote(cmd.Context(), connect.NewRequest(&healthv1.CreateTaskNoteRequest{
-			TaskId:   args[0],
-			Content:  content,
-			NoteType: noteType,
+			TaskId:    args[0],
+			Content:   content,
+			NoteType:  noteType,
+			AttemptId: optionalString(cmd, "attempt-id"),
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to add note: %w", err)
@@ -206,6 +207,7 @@ func init() {
 
 	tasksNoteAddCmd.Flags().String("content", "", "Note text")
 	tasksNoteAddCmd.Flags().String("type", "", "Note type: comment (default) or handoff")
+	tasksNoteAddCmd.Flags().String("attempt-id", "", "Claim receipt owned by the caller; omit to leave this note ungrouped")
 	// --agent is gone (M04-T06): a task note is authored by the authenticated
 	// agent, not by whoever the caller names. Authenticate with an agent token
 	// (M04-T09 adds --token / TASKER_TOKEN).

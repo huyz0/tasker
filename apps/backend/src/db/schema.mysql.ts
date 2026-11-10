@@ -410,8 +410,10 @@ export const taskArtifactLinks = mysqlTable("task_artifact_links", {
   linkedByKind: varchar("linked_by_kind", { length: 16 }),
   linkedById: varchar("linked_by_id", { length: 256 }),
   linkedByName: varchar("linked_by_name", { length: 256 }),
+  attemptId: varchar("attempt_id", { length: 256 }).references(() => taskClaimAttempts.id),
 }, (table) => {
   return {
+    attemptIdx: index("task_artifact_links_attempt_id_idx").on(table.attemptId),
     taskIdIdx: index("task_artifact_links_task_id_idx").on(table.taskId),
     artifactIdIdx: index("task_artifact_links_artifact_id_idx").on(table.artifactId),
   };
@@ -468,8 +470,10 @@ export const taskNotes = mysqlTable("task_notes", {
   // M22-T03 (ADR-0017): a handoff note is a TaskNote with noteType: 'handoff'
   // - same table, same author restriction, distinguished only by this column.
   noteType: mysqlEnum("note_type", ['comment', 'handoff']).default('comment').notNull(),
+  attemptId: varchar("attempt_id", { length: 256 }).references(() => taskClaimAttempts.id),
 }, (table) => {
   return {
+    attemptIdx: index("task_notes_attempt_id_idx").on(table.attemptId),
     taskIdIdx: index("task_notes_task_id_idx").on(table.taskId),
     // M22-T03: listHandoffNotes filters to noteType = 'handoff' then groups
     // by taskId for the latest-per-task query - this composite index covers
@@ -862,8 +866,10 @@ export const usageRecords = mysqlTable("usage_records", {
   costMicros: bigint("cost_micros", { mode: "number" }).notNull().default(0),
   idempotencyKey: varchar("idempotency_key", { length: 256 }),
   createdAt: timestamp("created_at").notNull(),
+  attemptId: varchar("attempt_id", { length: 256 }).references(() => taskClaimAttempts.id),
 }, (table) => {
   return {
+    attemptIdx: index("usage_records_attempt_id_idx").on(table.attemptId),
     taskCreatedIdx: index("usage_records_task_id_created_idx").on(table.taskId, table.createdAt),
     orgCreatedIdx: index("usage_records_org_id_created_idx").on(table.orgId, table.createdAt),
     projectCreatedIdx: index("usage_records_project_id_created_idx").on(table.projectId, table.createdAt),

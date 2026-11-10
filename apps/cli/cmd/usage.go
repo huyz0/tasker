@@ -96,6 +96,7 @@ var tasksUsageReportCmd = &cobra.Command{
 		res, err := backend.NewTaskServiceClient().ReportUsage(cmd.Context(), connect.NewRequest(&healthv1.ReportUsageRequest{
 			TaskId: args[0], ModelName: optionalString(cmd, "model"), InputTokens: in, OutputTokens: out, CostMicros: micros,
 			IdempotencyKey: optionalString(cmd, "idempotency-key"),
+			AttemptId:      optionalString(cmd, "attempt-id"),
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to report usage: %w", err)
@@ -211,6 +212,7 @@ func init() {
 	tasksUsageReportCmd.Flags().String("cost-usd", "", "Cost in US dollars, e.g. 0.015 (up to 6 decimals)")
 	tasksUsageReportCmd.Flags().Int64("cost-micros", 0, "Cost in micro-dollars (USD x 1,000,000), instead of --cost-usd")
 	tasksUsageReportCmd.Flags().String("idempotency-key", "", "Retry with the same key to get the original report back instead of counting twice")
+	tasksUsageReportCmd.Flags().String("attempt-id", "", "Claim receipt owned by the caller; omit to leave this report ungrouped")
 	tasksUsageShowCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	tasksUsageShowCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	tasksUsageShowCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")

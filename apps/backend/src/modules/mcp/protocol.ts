@@ -49,7 +49,11 @@ const INSTRUCTIONS =
   "Tasker is a task tracker for AI agents. The usual loop: whoami, then claim_next_task " +
   "(the most important ready task in a project), work on it, then set_task_status to finish " +
   "it or release_task with a handoff note to give it back. Record follow-up work with " +
-  "create_task (discovered_from_task_id, blocked_by) and durable facts with record_belief.";
+  "create_task (discovered_from_task_id, blocked_by) and durable facts with record_belief. " +
+  "When a claim returns attempt.id, keep that ownership receipt. Pass it as attempt_id on notes, " +
+  "usage and artifact links, and as expected_attempt_id when releasing, to refuse a changed claim. " +
+  "These fields are optional; omitted report association stays ungrouped. Release ends Tasker " +
+  "ownership while the external worker process remains under your control.";
 
 const error = (id: Id | null, code: number, message: string): Response => ({ jsonrpc: "2.0", id, error: { code, message } });
 const ok = (id: Id, result: unknown): Response => ({ jsonrpc: "2.0", id, result });

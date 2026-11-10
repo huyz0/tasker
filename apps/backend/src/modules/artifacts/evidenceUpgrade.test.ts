@@ -40,7 +40,7 @@ async function seedLegacy(db: any, S: typeof SQ | typeof MY) {
 async function verifyUpgrade(db: any, S: typeof SQ | typeof MY, f: Awaited<ReturnType<typeof seedLegacy>>) {
   const [row] = await db.select().from(S.taskArtifactLinks);
   expect(row).toEqual({ id: f.linkId, taskId: f.taskId, artifactId: f.artifactId,
-    linkedAt: null, linkedByKind: null, linkedById: null, linkedByName: null });
+    linkedAt: null, linkedByKind: null, linkedById: null, linkedByName: null, attemptId: null });
   const handler = createArtifactsHandler(db);
   const repeated: any = await handler.linkTaskArtifact({ taskId: f.taskId, artifactId: f.artifactId }, makeAuthContext(f.userId));
   expect(repeated.link).toEqual({ id: f.linkId, taskId: f.taskId, artifactId: f.artifactId });

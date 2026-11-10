@@ -347,9 +347,10 @@ Usage:
   tasker artifacts link-task [flags]
 
 Flags:
-      --artifact string   Artifact ID to link
-  -h, --help              help for link-task
-      --task string       Task ID to link the artifact to
+      --artifact string     Artifact ID to link
+      --attempt-id string   Claim receipt owned by the caller; omit to leave this link ungrouped
+  -h, --help                help for link-task
+      --task string         Task ID to link the artifact to
 ```
 
 #### `tasker artifacts list`
@@ -1956,6 +1957,7 @@ Usage:
   tasker tasks claim [task_id] [flags]
 
 Flags:
+      --external-run-id string   Optional external job/run correlation recorded with the claim
   -h, --help                     help for claim
       --idempotency-key string   Optional key: replaying the same key from the same principal returns the original claim instead of erroring on an already-claimed task
 ```
@@ -1972,6 +1974,7 @@ Usage:
   tasker tasks claim-next [flags]
 
 Flags:
+      --external-run-id string   Optional external job/run correlation recorded with the claim
   -h, --help                     help for claim-next
       --idempotency-key string   Optional key: a retry with the same key returns the original claim instead of claiming another task
       --label string             Only tasks carrying this label ID
@@ -2161,9 +2164,10 @@ Usage:
   tasker tasks note-add [task_id] [flags]
 
 Flags:
-      --content string   Note text
-  -h, --help             help for note-add
-      --type string      Note type: comment (default) or handoff
+      --attempt-id string   Claim receipt owned by the caller; omit to leave this note ungrouped
+      --content string      Note text
+  -h, --help                help for note-add
+      --type string         Note type: comment (default) or handoff
 ```
 
 #### `tasker tasks note-delete`
@@ -2285,8 +2289,9 @@ Usage:
   tasker tasks release [task_id] [flags]
 
 Flags:
-      --handoff string   A handoff note to record before releasing: what you tried, what is blocked, the next step
-  -h, --help             help for release
+      --expected-attempt-id string   Release only this claim generation; omission uses legacy release
+      --handoff string               A handoff note to record before releasing: what you tried, what is blocked, the next step
+  -h, --help                         help for release
 ```
 
 #### `tasker tasks restore`
