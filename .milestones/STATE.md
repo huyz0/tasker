@@ -1,8 +1,8 @@
 ---
 active_milestone: M55
-active_task: M55-T04
+active_task: M55-T05
 last_updated: 2026-11-10
-last_commit: f4dadcd
+last_commit: 7f559fa
 blocked: false
 blocker: null
 ---
@@ -15,7 +15,7 @@ blocker: null
 
 ## Now
 
-**2026-11-10 — M55-T04 in progress.** Existing source settlement/event reconciliation and exact combined assignment payload pass127 native cases plus7 Connect-stream cases. Three actual source-action/broker/browser network-state journeys pass; preserved summary writing and read authority are verified. Browser offline emulation retains existing streams, so no severed-stream proof is claimed. New deterministic previews, controlled faults, independent review and full gates remain pending.23 tasks remain; PR #8 stays draft. Frontend/security standards plus TDD apply. Original services are preserved; live proof uses the owned broker/runtime.
+**2026-11-10 — M55-T04 verified:4/5 tasks.** Existing contextual settlement, native event roots and combined assignment exact-pair payload pass all35 checks (GUI1551/95.14% branches; backend2302/zero failures),228 affected cases, nine restored faults and three real browser journeys. CODE-v8/UX-v5 approve. Newly populated comment preview exposes/fixes agent timestamp contrast; initial268 matrices fail only that, rebuilt affected11 pass44/22 scans. Final-head full preview CI still gates publication. T05 next proves actual stream-gap/all-source supervision and public docs.374 done/22 pending overall; PR #8 remains draft. Original services and memory-only credentials are preserved.
 
 **2026-11-10 — M55-T03 verified:3/5 tasks.** Scoped Attention/All projects, native source navigation, persistent shared-authority fences and once-only canonical task/Back restoration pass all35 gates (GUI1532/95.13% branches; backend2302/zero failures). Final254 previews pass1016 accessibility/508 overflow checks, both real browser journeys pass with51 questions/two projects, and five settled captures receive UX-v3/CODE-v6 approval.76 focused UI cases/nine restored faults pass. A reproduced Memory label carryover is corrected, and the new RPC is genuinely used without its staged exception. T04 next reconciles existing contextual actions/events, including the preflight's combined assignment exact-pair omission; no stale-incarnation guarantee before M57.23 tasks remain; PR #8 is draft.
 
@@ -1968,12 +1968,12 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
-| M55 | Attention Center | in-progress | M48, M53, M54 | 5 | 3 |
+| M55 | Attention Center | in-progress | M48, M53, M54 | 5 | 4 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 373 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 374 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

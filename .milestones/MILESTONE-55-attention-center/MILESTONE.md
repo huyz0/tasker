@@ -47,7 +47,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/gui/src/features/Attention/; apps/gui/src/App.tsx; apps/gui/src/components/layout/AppShell.tsx; NAVIGATION.md.
   - **Verify**: Each group supports loading/empty/error/next-page retry, keyboard and mobile layouts; accessible count labels say what is loaded/total; canonical links use actual source scope; existing queues remain reachable.
 
-- [ ] **M55-T04** — Resolve attention through existing source mutations and reconcile stale/live changes.
+- [x] **M55-T04** — Resolve attention through existing source mutations and reconcile stale/live changes.
   - **Files**: apps/gui/src/features/Attention/; apps/gui/src/lib/eventQueryKeys.ts; apps/backend/src/modules/attention/.
   - **Verify**: Answer/decide/review/unassign uses existing server rules; successful actions remove current item and update original source; stale decisions and revoked permissions recover clearly; reconnect invalidates current truth; no competing state machine.
 

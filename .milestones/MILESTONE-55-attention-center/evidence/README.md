@@ -20,3 +20,21 @@ reconnecting; these discovery journeys verify current RPC reads and refresh.
 Mutation/event supervision remains M55-T04/T05 work. No agent credentials were
 minted in these tests. Independent UX-v3/CODE-v5 approve the five final captures;
 final automated story matrices and repository gates remain recorded separately.
+
+## Existing source-action reconciliation (T04)
+
+Four additional deterministic assembled previews show retained read/answer text
+after write refusal, combined-pair removal followed by current Unassigned, and
+readable agent-comment timestamps in light mobile/dark desktop. Existing task
+controls have not moved onto Attention. Comment captures wait for the actual rich
+editor, correcting the earlier loading-editor frame noted by UX-v5. CODE-v8/UX-v5
+approve the source/contrast correction. Three real browser journeys separately
+verify answer/draft/Back, reviewer removal and broker peer updates/browser
+offline-online reconciliation. Offline emulation did not sever an existing HTTP
+stream, so these captures/journeys do not claim that stronger recovery proof.
+
+The initial268-story matrices identify one real agent timestamp contrast defect;
+the other267 previews pass. After correction and rebuild, all11 affected previews
+pass44 WCAG/22 mobile scans. The full final-head matrix remains a required CI gate
+before main publication. Existing T03 discovery captures above predate configuring
+the owned M55 broker; no original broker/database was modified.

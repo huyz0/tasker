@@ -231,7 +231,7 @@ actual applicable final-head CI. Closure gates follow these ledger changes.
 
 ## M55-T04 — Existing source actions and current reconciliation
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-10
 - **Changed**: Reconcile attention after existing contextual source mutations and relevant activity/authority events, preserving source rules, notices, writing and query lifetime protections.
 - **Verified**: T03 committed/pushed asf4dadcd after all35 source/closure checks,254-story matrices, both real browser journeys,76 focused UI cases and reviewed five captures.3/5 M55 tasks are complete;23 tasks remain.
@@ -288,3 +288,16 @@ now reveals an actual agent timestamp contrast failure previously hidden by its
 empty fixture. The268-story overflow run fails on that settled axe result. Use
 the existing primary-subtle foreground for timestamp ink on agent-tinted cards;
 retain ordinary comment metadata styling. Re-run the rendered gate after fixing.
+
+T04 completion: all35 repository checks pass (23 cached,4m24s), including GUI1551
+with95.14% branches and backend2302/zero failures/95.85% functions/96.80% lines.
+The228 affected native cases,26 precise event cases,19 comment cases, nine restored
+behavioral faults and three real browser journeys pass. CODE-v8/UX-v5 approve.
+Four curated previews retain source-action/contrast evidence; the comment capture
+is now taken after the rich editor is visible. Initial268-story matrices catch
+only the timestamp contrast defect; rebuilt affected11 pass44/22 scans. Full
+final-head preview CI still gates milestone publication. No gate is relaxed.
+
+Four of five M55 tasks are complete;374 done/22 pending overall. T05 next verifies
+all-source supervision and actual stream-gap recovery, updates public entry-point
+docs and closes the milestone with applicable final-head CI before main merge.
