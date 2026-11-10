@@ -94,7 +94,7 @@ describe('existing contextual actions reconcile current Attention', () => {
 });
 
 describe('qualifying human task activity reconciliation', () => {
-  it.each(['task', 'artifact'])('keeps task-silence semantics after a new %s comment', async entityType => {
+  it.each(['task', 'artifact'] as const)('keeps task-silence semantics after a new %s comment', async entityType => {
     let present = true, reads = 0;
     mockRpc(AttentionService, 'ListAttention', request => { if (request.kind === 'stalled_claim') reads++; return { items: request.kind === 'stalled_claim' && present ? [source('stalled_claim')] : [], page: { totalCount: request.kind === 'stalled_claim' && present ? 1 : 0 } }; });
     mockRpc(CommentService, 'ListComments', { comments: [] });

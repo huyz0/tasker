@@ -265,3 +265,18 @@ No source contract, new permission or backend classification is changed. Current
 preview updates, actual event/read-authority and contextual browser proof,
 controlled faults, independent review and full gates remain pending. T04 stays
 in-progress;23 tasks remain.
+
+Seven native Connect-stream cases pass for task/activity/parent/name changes,
+resync and authority fencing. Three actual browser journeys now pass (15.4s):
+contextual answer with preserved summary draft/Back, reviewer removal without
+completion, and separate-client broker updates plus browser offline/online
+reconciliation before15s polling. The first offline harness wrongly assumed
+Chromium closes an existing HTTP stream; corrected to assert navigator network
+state. This is not proof of a severed-stream recovery. Deterministic source-action,
+reviewer and comment previews are authored; rendered matrices, controlled faults,
+independent review and full gates remain pending. T04 remains in-progress.
+
+Current affected UI suite passes228 cases across10 files; explicit app TypeScript
+check and Storybook build pass. Rendered accessibility/mobile matrices are now
+running independently against the compiled bundle. Independent CODE-v7 review
+is requested. This checkpoint retains pending preview/live tests and fixtures.

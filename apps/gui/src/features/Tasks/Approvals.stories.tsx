@@ -6,7 +6,7 @@ const meta = {
   title: 'Features/Tasks/Approvals',
   component: TaskApprovals,
   args: { taskId: 'task-storybook' },
-  parameters: { layout: 'fullscreen', router: false },
+  parameters: { layout: 'fullscreen', router: false, docs: { description: { component: 'Existing move decisions retain stale-closure notices and reconcile current source truth on settlement; no new approval state is introduced.' } } },
 } satisfies Meta<typeof TaskApprovals>;
 export default meta;
 type Story = StoryObj<typeof meta>;

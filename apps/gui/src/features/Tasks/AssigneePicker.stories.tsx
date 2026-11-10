@@ -15,6 +15,7 @@ const meta = {
   component: AssigneePicker,
   parameters: {
     layout: 'padded',
+    docs: { description: { component: 'Static current-assignment states. Attention/ExistingSourceActions verifies exact recorded-pair removal and current task/source reads.' } },
   },
   args: {
     taskId: 'task-storybook',
@@ -47,4 +48,8 @@ export const Populated: Story = {
       { userId: '', agentId: 'agent-1', name: 'CI worker' },
     ],
   },
+};
+
+export const CombinedRecordedPair: Story = {
+  args: { assignees: [{ userId: 'user-storybook', agentId: 'agent-storybook', name: 'Release worker' }] },
 };
