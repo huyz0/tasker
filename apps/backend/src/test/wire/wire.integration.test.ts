@@ -11,6 +11,7 @@ import {
   ProjectService,
   ProjectTemplateService,
   TaskNoteService,
+  SavedViewService,
 } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { join } from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -328,5 +329,60 @@ testIf('the real server over a real socket', () => {
       }
     }
   }, 60_000);
+
+  it('keeps named query ownership, sharing, presence and current permissions through actual auth and wire codecs', async () => {
+    const register = async (label: string, username = `wire-view-${label}-${crypto.randomUUID()}`) => {
+      const response = await fetch(`${BASE_URL}/api/auth/password/register`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ username, password: crypto.randomUUID() + 'Wire!9' }),
+      });
+      expect(response.status).toBe(201);
+      const cookie = response.headers.get('set-cookie')?.split(';')[0];
+      if (!cookie) throw new Error('Owned view session was not issued');
+      const { userId } = await response.json() as { userId: string };
+      return { username, userId, transport: transportWith({ cookie }) };
+    };
+    const a = await register('a'), foreign = await register('foreign');
+    const memberUsername = `wire-view-b-${crypto.randomUUID()}`;
+    const orgs = createClient(OrgService, a.transport), viewsA = createClient(SavedViewService, a.transport);
+    const viewsForeign = createClient(SavedViewService, foreign.transport);
+    const org = (await orgs.seedOrg({ name: 'Wire saved views', slug: `wire-views-${crypto.randomUUID()}` })).organization!;
+    const template = (await createClient(ProjectTemplateService, a.transport).createTemplate({ orgId: org.id, name: 'Views' })).template!;
+    const project = (await createClient(ProjectService, a.transport).createProject({ orgId: org.id, templateId: template.id, ownerId: a.userId, name: 'Wire view project' })).project!;
+    // Username invitations are consumed when that identity registers.
+    await orgs.inviteUser({ orgId: org.id, username: memberUsername, role: 'member' });
+    const b = await register('b', memberUsername);
+    const viewsB = createClient(SavedViewService, b.transport);
+    const privateA = (await viewsA.createSavedView({ projectId: project.id, name: 'Owner private', definition: { version: 1, screen: 'tasks', tasks: {} } })).view!;
+    const privateB = (await viewsB.createSavedView({ projectId: project.id, name: 'Member private', definition: { version: 1, screen: 'tasks', tasks: { priority: 0, ready: false, search: 'private wire query' } } })).view!;
+    expect(privateB.ownerUserId).toBe(b.userId);expect(privateB.orgId).toBe(org.id);
+    expect((await viewsA.getSavedView({ viewId: privateA.id })).definition?.tasks?.priority).toBeUndefined();
+    expect((await viewsB.getSavedView({ viewId: privateB.id })).definition?.tasks).toMatchObject({ priority: 0, ready: false, search: 'private wire query' });
+    await expect(viewsA.getSavedView({ viewId: privateB.id })).rejects.toMatchObject({ code: Code.NotFound });
+    await expect(viewsB.getSavedView({ viewId: privateA.id })).rejects.toMatchObject({ code: Code.NotFound });
+    const catalog = await viewsB.listSavedViews({ orgId: org.id, screen: 'tasks', visibility: 'personal' });
+    expect(catalog.views.map(view => view.id)).toEqual([privateB.id]);
+    expect(JSON.stringify(catalog)).not.toContain('private wire query');
+    const shared = (await viewsA.createSavedView({ projectId: project.id, name: 'Shared reports', visibility: 'organization', definition: { version: 1, screen: 'reports', reports: { windowDays: 90 } } })).view!;
+    expect((await viewsB.getSavedView({ viewId: shared.id })).definition?.reports?.windowDays).toBe(90);
+    await expect(viewsB.renameSavedView({ viewId: shared.id, name: 'Denied' })).rejects.toMatchObject({ code: Code.PermissionDenied });
+    await expect(viewsB.deleteSavedView({ viewId: shared.id })).rejects.toMatchObject({ code: Code.PermissionDenied });
+    await expect(viewsForeign.getSavedView({ viewId: shared.id })).rejects.toMatchObject({ code: Code.NotFound });
+    await expect(viewsForeign.createSavedView({ projectId: project.id, name: 'Foreign', definition: { version: 1, screen: 'tasks', tasks: {} } })).rejects.toMatchObject({ code: Code.NotFound });
+    await orgs.updateOrgMemberRole({ orgId: org.id, userId: b.userId, role: 'admin' });
+    await expect(viewsB.getSavedView({ viewId: privateA.id })).rejects.toMatchObject({ code: Code.NotFound });
+    const formerAdmin = (await viewsB.createSavedView({ projectId: project.id, name: 'Created as admin', visibility: 'organization', definition: { version: 1, screen: 'tasks', tasks: {} } })).view!;
+    await orgs.updateOrgMemberRole({ orgId: org.id, userId: b.userId, role: 'member' });
+    await expect(viewsB.renameSavedView({ viewId: formerAdmin.id, name: 'No retained admin' })).rejects.toMatchObject({ code: Code.PermissionDenied });
+    await expect(viewsB.deleteSavedView({ viewId: formerAdmin.id })).rejects.toMatchObject({ code: Code.PermissionDenied });
+    expect((await viewsA.renameSavedView({ viewId: formerAdmin.id, name: 'Managed by current admin' })).view?.ownerUserId).toBe(b.userId);
+    await createClient(ProjectService, a.transport).archiveProject({ projectId: project.id });
+    const unavailable = await viewsB.listSavedViews({ orgId: org.id, screen: 'tasks' });
+    expect(unavailable.views.every(view => view.unavailableReason === 'project_unavailable')).toBe(true);
+    await expect(viewsB.getSavedView({ viewId: privateB.id })).rejects.toMatchObject({ code: Code.FailedPrecondition });
+    expect((await viewsB.renameSavedView({ viewId: privateB.id, name: 'Obsolete private' })).view?.name).toBe('Obsolete private');
+    expect((await viewsB.deleteSavedView({ viewId: privateB.id })).success).toBe(true);
+    await expect(viewsB.getSavedView({ viewId: privateB.id })).rejects.toMatchObject({ code: Code.NotFound });
+  }, 30_000);
 
 });

@@ -20,6 +20,7 @@ import { createWorkflowsHandler } from '../modules/workflows/workflows.handler';
 import { createSchedulesHandler } from '../modules/schedules/schedules.handler';
 import { createMemoryHandler } from '../modules/memory/memory.handler';
 import { createAttentionHandler } from '../modules/attention/attention.handler';
+import { createSavedViewsHandler } from '../modules/views/views.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
 import createSearchHandler from '../modules/search/search.handler';
@@ -51,7 +52,7 @@ import { createNotificationHandler } from '../modules/notifications/notification
  */
 
 /** Handlers agents may never reach at all, whatever scopes they hold. */
-const NO_AGENT_ACCESS = ['orgs', 'auth', 'search', 'teams', 'roles', 'audit', 'notifications', 'webhooks', 'attention'];
+const NO_AGENT_ACCESS = ['orgs', 'auth', 'search', 'teams', 'roles', 'audit', 'notifications', 'webhooks', 'attention', 'savedViews'];
 
 /** Unauthenticated, so there is no principal for a scope to apply to. */
 const PUBLIC: Record<string, string[]> = { health: ['ping'] };
@@ -80,6 +81,7 @@ const ids = {
 
 /** One sample request per method, enough to reach the authorization check. */
 const REQUESTS: Record<string, Record<string, unknown>> = {
+  savedViews: { createSavedView: {}, getSavedView: {}, listSavedViews: {}, renameSavedView: {}, deleteSavedView: {} },
   attention: { listAttention: { orgId: ids.org, kind: 'question' } },
   // M26-T03. Every method refuses an agent before it reads its request, so
   // these shapes only need to be plausible, not valid.
@@ -387,6 +389,7 @@ beforeAll(async () => {
     // session via requireUser, so an agent token has nothing to resolve.
     notifications: createNotificationHandler(db),
     attention: createAttentionHandler(db),
+    savedViews: createSavedViewsHandler(db),
     // M37 (ADR-0030). Human-only: a token that could register a webhook could
     // copy every event in the organization elsewhere.
     webhooks: createWebhooksHandler(db, null),

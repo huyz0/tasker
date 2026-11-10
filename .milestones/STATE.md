@@ -1,8 +1,8 @@
 ---
 active_milestone: M58
-active_task: M58-T02
+active_task: M58-T03
 last_updated: 2026-11-10
-last_commit: 8dd8c1
+last_commit: 780499c
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,12 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M58-T02 verified; publication next.** Strict personal/shared definition persistence, derived ownership and current authority/source checks pass all36 checks (17 cached,13m5.093s): GUI1701/95.21% branches, backend2420/zero failures, contract1158, CLI87.4% and production/standalone builds. ARCH-v2/UX-v7/CODE-v6 approve; native core/race/both populated upgrades, six restored faults, actual old SDK18 roundtrips and real socket12/72 pass. The unrelated artifact timeout passes unchanged in isolation and full2.398 total/387 done/10 pending, M583/5. Preserve a raw checkpoint and reconcile only this owned task onto main780499c with identical-tree proof; final-head hosted CI/main publication remain mandatory. Next T03 owns the still-undelivered Save/Open/Rename/Delete interface. Original user worktrees/WIP/services remain preserved.
+
+**2026-11-10 — M58-T02 final gate running.** CODE-v6 approves checked personal/shared persistence and immutable typed definitions. Both populated dialect upgrades and real MySQL core/race pass; six restored faults fail correctly, old450-message/1314-field/187-method compatibility plus18 binary roundtrips and actual socket12/72 pass. Full1 stops on one unchanged artifact initial-read timeout; its isolated18 cases pass, and full2 now passes all1701 GUI cases/95.21% branches with one worker. Backend/full completion, atomic checkpoint, base reconciliation and final-head CI/main publication remain. Main780499c passes all10 post-main jobs.398 total/386 done/11 pending; M582/5. Original user worktrees/WIP/services remain untouched.
+
+**2026-11-10 — T05 published; T02 persistence under verification.** PR #12 exact709387b passes all8 CI42897282729 jobs and merges780499c; both post-main integration42899744563 jobs pass and CI42899744169 is running. Preserved T02 now has accepted ADR0044/ARCH-v2/UX-v7, additive definitions/storage and175 affected cases/510 assertions passing. Five restored owner/admin/reference/codec/migration faults fail correctly; populated SQLite reboot passes. Native MySQL, actual wire/old clients, final source review and full checks remain. Published follow-up files/ledger are carried into this owned candidate; reconcile history after a clean T02 checkpoint, no force-push.398 total/386 done/11 pending, M582/5. Original user worktrees/WIP/services remain untouched.
 
 **2026-11-10 — M58-T05 verified; publication next.** The published color assertion reproduces3/6 failures locally. Mode/live-style synchronization passes20 repeated real light/dark cases, while a forced wrong Board color still fails exact equality at the unchanged5000ms deadline. E2E types, CODE-v5 and all36 checks pass (32 cached); production source and visual tokens are unchanged.398 total/386 done/11 pending, M582/5. Commit/push this independent test fix and merge only after actual final-head CI. Then resume preserved in-progress T02 in tasker-saved-views; reconcile its candidate-derived checkpoint onto published main without force-push. T01 is published8dd8c1 and both post-main integration jobs passed.
 
@@ -2019,9 +2025,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
-| M58 | Operational Views | in-progress | M53 | 5 | 2 |
+| M58 | Operational Views | in-progress | M53 | 5 | 3 |
 
-**Total: 398 tasks across 52 milestones — 386 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 398 tasks across 52 milestones — 387 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

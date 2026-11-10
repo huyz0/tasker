@@ -238,6 +238,7 @@ export async function purgeOrgCascade(db: any, orgId: string,
     // cleared before the taskTypes rows it points to are deleted below.
     await db.delete(schema.projectTemplates).where(eq(schema.projectTemplates.orgId, orgId));
     await db.delete(schema.workflowTemplates).where(eq(schema.workflowTemplates.orgId, orgId));
+    await db.delete(schema.savedViews).where(eq(schema.savedViews.orgId, orgId));
     await db.delete(schema.labels).where(eq(schema.labels.orgId, orgId));
 
     const orgTaskTypeRows = await db.select({ id: schema.taskTypes.id }).from(schema.taskTypes).where(eq(schema.taskTypes.orgId, orgId));

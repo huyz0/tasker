@@ -3027,3 +3027,94 @@ message ListTaskAttemptsResponse {
   PageResponse page = 2;
 }
 
+// M58 additive definitions; preserve TypeSpec scalar presence and RPC declarations.
+message SavedTaskQuery {
+  optional string viewMode = 1;
+  optional string search = 2;
+  optional int32 priority = 3;
+  optional bool ready = 4;
+  optional string sort = 5;
+}
+
+message SavedReportQuery {
+  optional int32 windowDays = 1;
+}
+
+message SavedViewDefinition {
+  int32 version = 1;
+  string screen = 2;
+  SavedTaskQuery tasks = 3;
+  SavedReportQuery reports = 4;
+}
+
+message SavedViewMetadata {
+  string id = 1;
+  string orgId = 2;
+  string projectId = 3;
+  string ownerUserId = 4;
+  string name = 5;
+  string screen = 6;
+  string visibility = 7;
+  bool canEdit = 8;
+  string createdAt = 9;
+  string updatedAt = 10;
+  optional string projectName = 11;
+  optional string unavailableReason = 12;
+}
+
+message CreateSavedViewRequest {
+  string projectId = 1;
+  string name = 2;
+  optional string visibility = 3;
+  SavedViewDefinition definition = 4;
+}
+
+message CreateSavedViewResponse {
+  SavedViewMetadata view = 1;
+}
+
+message GetSavedViewRequest {
+  string viewId = 1;
+}
+
+message GetSavedViewResponse {
+  SavedViewMetadata view = 1;
+  SavedViewDefinition definition = 2;
+}
+
+message ListSavedViewsRequest {
+  string orgId = 1;
+  string screen = 2;
+  optional string visibility = 3;
+  PageRequest page = 4;
+}
+
+message ListSavedViewsResponse {
+  repeated SavedViewMetadata views = 1;
+  PageResponse page = 2;
+}
+
+message RenameSavedViewRequest {
+  string viewId = 1;
+  string name = 2;
+}
+
+message RenameSavedViewResponse {
+  SavedViewMetadata view = 1;
+}
+
+message DeleteSavedViewRequest {
+  string viewId = 1;
+}
+
+message DeleteSavedViewResponse {
+  bool success = 1;
+}
+
+service SavedViewService {
+  rpc CreateSavedView(CreateSavedViewRequest) returns (CreateSavedViewResponse);
+  rpc GetSavedView(GetSavedViewRequest) returns (GetSavedViewResponse);
+  rpc ListSavedViews(ListSavedViewsRequest) returns (ListSavedViewsResponse);
+  rpc RenameSavedView(RenameSavedViewRequest) returns (RenameSavedViewResponse);
+  rpc DeleteSavedView(DeleteSavedViewRequest) returns (DeleteSavedViewResponse);
+}

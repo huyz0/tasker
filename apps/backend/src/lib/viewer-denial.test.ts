@@ -17,6 +17,7 @@ import { createRepositoriesHandler } from '../modules/repositories/repositories.
 import { createWebhooksHandler } from '../modules/webhooks/webhooks.handler';
 import { createWorkflowsHandler } from '../modules/workflows/workflows.handler';
 import { createSchedulesHandler } from '../modules/schedules/schedules.handler';
+import { createSavedViewsHandler } from '../modules/views/views.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
 import createDashboardHandler from '../modules/dashboard/dashboard.handler';
@@ -54,6 +55,7 @@ const READS: Record<string, string[]> = {
   // viewer calling it gets Unimplemented, not data.
   workflows: ['getWorkflowTemplate', 'listWorkflowTemplates'],
   schedules: ['getSchedule', 'listSchedules', 'listScheduleRuns'],
+  savedViews: ['getSavedView', 'listSavedViews'],
   reports: ['getReportExceptions', 'getReportTrends', 'getUsageReport'],
   search: ['universalSearch'],
   taskNotes: ['listTaskNotes', 'listHandoffNotes'],
@@ -109,6 +111,7 @@ const ids = {
   approval: 'apr-viewer-sweep',
   workflow: 'wft-viewer-sweep',
   schedule: 'sch-viewer-sweep',
+  savedView: 'svw-viewer-sweep',
   invitation: 'inv-viewer-sweep',
   apiToken: 'tok-viewer-sweep',
   team: 'team-viewer-sweep',
@@ -125,6 +128,13 @@ const ids = {
  * authorization.
  */
 const REQUESTS: Record<string, Record<string, unknown>> = {
+  // Personal bookmarks do not edit work data; their positive owner-only case
+  // lives in views.test.ts. Shared configuration still needs org:admin.
+  savedViews: {
+    createSavedView: { projectId: ids.project, name: 'Shared viewer attempt', visibility: 'organization', definition: { version: 1, screen: 'tasks', tasks: {} } },
+    renameSavedView: { viewId: ids.savedView, name: 'Denied shared rename' },
+    deleteSavedView: { viewId: ids.savedView },
+  },
   orgs: {
     updateOrg: { orgId: ids.org, name: 'Renamed' },
     removeOrgMember: { orgId: ids.org, userId: 'someone-else' },
@@ -368,6 +378,12 @@ beforeAll(async () => {
     scopeType: 'organization', scopeId: ids.org, roleId: 'role-viewer', createdAt: now,
   });
 
+  await db.insert(schema.savedViews).values({
+    id: ids.savedView, orgId: ids.org, projectId: ids.project, ownerUserId: 'someone-else', screen: 'tasks',
+    visibility: 'organization', audienceKey: 'organization', name: 'Shared configuration', nameKey: 'viewer-shared-fixture',
+    definitionJson: JSON.stringify({ version: 1, screen: 'tasks', tasks: {} }), createdAt: now, updatedAt: now,
+  });
+
   handlers = {
     orgs: createOrgsHandler(db, nc),
     projects: createProjectsHandler(db, nc),
@@ -386,6 +402,7 @@ beforeAll(async () => {
     webhooks: createWebhooksHandler(db, nc),
     workflows: createWorkflowsHandler(db, nc),
     schedules: createSchedulesHandler(db, nc),
+    savedViews: createSavedViewsHandler(db),
     health: createHealthHandler(db, nc),
     auth: createAuthHandler(db),
     // These two register onto a ConnectRouter rather than returning their

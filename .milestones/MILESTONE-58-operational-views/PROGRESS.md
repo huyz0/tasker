@@ -101,3 +101,165 @@
   then resume the preserved in-progress T02 checkout and reconcile its candidate
   base after its clean task checkpoint. Both T01 post-main integration jobs are
   successful; the failing browser job is the reason for this follow-up.
+
+## M58-T02 — Persist tenant-safe named definitions
+
+- **Status**: done
+- **Date**: 2026-11-10
+- **Changed**: Add strict versioned definitions, human-only CRUD, derived identity, private SQL catalogs, current shared-admin/source checks, immutable queries/audiences, obsolete cleanup, additive SQLite/MySQL migrations and generated TS/Go bindings.
+- **Verified**: All36 checks pass (17 cached,13m5.093s): GUI1701/95.21% branches; backend2420/zero failures/95.99% functions/96.86% lines; contract1158; CLI87.4%; production/standalone builds.175 affected/510 assertions, four native core/race/populated-upgrade cases,109.67ms list p95, six restored faults, old450/1314/187 plus18 binary roundtrips and real socket12/72 pass (one existing independent optional skip). ARCH-v2/UX-v7/CODE-v6 approve.
+- **Notes**: Accepted ADR0044 limits storage to supported scalar definitions, never SQL/results/access grants. GUI controls remain T03. Full1 records one existing artifact read timeout; its unchanged18-case file and full2 with one GUI worker pass without changing assertions/deadlines. gh-act is absent, so optional local Actions simulation is skipped; actual hosted CI still gates publication.
+- **Next**: Preserve the raw atomic candidate, reconcile only this owned task onto published main780499c with identical-tree proof, then push/PR and merge after final-head CI. T03 adds Save/Open/Rename/Delete controls. Main780499c already passes all10 post-main jobs.
+
+### T02 proposed authority and recovery policy
+
+- Proposed ADR0044 chooses versioned typed scalar definitions, immutable scope/
+  audience, personal creator-only reads, existing org:admin for shared create/
+  rename/delete, and fresh ordinary task/report permissions on Create/Get.
+  Catalogs expose audience-authorized metadata only; Get earns query contents.
+  Save creates a new name, Rename changes metadata, and explicit Open alone
+  applies the URL. No new status/label filters or hidden overwrite is invented.
+- Existing source confirms Tasks task:read at organization scope and Reports
+  dashboard:read at project scope; match those actual checks. Retain obsolete
+  project references for recovery, purge definitions with their owning org,
+  bind bounded SQL lists/cursors to the visible rowset, and keep private names/
+  query payloads off organization events. Names have checked namespace
+  uniqueness across dialects. UX/TC005a–d record these concrete cases before
+  runtime changes. Static design has no runtime TDD; backend reds follow design
+  review. T01 CI currently has6 successes and2 browser jobs running.
+
+- Initial static design review identifies two concrete acceptance gaps before
+  code: reachability beyond first catalog page in independently grouped
+  audiences, and project display-name permission separate from org metadata.
+  Add audience-bound cursor selection, independent bounded Previous/Next/name
+  filter/count/error/retry without draft loss, and explicit project:read-gated
+  names/generic fallback. TC006a covers more than100 mixed entries and the
+  metadata refusal. No runtime leak or completed implementation is claimed.
+
+### Publication of T01
+
+- PR #11 exact70a171c passes all8 jobs in CI42889507483, including complete
+  Storybook and real browser E2E. It merges to main8dd8c110a32f197b928dc22ffe3c1eeb86d3e8f8.
+  Post-main CI42891977654 and integration42891977657 are in progress. Preserve
+  this candidate-derived owned checkout; reconcile its own clean T02 checkpoint
+  onto published T01 before subsequent publication, without force-pushing.
+
+- ARCH-v2/UX-v7 approve the amended static authority/recovery/paging design;
+  ADR0044 is accepted. The initial new-service test file runs red because the
+  handler does not yet exist. This is a new-feature absence, not claimed proof
+  of an existing ownership leak. Semantic SQLite/both-dialect/wire and restored
+  owner/admin/reference faults remain mandatory after implementation.
+
+### T02 first persistence implementation
+
+- Fresh SQLite runs34 semantic cases/126 assertions green, covering ownership,
+  shared current administration, forged identity, allowed/default controls,
+  names/concurrent conflicts, SQL privacy before paging/count, cursor scopes,
+  source/name permissions, obsolete definitions/projects, org purge and private
+  event refusal. Controlled substantive faults still must prove new refusal
+  tests, rather than relying on the initial absent-module red.
+- An initial full TypeSpec-emitter copy is wrong: the emitter drops existing
+  scalar presence and go_package. The Go plugin refuses generation, exposing
+  the missing option. Restore the entire checked-in old protocol byte prefix
+  and append only the14 new messages/one service, explicitly preserving optional
+  scalars from TypeSpec. Rerun generated TS/Go, real codecs and old-SDK checks;
+  no incompatible generated copy is published or treated as valid evidence.
+
+### T02 interrupted by published browser verification
+
+- T01 post-main CI42891977654 has7 successful jobs; E2E fails existing
+  ui-layout status-color assertions (Received empty computed style, varying
+  statuses, including all3 retries in dark). Both real integration jobs in
+  42891977657 pass. Inspect/fix this published assertion in the clean T01
+  checkout as a separate recorded follow-up; preserve this dirty owned T02
+  implementation and do not mix it into that PR. T02 is not complete.
+
+### T02 resumed after published verification repair
+
+- T05 PR #12 exact709387b passes all8 CI42897282729 jobs and merges780499c.
+  Both post-main integration42899744563 jobs already pass; CI42899744169 is
+  running. Bring its published plan/test/review/ledger state into this owned
+  candidate explicitly, preserving all T02 source and design.398 total/386
+  done/11 pending, M582/5. Actual history reconciliation still waits for this
+  task's clean atomic checkpoint, then applies only owned T02 changes.
+-175 affected backend cases/510 assertions pass across view ownership/codecs,
+  exhaustive human/agent/viewer sweeps and read-unit classification. Viewer
+  personal preferences remain allowed under ordinary read access; shared
+  creation/rename/delete remain denied. Two new saved-view reads first fail
+  the write-unit inventory regression, then pass after explicit classification.
+- Five substantive restored faults make owner privacy, current shared-admin
+  policy, referenced-tenant checks, real codec metadata and populated migration
+  data-preservation assertions fail. Each source is restored in finally.
+  SQLite populated upgrade/reboot passes; native MySQL, wire/legacy and full
+  checks still gate completion.
+
+### T02 native storage feedback
+
+- Both populated SQLite/MySQL upgrade-and-second-boot cases pass; old work
+  remains unchanged and new definitions persist. Native MySQL ownership/admin/
+  reference/paging/name-concurrency case passes with list p9571.01ms against
+  the150ms budget. Its separate orchestrated rename/delete race fails: the
+  rename acknowledges success after the other transaction deleted the view.
+- Use current locking reads for Rename/Delete within the existing runtime
+  mutation unit. Ordinary Get/List stay reads. The regression accepts either
+  typed optimistic refusal or serialization; it rejects false success and raw
+  crashes. Record the current-row policy in ADR0044 and rerun native/affected
+  checks before review. No unpublished persistence feature is claimed complete.
+
+### T02 native race and real-client verification
+
+- Current-row locking fixes the reproduced native rename/delete stale success.
+  All four native cases pass: populated SQLite/MySQL upgrades and reboots,
+  MySQL authority/name/privacy/paging plus the orchestrated race. The bounded
+  mixed-catalog list p95 is109.67ms against150ms. Removing only the current-row
+  lock reproduces stale successful rename on real MySQL; finally restores it.
+- Actual published SDK compatibility preserves450 messages/1314 fields/187
+  methods and18 real old/new binary roundtrips;14 new messages are additive.
+  Checked-in previous protocol bytes remain an exact prefix, including optional
+  presence and go_package. Backend explicit typechecking passes.
+- Actual socket/generated-client flow initially exposes a fixture mistake:
+  username invitations are consumed at registration, not sent directly into
+  existing membership. Invite the owned member identity before registration.
+  No production authorization is changed. All12 wire cases/72 assertions then
+  pass, with one existing streaming prerequisite skip. The new case proves
+  two-user private refusal, metadata-only lists, optional priority0 presence,
+  shared current-admin rules, foreign scope denial and obsolete-project cleanup.
+- Published T05 main780499c now passes all8 CI42899744169 jobs and both
+  integration42899744563 jobs. Full local36 and final T02 review are running;
+  no T02 publication or completed GUI save/open flow is claimed yet.
+
+### T02 full-gate feedback
+
+- CODE-v6 approves the implementation with no blocking findings. The first
+  full run passes1700/1701 GUI cases but times out the unchanged existing
+  artifact direct-link initial read at canonicalKnowledge.test.tsx:59 (still
+  Loading this artifact, empty scope after the normal1000ms wait). No T02
+  production GUI source changed. Inspect/rerun that file unchanged, then rerun
+  the full gate with one GUI worker to remove local scheduling contention;
+  no assertion, deadline or production permission is relaxed.
+- Optional local Actions simulation is unavailable because gh-act is absent;
+  the required project checks and actual hosted CI remain the publication gates.
+- The three owned status-palette fixture tasks are deleted through authorized
+  RPC200 responses; conditional updates restore only the private fixture's
+  saved organization/project labels, and its private browser-session file is
+  removed. Existing original services, user data and worktrees remain untouched.
+
+- The unchanged artifact file passes18/18 in8.73s. Full2 with one GUI worker
+  passes all1701 cases/121 files and95.21% branches; backend and remaining gates
+  are still running. No test assertion/deadline/product source was changed.
+
+### T02 closure
+
+- Full2 completes all36 checks (17 cached) in13m5.093s. GUI1701/121 files
+  passes at95.21% branches; backend2420 passes with88 explicit prerequisite
+  skips and zero failures,95.99% functions/96.86% lines. Contract1158, CLI87.4%,
+  lint/types/drift/reachability and production/standalone builds pass. The real
+  native and actual socket runs above establish their prerequisites separately;
+  skipped default integration targets are not claimed as exercised services.
+- CODE-v6 approves; current-row source matches its restored final fault backup.
+  Check T02 and the server-owned privacy criterion.398 total/387 done/10 pending,
+  M583/5. GUI Save/Open flows and final milestone E2E remain T03/T04.
+  Preserve/reconcile the clean checkpoint before actual final-head publication.
+
+- Explicit repository pre-commit gate passes all36 checks (33 cached) in7.988s
+  after closure/ledger updates. No local gh-act simulation is claimed.

@@ -73,6 +73,8 @@ const (
 	ScheduleServiceName = "tasker.health.v1.ScheduleService"
 	// AttentionServiceName is the fully-qualified name of the AttentionService service.
 	AttentionServiceName = "tasker.health.v1.AttentionService"
+	// SavedViewServiceName is the fully-qualified name of the SavedViewService service.
+	SavedViewServiceName = "tasker.health.v1.SavedViewService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -604,6 +606,21 @@ const (
 	// AttentionServiceListAttentionProcedure is the fully-qualified name of the AttentionService's
 	// ListAttention RPC.
 	AttentionServiceListAttentionProcedure = "/tasker.health.v1.AttentionService/ListAttention"
+	// SavedViewServiceCreateSavedViewProcedure is the fully-qualified name of the SavedViewService's
+	// CreateSavedView RPC.
+	SavedViewServiceCreateSavedViewProcedure = "/tasker.health.v1.SavedViewService/CreateSavedView"
+	// SavedViewServiceGetSavedViewProcedure is the fully-qualified name of the SavedViewService's
+	// GetSavedView RPC.
+	SavedViewServiceGetSavedViewProcedure = "/tasker.health.v1.SavedViewService/GetSavedView"
+	// SavedViewServiceListSavedViewsProcedure is the fully-qualified name of the SavedViewService's
+	// ListSavedViews RPC.
+	SavedViewServiceListSavedViewsProcedure = "/tasker.health.v1.SavedViewService/ListSavedViews"
+	// SavedViewServiceRenameSavedViewProcedure is the fully-qualified name of the SavedViewService's
+	// RenameSavedView RPC.
+	SavedViewServiceRenameSavedViewProcedure = "/tasker.health.v1.SavedViewService/RenameSavedView"
+	// SavedViewServiceDeleteSavedViewProcedure is the fully-qualified name of the SavedViewService's
+	// DeleteSavedView RPC.
+	SavedViewServiceDeleteSavedViewProcedure = "/tasker.health.v1.SavedViewService/DeleteSavedView"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -821,6 +838,12 @@ var (
 	scheduleServiceListScheduleRunsMethodDescriptor               = scheduleServiceServiceDescriptor.Methods().ByName("ListScheduleRuns")
 	attentionServiceServiceDescriptor                             = v1.File_tasker_health_v1_health_proto.Services().ByName("AttentionService")
 	attentionServiceListAttentionMethodDescriptor                 = attentionServiceServiceDescriptor.Methods().ByName("ListAttention")
+	savedViewServiceServiceDescriptor                             = v1.File_tasker_health_v1_health_proto.Services().ByName("SavedViewService")
+	savedViewServiceCreateSavedViewMethodDescriptor               = savedViewServiceServiceDescriptor.Methods().ByName("CreateSavedView")
+	savedViewServiceGetSavedViewMethodDescriptor                  = savedViewServiceServiceDescriptor.Methods().ByName("GetSavedView")
+	savedViewServiceListSavedViewsMethodDescriptor                = savedViewServiceServiceDescriptor.Methods().ByName("ListSavedViews")
+	savedViewServiceRenameSavedViewMethodDescriptor               = savedViewServiceServiceDescriptor.Methods().ByName("RenameSavedView")
+	savedViewServiceDeleteSavedViewMethodDescriptor               = savedViewServiceServiceDescriptor.Methods().ByName("DeleteSavedView")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -6777,4 +6800,176 @@ type UnimplementedAttentionServiceHandler struct{}
 
 func (UnimplementedAttentionServiceHandler) ListAttention(context.Context, *connect.Request[v1.ListAttentionRequest]) (*connect.Response[v1.ListAttentionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AttentionService.ListAttention is not implemented"))
+}
+
+// SavedViewServiceClient is a client for the tasker.health.v1.SavedViewService service.
+type SavedViewServiceClient interface {
+	CreateSavedView(context.Context, *connect.Request[v1.CreateSavedViewRequest]) (*connect.Response[v1.CreateSavedViewResponse], error)
+	GetSavedView(context.Context, *connect.Request[v1.GetSavedViewRequest]) (*connect.Response[v1.GetSavedViewResponse], error)
+	ListSavedViews(context.Context, *connect.Request[v1.ListSavedViewsRequest]) (*connect.Response[v1.ListSavedViewsResponse], error)
+	RenameSavedView(context.Context, *connect.Request[v1.RenameSavedViewRequest]) (*connect.Response[v1.RenameSavedViewResponse], error)
+	DeleteSavedView(context.Context, *connect.Request[v1.DeleteSavedViewRequest]) (*connect.Response[v1.DeleteSavedViewResponse], error)
+}
+
+// NewSavedViewServiceClient constructs a client for the tasker.health.v1.SavedViewService service.
+// By default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped
+// responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewSavedViewServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SavedViewServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &savedViewServiceClient{
+		createSavedView: connect.NewClient[v1.CreateSavedViewRequest, v1.CreateSavedViewResponse](
+			httpClient,
+			baseURL+SavedViewServiceCreateSavedViewProcedure,
+			connect.WithSchema(savedViewServiceCreateSavedViewMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getSavedView: connect.NewClient[v1.GetSavedViewRequest, v1.GetSavedViewResponse](
+			httpClient,
+			baseURL+SavedViewServiceGetSavedViewProcedure,
+			connect.WithSchema(savedViewServiceGetSavedViewMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listSavedViews: connect.NewClient[v1.ListSavedViewsRequest, v1.ListSavedViewsResponse](
+			httpClient,
+			baseURL+SavedViewServiceListSavedViewsProcedure,
+			connect.WithSchema(savedViewServiceListSavedViewsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		renameSavedView: connect.NewClient[v1.RenameSavedViewRequest, v1.RenameSavedViewResponse](
+			httpClient,
+			baseURL+SavedViewServiceRenameSavedViewProcedure,
+			connect.WithSchema(savedViewServiceRenameSavedViewMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deleteSavedView: connect.NewClient[v1.DeleteSavedViewRequest, v1.DeleteSavedViewResponse](
+			httpClient,
+			baseURL+SavedViewServiceDeleteSavedViewProcedure,
+			connect.WithSchema(savedViewServiceDeleteSavedViewMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// savedViewServiceClient implements SavedViewServiceClient.
+type savedViewServiceClient struct {
+	createSavedView *connect.Client[v1.CreateSavedViewRequest, v1.CreateSavedViewResponse]
+	getSavedView    *connect.Client[v1.GetSavedViewRequest, v1.GetSavedViewResponse]
+	listSavedViews  *connect.Client[v1.ListSavedViewsRequest, v1.ListSavedViewsResponse]
+	renameSavedView *connect.Client[v1.RenameSavedViewRequest, v1.RenameSavedViewResponse]
+	deleteSavedView *connect.Client[v1.DeleteSavedViewRequest, v1.DeleteSavedViewResponse]
+}
+
+// CreateSavedView calls tasker.health.v1.SavedViewService.CreateSavedView.
+func (c *savedViewServiceClient) CreateSavedView(ctx context.Context, req *connect.Request[v1.CreateSavedViewRequest]) (*connect.Response[v1.CreateSavedViewResponse], error) {
+	return c.createSavedView.CallUnary(ctx, req)
+}
+
+// GetSavedView calls tasker.health.v1.SavedViewService.GetSavedView.
+func (c *savedViewServiceClient) GetSavedView(ctx context.Context, req *connect.Request[v1.GetSavedViewRequest]) (*connect.Response[v1.GetSavedViewResponse], error) {
+	return c.getSavedView.CallUnary(ctx, req)
+}
+
+// ListSavedViews calls tasker.health.v1.SavedViewService.ListSavedViews.
+func (c *savedViewServiceClient) ListSavedViews(ctx context.Context, req *connect.Request[v1.ListSavedViewsRequest]) (*connect.Response[v1.ListSavedViewsResponse], error) {
+	return c.listSavedViews.CallUnary(ctx, req)
+}
+
+// RenameSavedView calls tasker.health.v1.SavedViewService.RenameSavedView.
+func (c *savedViewServiceClient) RenameSavedView(ctx context.Context, req *connect.Request[v1.RenameSavedViewRequest]) (*connect.Response[v1.RenameSavedViewResponse], error) {
+	return c.renameSavedView.CallUnary(ctx, req)
+}
+
+// DeleteSavedView calls tasker.health.v1.SavedViewService.DeleteSavedView.
+func (c *savedViewServiceClient) DeleteSavedView(ctx context.Context, req *connect.Request[v1.DeleteSavedViewRequest]) (*connect.Response[v1.DeleteSavedViewResponse], error) {
+	return c.deleteSavedView.CallUnary(ctx, req)
+}
+
+// SavedViewServiceHandler is an implementation of the tasker.health.v1.SavedViewService service.
+type SavedViewServiceHandler interface {
+	CreateSavedView(context.Context, *connect.Request[v1.CreateSavedViewRequest]) (*connect.Response[v1.CreateSavedViewResponse], error)
+	GetSavedView(context.Context, *connect.Request[v1.GetSavedViewRequest]) (*connect.Response[v1.GetSavedViewResponse], error)
+	ListSavedViews(context.Context, *connect.Request[v1.ListSavedViewsRequest]) (*connect.Response[v1.ListSavedViewsResponse], error)
+	RenameSavedView(context.Context, *connect.Request[v1.RenameSavedViewRequest]) (*connect.Response[v1.RenameSavedViewResponse], error)
+	DeleteSavedView(context.Context, *connect.Request[v1.DeleteSavedViewRequest]) (*connect.Response[v1.DeleteSavedViewResponse], error)
+}
+
+// NewSavedViewServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewSavedViewServiceHandler(svc SavedViewServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	savedViewServiceCreateSavedViewHandler := connect.NewUnaryHandler(
+		SavedViewServiceCreateSavedViewProcedure,
+		svc.CreateSavedView,
+		connect.WithSchema(savedViewServiceCreateSavedViewMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	savedViewServiceGetSavedViewHandler := connect.NewUnaryHandler(
+		SavedViewServiceGetSavedViewProcedure,
+		svc.GetSavedView,
+		connect.WithSchema(savedViewServiceGetSavedViewMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	savedViewServiceListSavedViewsHandler := connect.NewUnaryHandler(
+		SavedViewServiceListSavedViewsProcedure,
+		svc.ListSavedViews,
+		connect.WithSchema(savedViewServiceListSavedViewsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	savedViewServiceRenameSavedViewHandler := connect.NewUnaryHandler(
+		SavedViewServiceRenameSavedViewProcedure,
+		svc.RenameSavedView,
+		connect.WithSchema(savedViewServiceRenameSavedViewMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	savedViewServiceDeleteSavedViewHandler := connect.NewUnaryHandler(
+		SavedViewServiceDeleteSavedViewProcedure,
+		svc.DeleteSavedView,
+		connect.WithSchema(savedViewServiceDeleteSavedViewMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.SavedViewService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case SavedViewServiceCreateSavedViewProcedure:
+			savedViewServiceCreateSavedViewHandler.ServeHTTP(w, r)
+		case SavedViewServiceGetSavedViewProcedure:
+			savedViewServiceGetSavedViewHandler.ServeHTTP(w, r)
+		case SavedViewServiceListSavedViewsProcedure:
+			savedViewServiceListSavedViewsHandler.ServeHTTP(w, r)
+		case SavedViewServiceRenameSavedViewProcedure:
+			savedViewServiceRenameSavedViewHandler.ServeHTTP(w, r)
+		case SavedViewServiceDeleteSavedViewProcedure:
+			savedViewServiceDeleteSavedViewHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedSavedViewServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedSavedViewServiceHandler struct{}
+
+func (UnimplementedSavedViewServiceHandler) CreateSavedView(context.Context, *connect.Request[v1.CreateSavedViewRequest]) (*connect.Response[v1.CreateSavedViewResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.SavedViewService.CreateSavedView is not implemented"))
+}
+
+func (UnimplementedSavedViewServiceHandler) GetSavedView(context.Context, *connect.Request[v1.GetSavedViewRequest]) (*connect.Response[v1.GetSavedViewResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.SavedViewService.GetSavedView is not implemented"))
+}
+
+func (UnimplementedSavedViewServiceHandler) ListSavedViews(context.Context, *connect.Request[v1.ListSavedViewsRequest]) (*connect.Response[v1.ListSavedViewsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.SavedViewService.ListSavedViews is not implemented"))
+}
+
+func (UnimplementedSavedViewServiceHandler) RenameSavedView(context.Context, *connect.Request[v1.RenameSavedViewRequest]) (*connect.Response[v1.RenameSavedViewResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.SavedViewService.RenameSavedView is not implemented"))
+}
+
+func (UnimplementedSavedViewServiceHandler) DeleteSavedView(context.Context, *connect.Request[v1.DeleteSavedViewRequest]) (*connect.Response[v1.DeleteSavedViewResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.SavedViewService.DeleteSavedView is not implemented"))
 }

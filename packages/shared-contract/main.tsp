@@ -3613,3 +3613,81 @@ model ListAttentionResponse {
 interface AttentionService {
   listAttention(request: ListAttentionRequest): ListAttentionResponse;
 }
+
+// M58 (ADR0044): named configuration only; current reads still authorize data.
+model SavedTaskQuery {
+  @field(1) viewMode?: string;
+  @field(2) search?: string;
+  @field(3) priority?: int32;
+  @field(4) ready?: boolean;
+  @field(5) sort?: string;
+}
+model SavedReportQuery {
+  @field(1) windowDays?: int32;
+}
+model SavedViewDefinition {
+  @field(1) version: int32;
+  @field(2) screen: string;
+  @field(3) tasks?: SavedTaskQuery;
+  @field(4) reports?: SavedReportQuery;
+}
+model SavedViewMetadata {
+  @field(1) id: string;
+  @field(2) orgId: string;
+  @field(3) projectId: string;
+  @field(4) ownerUserId: string;
+  @field(5) name: string;
+  @field(6) screen: string;
+  @field(7) visibility: string;
+  @field(8) canEdit: boolean;
+  @field(9) createdAt: string;
+  @field(10) updatedAt: string;
+  @field(11) projectName?: string;
+  @field(12) unavailableReason?: string;
+}
+model CreateSavedViewRequest {
+  @field(1) projectId: string;
+  @field(2) name: string;
+  @field(3) visibility?: string;
+  @field(4) definition: SavedViewDefinition;
+}
+model CreateSavedViewResponse {
+  @field(1) view: SavedViewMetadata;
+}
+model GetSavedViewRequest {
+  @field(1) viewId: string;
+}
+model GetSavedViewResponse {
+  @field(1) view: SavedViewMetadata;
+  @field(2) definition: SavedViewDefinition;
+}
+model ListSavedViewsRequest {
+  @field(1) orgId: string;
+  @field(2) screen: string;
+  @field(3) visibility?: string;
+  @field(4) page?: PageRequest;
+}
+model ListSavedViewsResponse {
+  @field(1) views: SavedViewMetadata[];
+  @field(2) page: PageResponse;
+}
+model RenameSavedViewRequest {
+  @field(1) viewId: string;
+  @field(2) name: string;
+}
+model RenameSavedViewResponse {
+  @field(1) view: SavedViewMetadata;
+}
+model DeleteSavedViewRequest {
+  @field(1) viewId: string;
+}
+model DeleteSavedViewResponse {
+  @field(1) success: boolean;
+}
+interface SavedViewService {
+  createSavedView(request: CreateSavedViewRequest): CreateSavedViewResponse;
+  getSavedView(request: GetSavedViewRequest): GetSavedViewResponse;
+  listSavedViews(request: ListSavedViewsRequest): ListSavedViewsResponse;
+  renameSavedView(request: RenameSavedViewRequest): RenameSavedViewResponse;
+  deleteSavedView(request: DeleteSavedViewRequest): DeleteSavedViewResponse;
+}
