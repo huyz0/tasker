@@ -1398,6 +1398,8 @@ model ReportUsageResponse {
 model ListUsageRecordsRequest {
   @field(1) taskId: string;
   @field(2) page?: PageRequest;
+  @field(3) attemptId?: string;
+  @field(4) uncorrelatedOnly?: boolean;
 }
 model ListUsageRecordsResponse {
   @field(1) records: UsageRecord[];
@@ -1542,6 +1544,16 @@ interface TaskService {
   listCompactionCandidates(
     request: ListCompactionCandidatesRequest,
   ): ListCompactionCandidatesResponse;
+  listTaskAttempts(request: ListTaskAttemptsRequest): ListTaskAttemptsResponse;
+}
+
+model ListTaskAttemptsRequest {
+  @field(1) taskId: string;
+  @field(2) page?: PageRequest;
+}
+model ListTaskAttemptsResponse {
+  @field(1) attempts: TaskAttempt[];
+  @field(2) page: PageResponse;
 }
 
 // ==== Artifacts ====
@@ -1722,6 +1734,8 @@ model ListTaskArtifactLinksRequest {
   @field(1) taskId?: string;
   @field(2) artifactId?: string;
   @field(3) page?: PageRequest;
+  @field(4) attemptId?: string;
+  @field(5) uncorrelatedOnly?: boolean;
 }
 model ListTaskArtifactLinksResponse {
   @field(1) links: TaskArtifactLink[];
@@ -1949,6 +1963,9 @@ model CreateTaskNoteResponse {
 model ListTaskNotesRequest {
   @field(1) taskId: string;
   @field(2) page?: PageRequest;
+  @field(3) attemptId?: string;
+  @field(4) uncorrelatedOnly?: boolean;
+  @field(5) noteType?: string;
 }
 
 model ListTaskNotesResponse {

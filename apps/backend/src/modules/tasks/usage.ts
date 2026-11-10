@@ -12,6 +12,7 @@ import { executePaginatedQuery } from "../../db/query-builder";
 import { requirePrincipal, getTaskOrgId, authorizePrincipal } from "../../lib/authz";
 import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { validatedReportAttemptId } from './taskAttempts';
+import { reportReadFilters, reportAssociationWhere, reportReadScope } from './claimHistory';
 
 /** Per report: a billion tokens, or USD 1,000. Anything larger is a units bug, not a report. */
 const MAX_TOKENS_PER_REPORT = 1_000_000_000;
@@ -39,7 +40,7 @@ const ReportSchema = z.object({
   attemptId: z.string().min(1).max(256).optional(),
 }).refine((r) => r.inputTokens + r.outputTokens + r.costMicros > 0, { message: "a report must carry tokens or cost" });
 
-const ListSchema = z.object({ taskId: z.string().min(1, "taskId is required"), page: z.any().optional() });
+const ListSchema = z.object({ taskId: z.string().min(1, "taskId is required"), page: z.any().optional(), ...reportReadFilters });
 
 const iso = (d: unknown) => (d instanceof Date ? d.toISOString() : d ? String(d) : undefined);
 
@@ -194,7 +195,8 @@ export function createUsageHandlers(db: any, nc: any, isStandalone: boolean) {
       const parsed = ListSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await authorizePrincipal(db, principal, orgId, { scope: "tasks:read", permission: "task:read" });
-      const scope = eq(usage.taskId, parsed.taskId);
+      const association = await reportAssociationWhere(db, isStandalone, parsed.taskId, orgId, usage.attemptId, parsed);
+      const scope = and(eq(usage.taskId, parsed.taskId), association);
       const [{ items, nextCursor, totalCount }, totals] = await Promise.all([
         executePaginatedQuery(db, usage, scope, parsed.page, {
           sortableColumns: { createdAt: usage.createdAt },
@@ -205,6 +207,7 @@ export function createUsageHandlers(db: any, nc: any, isStandalone: boolean) {
             attemptId: usage.attemptId,
           },
           extraCacheKey: parsed.taskId,
+          cursorScope: reportReadScope('task-usage', parsed.taskId, orgId, parsed),
         }),
         taskUsageTotals(db, isStandalone, parsed.taskId),
       ]);

@@ -122,7 +122,8 @@ var tasksUsageShowCmd = &cobra.Command{
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
 		client := backend.NewTaskServiceClient()
-		req := connect.NewRequest(&healthv1.ListUsageRecordsRequest{TaskId: args[0], Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor}})
+		req := connect.NewRequest(&healthv1.ListUsageRecordsRequest{TaskId: args[0], Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+			AttemptId: optionalString(cmd, "attempt-id"), UncorrelatedOnly: optionalBool(cmd, "uncorrelated-only")})
 		if pageAllRequested(cmd) {
 			return pageAll(cmd, req.Msg, func() (proto.Message, error) {
 				r, err := client.ListUsageRecords(cmd.Context(), req)
@@ -143,7 +144,11 @@ var tasksUsageShowCmd = &cobra.Command{
 			cmd.PrintErrln("No usage reported.")
 			return nil
 		}
-		cmd.Printf("Total: %s\n", usageSummary(res.Msg.Totals))
+		if req.Msg.AttemptId != nil || req.Msg.GetUncorrelatedOnly() {
+			cmd.Printf("Task-wide total: %s\n", usageSummary(res.Msg.Totals))
+		} else {
+			cmd.Printf("Total: %s\n", usageSummary(res.Msg.Totals))
+		}
 		for _, r := range res.Msg.Records {
 			cmd.Printf("- %s\n", usageRecordLine(r))
 		}
@@ -216,6 +221,7 @@ func init() {
 	tasksUsageShowCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	tasksUsageShowCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	tasksUsageShowCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
+	addReportReadFlags(tasksUsageShowCmd)
 
 	rootCmd.AddCommand(reportsCmd)
 	reportsCmd.AddCommand(reportsUsageCmd)

@@ -124,6 +124,9 @@ authenticated owner on the same task and organization.
   new provenance, not an immutable artifact-content snapshot.
 - Add nullable association columns/indexes without rewriting old rows. Keep
   notes, usage and artifact metadata visible when association is absent.
+  Agent-note edit/delete remains exact-agent-author-only; the human GUI is a
+  read-only report reader, including for administrators. Remove the inherited
+  impossible edit/delete affordances rather than broadening that permission.
 - Serialize MySQL link creation on the artifact parent and use a current locking
   duplicate read after any wait. An earlier authorization snapshot must not let
   simultaneous retries create competing task/artifact pairs. SQLite uses its
@@ -145,6 +148,12 @@ authenticated owner on the same task and organization.
   its current permission boundary, page size and cursor policy. Cursors must not
   cross task or association filters. Existing totals keep their task-wide meaning;
   filtered records must not relabel them as attempt totals.
+- Preserve the existing task-wide latest-three handoff summary through a bounded
+  ListTaskNotes noteType filter, with its filtered total count. This avoids
+  retaining the old fetch-all request solely for a sidebar summary. The summary
+  stays task-wide when associated report lists are filtered; it does not claim
+  that the selected receipt contains all handoff context. Reserve fresh optional
+  ListTaskNotesRequest noteType5, restricted to comment/handoff.
 - UnassignTask and retention cleanup currently emit no task event. Do not assume
   stream invalidation can refresh those closures. While the Claim history
   disclosure is open, the document visible and current access confirmed, refresh
@@ -152,7 +161,19 @@ authenticated owner on the same task and organization.
   event invalidation. Stop timers/requests on collapse, hidden document, unmount,
   task/account/org change or known access loss. Explicit Retry/Refresh uses the
   same authority lifetime. Do not automatically poll every cached/older page.
+  After each successful visible history read, revalidate the existing scoped
+  task query too. An unchanged older page cannot reveal a newest-receipt closure,
+  and the sidebar must reconcile actual current assignees. Never derive current
+  assignment from a closed receipt: the same agent may already have reclaimed.
+  Keep Summary drafts/focus and the selected history page through this point read.
   Test remote unassign/retention closure with no published event.
+- Client read receipts bind QueryClient + account/org/task + source epochs.
+  History and usage share task-read authority; their known denial and any source
+  Unauthenticated fence sibling task reports and late responses. Artifact and
+  note-specific permission loss stays local. A known-denied lifetime needs an
+  explicit fresh authorized read, including after filter changes or remounts.
+  After denial, Retry revalidates the retained current page before enabling
+  navigation; a transport-only page failure retains and retries its target page.
 - Plan fresh optional field numbers against the current TypeSpec source:
   ClaimTaskRequest externalRunId3; ClaimNextTaskRequest externalRunId5;
   ClaimTaskResponse/ClaimNextTaskResponse attempt3; ReleaseTaskRequest

@@ -34,10 +34,12 @@ export const EXCEPTIONS = {
   'TaskService.reportUsage':
     'Agents report what their own work cost (M40, ADR-0033); a person in the ' +
     'GUI has no model call to report.',
-  'TaskService.listUsageRecords':
-    "The task dialog shows a task's usage totals, which GetTask already " +
-    'carries; the per-report ledger is for agents and the CLI ' +
-    '(`tasks usage show`). Wire it here if the dialog grows a breakdown.',
+  'TaskNoteService.updateTaskNote':
+    'Only the exact authoring agent may edit its note. Human task-detail readers ' +
+    'cannot perform this API/CLI operation, including administrators.',
+  'TaskNoteService.deleteTaskNote':
+    'Only the exact authoring agent may delete its note. The human GUI shows ' +
+    'read-only agent reports rather than an action every person is denied.',
   'TaskService.claimNextTask':
     'Agent work queue (M33, ADR-0027): "give me the next ready task" is how an ' +
     'autonomous worker pulls work. A person picks a task by looking at the ' +

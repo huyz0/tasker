@@ -15,6 +15,7 @@ import { purgeTaskCascade } from "../../lib/cascadePurge";
 import { createInputRequestHandlers, waitingOnPeopleCounts } from "./inputRequests";
 import { createApprovalHandlers, isGatedTransition } from "./approvals";
 import { createUsageHandlers, taskUsageTotals } from "./usage";
+import { createClaimHistoryHandlers } from './claimHistory';
 import { createDigestHandlers, taskSummaryToWire } from "./digest";
 import { createClaimReceipt, endClaimReceipts, assignmentReceiptId } from "./taskAttempts";
 import { MAX_PRIORITY, priorityRankSql, LINK_KINDS, assertLinkAllowed, openBlockerCounts, hasOpenBlockerSql, newlyUnblocked, assertParentAllowed, insertLink, deleteLink, listLinks } from "./taskGraph";
@@ -878,6 +879,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     listTransitionApprovals: approvals.listTransitionApprovals,
     // M40 (ADR-0033): what agents report their work cost.
     ...createUsageHandlers(db, nc, isStandalone),
+    ...createClaimHistoryHandlers(db, isStandalone),
     async createTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = CreateTaskSchema.parse(req);

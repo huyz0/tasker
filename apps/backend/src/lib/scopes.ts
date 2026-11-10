@@ -118,6 +118,7 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     // task's reports back. The org-wide spend report is a person's (Reports).
     reportUsage: 'tasks:write',
     listUsageRecords: 'tasks:read',
+    listTaskAttempts: 'tasks:read',
     // M41 (ADR-0034): writing what a finished task came to is part of
     // finishing it; reading a digest or the compaction work list is a read.
     setTaskSummary: 'tasks:write',

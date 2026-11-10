@@ -37,6 +37,9 @@ IDs wrap or use a labeled focusable code region rather than widen the document.
   independent bounded APIs. Do not duplicate artifact viewers/note bodies per
   receipt or fetch all reports and group them in the browser. Current task-wide
   Usage and cost totals retain that label when filtered records are shown.
+- The existing handoff summary remains task-wide, showing its latest three
+  handoffs and truthful total through a bounded server noteType read. Changing
+  report scope does not relabel that summary as receipt-specific context.
 - Preserve Summary drafts, current task/source navigation and existing artifact
   permission/freshness/provenance controls. A receipt filter grants no artifact
   access and does not imply its artifact reference is a historical snapshot.
@@ -60,6 +63,10 @@ IDs wrap or use a labeled focusable code region rather than widen the document.
   do not reuse cached authority after task/account/org changes or confirmed
   denial. Require a fresh authorized read for the new access lifetime. Transient
   transport errors without known denial do not impersonate a logout.
+- Shared task-read loss from history or usage, and authentication loss from any
+  report source, removes sibling protected reports. Artifact/note-specific
+  permission loss stays local. Retry after denial first verifies current-page
+  access; ordinary transport page errors keep their Older/Newer retry target.
 - Legacy assignment: current assignment may exist without a receipt. Do not
   manufacture a claim time or hide that assignment. Human-created assignments
   remain assignment facts, outside this self-claim history.
@@ -82,7 +89,15 @@ unassignment and owner retention currently have no task event: refresh the
 current history page every30seconds only while the disclosure/document are
 visible and access is current. Stop on collapse, hidden document, unmount,
 scope change or known denial; never poll all cached pages. Offer explicit
-Refresh and verify the no-event closure case.
+Refresh and verify the no-event closure case. Each successful visible history
+read also revalidates the current task so the sidebar reflects actual assignees,
+including while viewing an unchanged older page. Do not infer unassignment from
+an ended receipt; a same-agent reclaim may already exist. Preserve Summary draft
+text/focus and history position during reconciliation.
+
+Agent Notes in this human view are read-only: only the authoring agent
+may edit/delete through its authenticated API/CLI. Explain that boundary and do
+not offer actions that every human principal will be refused.
 
 Use native disclosure/buttons/select controls with visible labels, useful focus
 return and polite loading/error announcements. Test keyboard at375/768/1280 in

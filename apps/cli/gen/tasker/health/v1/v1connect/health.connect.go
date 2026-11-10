@@ -312,6 +312,9 @@ const (
 	// TaskServiceListCompactionCandidatesProcedure is the fully-qualified name of the TaskService's
 	// ListCompactionCandidates RPC.
 	TaskServiceListCompactionCandidatesProcedure = "/tasker.health.v1.TaskService/ListCompactionCandidates"
+	// TaskServiceListTaskAttemptsProcedure is the fully-qualified name of the TaskService's
+	// ListTaskAttempts RPC.
+	TaskServiceListTaskAttemptsProcedure = "/tasker.health.v1.TaskService/ListTaskAttempts"
 	// ArtifactServiceCreateFolderProcedure is the fully-qualified name of the ArtifactService's
 	// CreateFolder RPC.
 	ArtifactServiceCreateFolderProcedure = "/tasker.health.v1.ArtifactService/CreateFolder"
@@ -698,6 +701,7 @@ var (
 	taskServiceSetTaskSummaryMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("SetTaskSummary")
 	taskServiceGetTaskDigestMethodDescriptor                      = taskServiceServiceDescriptor.Methods().ByName("GetTaskDigest")
 	taskServiceListCompactionCandidatesMethodDescriptor           = taskServiceServiceDescriptor.Methods().ByName("ListCompactionCandidates")
+	taskServiceListTaskAttemptsMethodDescriptor                   = taskServiceServiceDescriptor.Methods().ByName("ListTaskAttempts")
 	artifactServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
 	artifactServiceCreateFolderMethodDescriptor                   = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
 	artifactServiceUpdateFolderMethodDescriptor                   = artifactServiceServiceDescriptor.Methods().ByName("UpdateFolder")
@@ -2476,6 +2480,7 @@ type TaskServiceClient interface {
 	SetTaskSummary(context.Context, *connect.Request[v1.SetTaskSummaryRequest]) (*connect.Response[v1.SetTaskSummaryResponse], error)
 	GetTaskDigest(context.Context, *connect.Request[v1.GetTaskDigestRequest]) (*connect.Response[v1.GetTaskDigestResponse], error)
 	ListCompactionCandidates(context.Context, *connect.Request[v1.ListCompactionCandidatesRequest]) (*connect.Response[v1.ListCompactionCandidatesResponse], error)
+	ListTaskAttempts(context.Context, *connect.Request[v1.ListTaskAttemptsRequest]) (*connect.Response[v1.ListTaskAttemptsResponse], error)
 }
 
 // NewTaskServiceClient constructs a client for the tasker.health.v1.TaskService service. By
@@ -2692,6 +2697,12 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(taskServiceListCompactionCandidatesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listTaskAttempts: connect.NewClient[v1.ListTaskAttemptsRequest, v1.ListTaskAttemptsResponse](
+			httpClient,
+			baseURL+TaskServiceListTaskAttemptsProcedure,
+			connect.WithSchema(taskServiceListTaskAttemptsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -2731,6 +2742,7 @@ type taskServiceClient struct {
 	setTaskSummary           *connect.Client[v1.SetTaskSummaryRequest, v1.SetTaskSummaryResponse]
 	getTaskDigest            *connect.Client[v1.GetTaskDigestRequest, v1.GetTaskDigestResponse]
 	listCompactionCandidates *connect.Client[v1.ListCompactionCandidatesRequest, v1.ListCompactionCandidatesResponse]
+	listTaskAttempts         *connect.Client[v1.ListTaskAttemptsRequest, v1.ListTaskAttemptsResponse]
 }
 
 // CreateTask calls tasker.health.v1.TaskService.CreateTask.
@@ -2903,6 +2915,11 @@ func (c *taskServiceClient) ListCompactionCandidates(ctx context.Context, req *c
 	return c.listCompactionCandidates.CallUnary(ctx, req)
 }
 
+// ListTaskAttempts calls tasker.health.v1.TaskService.ListTaskAttempts.
+func (c *taskServiceClient) ListTaskAttempts(ctx context.Context, req *connect.Request[v1.ListTaskAttemptsRequest]) (*connect.Response[v1.ListTaskAttemptsResponse], error) {
+	return c.listTaskAttempts.CallUnary(ctx, req)
+}
+
 // TaskServiceHandler is an implementation of the tasker.health.v1.TaskService service.
 type TaskServiceHandler interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
@@ -2939,6 +2956,7 @@ type TaskServiceHandler interface {
 	SetTaskSummary(context.Context, *connect.Request[v1.SetTaskSummaryRequest]) (*connect.Response[v1.SetTaskSummaryResponse], error)
 	GetTaskDigest(context.Context, *connect.Request[v1.GetTaskDigestRequest]) (*connect.Response[v1.GetTaskDigestResponse], error)
 	ListCompactionCandidates(context.Context, *connect.Request[v1.ListCompactionCandidatesRequest]) (*connect.Response[v1.ListCompactionCandidatesResponse], error)
+	ListTaskAttempts(context.Context, *connect.Request[v1.ListTaskAttemptsRequest]) (*connect.Response[v1.ListTaskAttemptsResponse], error)
 }
 
 // NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -3151,6 +3169,12 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(taskServiceListCompactionCandidatesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskServiceListTaskAttemptsHandler := connect.NewUnaryHandler(
+		TaskServiceListTaskAttemptsProcedure,
+		svc.ListTaskAttempts,
+		connect.WithSchema(taskServiceListTaskAttemptsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskServiceCreateTaskProcedure:
@@ -3221,6 +3245,8 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceGetTaskDigestHandler.ServeHTTP(w, r)
 		case TaskServiceListCompactionCandidatesProcedure:
 			taskServiceListCompactionCandidatesHandler.ServeHTTP(w, r)
+		case TaskServiceListTaskAttemptsProcedure:
+			taskServiceListTaskAttemptsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -3364,6 +3390,10 @@ func (UnimplementedTaskServiceHandler) GetTaskDigest(context.Context, *connect.R
 
 func (UnimplementedTaskServiceHandler) ListCompactionCandidates(context.Context, *connect.Request[v1.ListCompactionCandidatesRequest]) (*connect.Response[v1.ListCompactionCandidatesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListCompactionCandidates is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ListTaskAttempts(context.Context, *connect.Request[v1.ListTaskAttemptsRequest]) (*connect.Response[v1.ListTaskAttemptsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListTaskAttempts is not implemented"))
 }
 
 // ArtifactServiceClient is a client for the tasker.health.v1.ArtifactService service.

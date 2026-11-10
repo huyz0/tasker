@@ -1,8 +1,8 @@
 ---
 active_milestone: M57
-active_task: M57-T04
+active_task: M57-T05
 last_updated: 2026-11-10
-last_commit: f66b287
+last_commit: c9d4009
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M57-T04 verified:4/5 tasks.** Bounded history/source filters and GUI/CLI/MCP readers pass all36 checks (backend2377/zero failures; GUI1657/95.14% branches), native40/275 and old SDK448/1303/186/18. CODE-v4/UX-v4 approve;134 focused UI cases, four restored faults,57 final previews/228 accessibility/114 overflow checks and six final real browser journeys pass. Human notes correctly remain exact-agent-author-only; real eventless older-page ownership refresh preserves page/draft/focus.383 done/13 pending; M57 is unpublished. T05 next adds permanent worker/wire/E2E proof and public integration/rollback guidance before final-head/main publication. M56 main681dc20/all10 post-main jobs are verified; original branches/WIP/services are preserved.
 
 **2026-11-10 — M57-T03 verified:3/5 tasks.** Explicit owner/task/org-bound report association, unchanged legacy omission, stable keyed usage/link provenance, exact release handoffs and optional CLI/MCP arguments pass all36 checks (backend2350/zero failures; GUI1622/95.13% branches). CODE-v2 approves. Real MySQL8-way retries/lock-conflict rollback, populated upgrades, actual old SDK18 decodes and3 restored refusal faults pass. Four unchanged search/navigation failures and one auth timeout in the concurrent run pass in isolation; final suites are green with heavy jobs separated and generated CLI docs current. T04 next builds bounded history/source filters and real task-detail UI.382 done/14 pending overall; M57 is still unpublished. M56 main681dc20 and all10 post-main jobs are verified. Original branches/WIP/services remain preserved.
 
@@ -2002,10 +2004,10 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
-| M57 | Attempt Correlation | in-progress | M46, M54 | 5 | 3 |
+| M57 | Attempt Correlation | in-progress | M46, M54 | 5 | 4 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 382 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 383 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

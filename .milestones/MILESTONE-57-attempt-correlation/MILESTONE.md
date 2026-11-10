@@ -47,7 +47,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/backend/src/modules/tasks/task_notes.handler.ts; apps/backend/src/modules/tasks/usage.ts; apps/backend/src/modules/artifacts/; apps/backend/src/modules/mcp/; apps/cli/cmd/; packages/shared-contract/.
   - **Verify**: Same task and credential-derived receipt owner required; ID confers no authority; delayed final usage after release works; other-task/agent/org rejected; omitted correlation remains ungrouped; do not auto-attach late legacy reports to current claim.
 
-- [ ] **M57-T04** — Expose paginated claim receipts and group associated evidence without inventing runtime status.
+- [x] **M57-T04** — Expose paginated claim receipts and group associated evidence without inventing runtime status.
   - **Files**: apps/backend/src/modules/tasks/; apps/gui/src/features/Tasks/; packages/shared-contract/; apps/cli/cmd/.
   - **Verify**: tasks:read controls list; show claim/release timestamps, owner and optional external correlation; legacy ungrouped evidence remains visible; task status changes do not assert process stop/success; accessible loading/empty/error/page states.
 

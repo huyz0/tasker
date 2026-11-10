@@ -380,9 +380,14 @@ Usage:
   tasker artifacts list-task-links [flags]
 
 Flags:
-      --artifact string   List links for this artifact
-  -h, --help              help for list-task-links
-      --task string       List links for this task
+      --artifact string     List links for this artifact
+      --attempt-id string   Only reports associated with this task claim receipt
+  -c, --cursor string       Pagination cursor from a previous response
+  -h, --help                help for list-task-links
+  -l, --limit int32         Maximum number of items to return (default 50)
+      --page-all            Fetch every page as one JSON object per item per line (NDJSON)
+      --task string         List links for this task
+      --uncorrelated-only   Only reports without a claim receipt
 ```
 
 #### `tasker artifacts purge`
@@ -1814,6 +1819,7 @@ Available Commands:
   approve               Approve an agent's held status change; it is applied as you (people only)
   ask                   Ask a person a question on a task; its reviewers (or org admins) are notified
   assign                Assign a task to an agent or user
+  attempts              Read recorded claim ownership, newest first
   cancel-question       Withdraw a question you asked (or, as an admin, close any)
   claim                 Atomically claim an unassigned task for the calling principal (agent self-service)
   claim-next            Claim the most important ready task in a project (agent self-service)
@@ -1934,6 +1940,21 @@ Flags:
       --agent string   Agent ID to assign
   -h, --help           help for assign
       --user string    User ID to assign
+```
+
+#### `tasker tasks attempts`
+
+```
+Read recorded claim ownership, newest first
+
+Usage:
+  tasker tasks attempts [task_id] [flags]
+
+Flags:
+  -c, --cursor string   Pagination cursor from a previous response
+  -h, --help            help for attempts
+  -l, --limit int32     Maximum number of items to return (default 50)
+      --page-all        Fetch every page as one JSON object per item per line (NDJSON)
 ```
 
 #### `tasker tasks cancel-question`
@@ -2204,7 +2225,13 @@ Usage:
   tasker tasks notes [task_id] [flags]
 
 Flags:
-  -h, --help   help for notes
+      --attempt-id string   Only reports associated with this task claim receipt
+  -c, --cursor string       Pagination cursor from a previous response
+  -h, --help                help for notes
+  -l, --limit int32         Maximum number of items to return (default 50)
+      --note-type string    Only comment or handoff notes
+      --page-all            Fetch every page as one JSON object per item per line (NDJSON)
+      --uncorrelated-only   Only reports without a claim receipt
 ```
 
 #### `tasker tasks plan`

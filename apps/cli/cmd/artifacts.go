@@ -370,7 +370,8 @@ var artifactsListTaskLinksCmd = &cobra.Command{
 			return errors.New("exactly one of --task or --artifact is required")
 		}
 
-		req := &healthv1.ListTaskArtifactLinksRequest{}
+		req := &healthv1.ListTaskArtifactLinksRequest{AttemptId: optionalString(cmd, "attempt-id"), UncorrelatedOnly: optionalBool(cmd, "uncorrelated-only")}
+		req.Page = reportReadPage(cmd, req.AttemptId != nil || req.UncorrelatedOnly != nil)
 		if taskID != "" {
 			req.TaskId = &taskID
 		} else {
@@ -378,6 +379,15 @@ var artifactsListTaskLinksCmd = &cobra.Command{
 		}
 
 		client := backend.NewArtifactServiceClient()
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, req, func() (proto.Message, error) {
+				response, err := client.ListTaskArtifactLinks(cmd.Context(), connect.NewRequest(req))
+				if err != nil {
+					return nil, err
+				}
+				return response.Msg, nil
+			})
+		}
 		res, err := client.ListTaskArtifactLinks(cmd.Context(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to list task-artifact links: %w", err)
@@ -394,6 +404,7 @@ var artifactsListTaskLinksCmd = &cobra.Command{
 				cmd.Printf(" - %s <-> %s (link id: %s)\n", l.TaskTitle, l.ArtifactName, l.Id)
 			}
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -639,4 +650,6 @@ func init() {
 	artifactsUnlinkTaskCmd.Flags().String("artifact", "", "Artifact ID to unlink")
 	artifactsListTaskLinksCmd.Flags().String("task", "", "List links for this task")
 	artifactsListTaskLinksCmd.Flags().String("artifact", "", "List links for this artifact")
+	addReportReadFlags(artifactsListTaskLinksCmd)
+	addReportPageFlags(artifactsListTaskLinksCmd)
 }

@@ -98,6 +98,11 @@ tasks:read alone cannot reveal artifact bodies. Task-wide usage totals retain
 their meaning. Given current owner names later changed/purged, then recorded
 snapshot IDs/names remain readable without whole-catalog fetches.
 
+Given more than three handoffs mixed with many comments, when the task-wide
+handoff summary reads its bounded noteType page, then SQL filters before the
+limit and returns the latest three with the correct handoff total; selecting a
+report receipt does not relabel that summary as receipt-specific.
+
 ## TC-009 — History and associated sources (T04/T05, exit4)
 
 Given new/closed/reclaimed receipts plus legacy ungrouped reports, when opening
@@ -121,7 +126,21 @@ then the browser groups explicit old-receipt reports while legacy omission stays
 ungrouped. Run both-theme375/768/1280 keyboard/accessibility/overflow journeys,
 full local gates, independent review and actual final-head CI before publication.
 Test tokens remain memory-only and are revoked in finally.
+Given a human reads an agent note, even with a matching textual user/agent ID,
+then the note and author-only guidance are visible without Edit/Delete or an
+editor; no note mutation is submitted. Existing exact-agent author operations
+retain their API/CLI permission boundary.
 Given remote human unassignment or owner-retention closure with no task event,
-then the visible current history page refreshes within30seconds. Given collapse,
+then the visible current history page refreshes within30seconds and the current
+task's actual assignees reconcile, including on an unchanged older history page.
+Given the same agent has reclaimed, then its current assignment remains intact;
+Summary draft text/focus and history position survive the refresh. Given collapse,
 hidden document, unmount, scope replacement or known denial, then polling and
 late completions stop; automatic refresh does not fetch every cached page.
+
+Given usage denies the same task-read authority while a history response is
+pending, or any report source confirms authentication loss, then old sibling
+reports and late responses stay fenced. Given artifact/note-specific permission
+loss only, then independently authorized sources remain visible. Given a denied
+Older/Newer page and restored access, then its primary Retry performs fresh
+current-page authorization; transport failures keep their original page target.

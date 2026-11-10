@@ -6,7 +6,7 @@ import { TaskArtifactLinks } from './TaskArtifactLinks';
 const meta = {
   title: 'Features/Tasks/TaskArtifactLinks', component: TaskArtifactLinks,
   args: { orgId: 'org-storybook', taskId: 'task-storybook' },
-  parameters: { layout: 'padded' },
+  parameters: { layout: 'padded', docs: { description: { component: 'The Claim reports previews also exercise receipt-filtered reads and truthful human link feedback when the returned association is outside that filter. Human linking keeps its existing unassociated request.' } } },
   decorators: [(Story) => <div className="max-w-2xl"><Story /></div>],
   beforeEach: () => evidenceFixture(),
   play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('link', { name: 'release-verification.md' })).resolves.toBeVisible(); },

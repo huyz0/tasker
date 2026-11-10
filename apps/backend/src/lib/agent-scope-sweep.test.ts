@@ -230,6 +230,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     listTransitionApprovals: { taskId: ids.task },
     reportUsage: { taskId: ids.task, inputTokens: 1n, outputTokens: 0n, costMicros: 0n },
     listUsageRecords: { taskId: ids.task },
+    listTaskAttempts: { taskId: ids.task },
     setTaskSummary: { taskId: ids.task, text: 'Done.' },
     getTaskDigest: { taskId: ids.task },
     listCompactionCandidates: { projectId: ids.project },

@@ -1,4 +1,4 @@
-import { screen, fireEvent, waitFor, within, createEvent } from '@testing-library/react';
+import { act, screen, fireEvent, waitFor, within, createEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   AttentionService, TaskService, CommentService, LabelService, RepositoryService, TaskTypeService,
@@ -314,6 +314,39 @@ describe('TasksWorkbench', () => {
 
     await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
   });
+  it.each([{ older: false, reclaimed: false }, { older: true, reclaimed: false }, { older: true, reclaimed: true }])(
+    'reconciles actual task ownership from visible history without replacing a draft ($older/$reclaimed)', async ({ older, reclaimed }) => {
+      const task = { id: 'task-1', projectId: 'proj-1', title: 'Ownership reconciliation', status: 'todo', description: '',
+        assignees: [{ userId: '', agentId: 'agent-1', name: 'Current assignee' }] };
+      withTasks([task]); let changed = false, taskReads = 0;
+      mockRpc(TaskService, 'GetTask', () => { taskReads++; return { orgId: 'org-1', task: { ...task,
+        assignees: changed && !reclaimed ? [] : task.assignees } }; });
+      mockRpc(TaskService, 'ListTaskAttempts', request => ({ attempts: [{ id: request.page?.cursor ? 'ta-old' : 'ta-current',
+        taskId: 'task-1', orgId: 'org-1', owner: { kind: 'agent', id: 'agent-1', name: 'Recorded owner' }, claimedAt: '2026-11-08T12:00:00Z',
+        ...(request.page?.cursor ? { releasedAt: '2026-11-08T12:01:00Z', releaseReason: 'released' }
+          : changed ? { releasedAt: '2026-11-08T12:02:00Z', releaseReason: 'unassigned' } : {}) }],
+        page: { totalCount: 2, ...(!request.page?.cursor ? { nextCursor: 'older-page' } : {}) } }));
+      const view = renderPage('/tasks/task-1');
+      const detail = within(await screen.findByRole('dialog', { name: 'Task Details' }));
+      await detail.findByText('Current assignee');
+      fireEvent.click(await detail.findByText('Summary'));
+      fireEvent.click(detail.getByRole('button', { name: 'Write a summary' }));
+      fireEvent.change(detail.getByLabelText('Summary', { exact: true }), { target: { value: 'Keep writing across ownership refresh.' } });
+      fireEvent.click(detail.getByText('Claim history', { exact: true })); await detail.findByText('Recorded owner');
+      await waitFor(() => expect(taskReads).toBeGreaterThan(1));
+      if (older) { fireEvent.click(detail.getByRole('button', { name: 'Older claims' })); await detail.findByText('Page 2 · 1 shown · 2 recorded'); }
+      await waitFor(() => expect(view.queryClient.isFetching({ queryKey: ['task', 'task-1'], exact: true })).toBe(0));
+      const before = taskReads; changed = true;
+      const editor = detail.getByLabelText('Summary', { exact: true }); editor.focus();
+      await act(async () => { await view.queryClient.invalidateQueries({ queryKey: ['taskAttempts'] }); });
+      await waitFor(() => expect(taskReads).toBeGreaterThan(before));
+      await waitFor(() => expect(view.queryClient.isFetching({ queryKey: ['task', 'task-1'], exact: true })).toBe(0));
+      if (reclaimed) expect(detail.getByText('Current assignee')).toBeInTheDocument();
+      else expect(await detail.findByRole('button', { name: 'Unassigned — assign this task' })).toBeInTheDocument();
+      expect(detail.getByLabelText('Summary', { exact: true })).toHaveValue('Keep writing across ownership refresh.');
+      expect(detail.getByLabelText('Summary', { exact: true })).toHaveFocus();
+      expect(detail.getByText('Claim history').closest('details')).toHaveAttribute('open');
+    });
 
   it('asks the server for one column at a time, rather than the whole project', async () => {
     // This replaces a test that asserted the board looped the cursor until the
@@ -758,50 +791,26 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.queryByDisplayValue('Fix bug')).toBeNull());
   });
 
-  it('shows agent notes for a task and edits one', async () => {
-    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
-    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
-    const requests: any[] = [];
-    mockRpc(TaskNoteService, 'UpdateTaskNote', (body) => {
-      requests.push(body);
-      return { taskNote: { id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Updated finding' } };
-    });
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
-    fireEvent.click(screen.getByText('Fix bug'));
-
-    await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
-    const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
-    fireEvent.click(within(noteCard).getByText('Edit'));
-
-    const noteInput = screen.getByDisplayValue('Investigated root cause');
-    fireEvent.change(noteInput, { target: { value: 'Updated finding' } });
-    fireEvent.click(screen.getByText('Save'));
-
-    await waitFor(() => expect(requests).toContainEqual({ taskNoteId: 'note-1', content: 'Updated finding' }));
+  it.each(['Scout', ''])('keeps agent-authored reports read-only for a person (%s)', async agentName => {
+    withTasks([{ id: 'task-1', title: 'Inspect authored report', status: 'todo' }]);
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1',
+      agentId: 'workbench-fixture-user', agentName, content: 'Agent-authored finding' }] });
+    const mutations: unknown[] = [];
+    mockRpc(TaskNoteService, 'UpdateTaskNote', body => { mutations.push(body); return {}; });
+    mockRpc(TaskNoteService, 'DeleteTaskNote', body => { mutations.push(body); return {}; });
+    renderPage('/tasks/task-1');
+    const reports = within(await screen.findByRole('region', { name: 'Agent notes' }));
+    expect(await reports.findByText('Agent-authored finding')).toBeVisible();
+    expect(reports.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(reports.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+    expect(reports.getByText('Only the authoring agent can edit or delete these notes.')).toBeVisible();
+    expect(reports.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(mutations).toHaveLength(0);
   });
 
-  it('deletes an agent note after confirmation', async () => {
-    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
-    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
-    const requests: any[] = [];
-    mockRpc(TaskNoteService, 'DeleteTaskNote', (body) => {
-      requests.push(body);
-      return { success: true };
-    });
-    renderPage();
 
-    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
-    fireEvent.click(screen.getByText('Fix bug'));
 
-    await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
-    const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
-    fireEvent.click(within(noteCard).getByText('Delete'));
-    await confirmAction();
 
-    await waitFor(() => expect(requests).toContainEqual({ taskNoteId: 'note-1' }));
-  });
 
   it('shows "No agent notes yet." when a task has no notes', async () => {
     withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
@@ -813,77 +822,36 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.getByText('No agent notes yet.')).toBeInTheDocument());
   });
 
-  it('shows an error message when updating an agent note fails', async () => {
-    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
-    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
-    mockRpcError(TaskNoteService, 'UpdateTaskNote', 'unknown', 'note not found');
-    renderPage();
 
-    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
-    fireEvent.click(screen.getByText('Fix bug'));
 
-    await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
-    const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
-    fireEvent.click(within(noteCard).getByText('Edit'));
-    fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(screen.getByText(/Failed to update note/)).toBeInTheDocument());
-  });
 
-  it('cancels editing an agent note without saving', async () => {
-    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
-    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
-    const requests: any[] = [];
-    mockRpc(TaskNoteService, 'UpdateTaskNote', (body) => {
-      requests.push(body);
-      return {};
+
+
+  function withTaskNotes(rows: { id: string; taskId: string; agentId: string; content: string; createdAt: string; noteType: string }[]) {
+    const requests: Record<string, unknown>[] = [];
+    mockRpc(TaskNoteService, 'ListTaskNotes', request => {
+      requests.push(request);
+      const filtered = request.noteType ? rows.filter(row => row.noteType === request.noteType) : rows;
+      return { taskNotes: [...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, Number(request.page?.limit) || 50),
+        page: { totalCount: filtered.length } };
     });
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
-    fireEvent.click(screen.getByText('Fix bug'));
-
-    await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
-    const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
-    fireEvent.click(within(noteCard).getByText('Edit'));
-    expect(screen.getByDisplayValue('Investigated root cause')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Cancel'));
-    expect(screen.getByText('Investigated root cause')).toBeInTheDocument();
-    expect(requests).toHaveLength(0);
-  });
-
-  it('shows an error message when deleting an agent note fails', async () => {
-    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
-    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
-    mockRpcError(TaskNoteService, 'DeleteTaskNote', 'unknown', 'note not found');
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
-    fireEvent.click(screen.getByText('Fix bug'));
-
-    await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
-    const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
-    fireEvent.click(within(noteCard).getByText('Delete'));
-    await confirmAction();
-
-    await waitFor(() => expect(screen.getByText(/Failed to delete note/)).toBeInTheDocument());
-  });
+    return requests;
+  }
 
   // --- Handoffs summary (M22-T05) ---
   //
   // A compact summary block, separate from the Agent Notes panel above -
   // count, the last few (truncated), and a click-through to the dedicated
-  // Handoffs screen. Shares the same ['taskNotes', taskId] query
-  // TaskNotesPanel already fetches, so these fixtures reuse ListTaskNotes
-  // rather than a second mock.
+  // Handoffs screen. Its noteType page is bounded independently of the
+  // report list, and the fixture returns the server's filtered total.
 
   it('shows a Handoffs summary, separate from Agent Notes, when the task has a handoff note', async () => {
     withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
-    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [
+    const requests = withTaskNotes([
       { id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Just a comment', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'comment' },
       { id: 'note-2', taskId: 'task-1', agentId: 'agent-2', content: 'Blocked on review, next: rerun tests', createdAt: '2026-08-19T11:00:00.000Z', noteType: 'handoff' },
-    ] });
+    ]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -893,6 +861,7 @@ describe('TasksWorkbench', () => {
     // The handoff note's content legitimately appears twice - once as this
     // excerpt, once in the full Agent Notes record below - so this asserts
     // within the labelled summary region specifically, not page-wide.
+    expect(requests).toContainEqual({ taskId: 'task-1', noteType: 'handoff', page: { limit: 3 } });
     const summary = within(screen.getByRole('region', { name: 'Handoffs summary' }));
     expect(summary.getByText('Blocked on review, next: rerun tests')).toBeInTheDocument();
     // The plain comment is not a handoff - it appears only in Agent Notes,
@@ -903,9 +872,9 @@ describe('TasksWorkbench', () => {
   it('stamps each handoff with a machine-readable <time>, formatted for the reader', async () => {
     withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     const createdAt = '2026-08-19T11:00:00.000Z';
-    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [
+    withTaskNotes([
       { id: 'note-2', taskId: 'task-1', agentId: 'agent-2', content: 'Handed off', createdAt, noteType: 'handoff' },
-    ] });
+    ]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -922,7 +891,7 @@ describe('TasksWorkbench', () => {
 
   it('shows no Handoffs summary at all when the task has no handoff note', async () => {
     withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
-    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Just a comment', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'comment' }] });
+    withTaskNotes([{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Just a comment', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'comment' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -934,12 +903,12 @@ describe('TasksWorkbench', () => {
 
   it('shows only the 3 most recent handoff notes in the summary', async () => {
     withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
-    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [
+    withTaskNotes([
       { id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Oldest handoff', createdAt: '2026-08-19T08:00:00.000Z', noteType: 'handoff' },
       { id: 'note-2', taskId: 'task-1', agentId: 'agent-1', content: 'Second handoff', createdAt: '2026-08-19T09:00:00.000Z', noteType: 'handoff' },
       { id: 'note-3', taskId: 'task-1', agentId: 'agent-1', content: 'Third handoff', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'handoff' },
       { id: 'note-4', taskId: 'task-1', agentId: 'agent-1', content: 'Newest handoff', createdAt: '2026-08-19T11:00:00.000Z', noteType: 'handoff' },
-    ] });
+    ]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -958,7 +927,7 @@ describe('TasksWorkbench', () => {
 
   it('navigates to /handoffs when "View all" is clicked', async () => {
     withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
-    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Blocked', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'handoff' }] });
+    withTaskNotes([{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Blocked', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'handoff' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());

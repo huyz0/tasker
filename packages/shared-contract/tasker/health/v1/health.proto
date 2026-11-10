@@ -1142,6 +1142,8 @@ message ReportUsageResponse {
 message ListUsageRecordsRequest {
   string taskId = 1;
   PageRequest page = 2;
+  optional string attemptId = 3;
+  optional bool uncorrelatedOnly = 4;
 }
 message ListUsageRecordsResponse {
   repeated UsageRecord records = 1;
@@ -1259,6 +1261,7 @@ service TaskService {
   rpc SetTaskSummary(SetTaskSummaryRequest) returns (SetTaskSummaryResponse);
   rpc GetTaskDigest(GetTaskDigestRequest) returns (GetTaskDigestResponse);
   rpc ListCompactionCandidates(ListCompactionCandidatesRequest) returns (ListCompactionCandidatesResponse);
+  rpc ListTaskAttempts(ListTaskAttemptsRequest) returns (ListTaskAttemptsResponse);
 }
 
 message Folder {
@@ -1418,6 +1421,8 @@ message ListTaskArtifactLinksRequest {
   optional string taskId = 1;
   optional string artifactId = 2;
   PageRequest page = 3;
+  optional string attemptId = 4;
+  optional bool uncorrelatedOnly = 5;
 }
 
 message ListTaskArtifactLinksResponse {
@@ -1614,6 +1619,9 @@ message CreateTaskNoteResponse {
 message ListTaskNotesRequest {
   string taskId = 1;
   PageRequest page = 2;
+  optional string attemptId = 3;
+  optional bool uncorrelatedOnly = 4;
+  optional string noteType = 5;
 }
 
 message ListTaskNotesResponse {
@@ -3008,5 +3016,14 @@ message TaskAttempt {
   optional string releasedAt = 7;
   optional string releaseReason = 8;
   EvidenceActor releasedBy = 9;
+}
+
+message ListTaskAttemptsRequest {
+  string taskId = 1;
+  PageRequest page = 2;
+}
+message ListTaskAttemptsResponse {
+  repeated TaskAttempt attempts = 1;
+  PageResponse page = 2;
 }
 

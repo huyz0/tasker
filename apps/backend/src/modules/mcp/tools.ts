@@ -43,6 +43,11 @@ const strArray = (description: string) => ({ type: "array", items: { type: "stri
 const priority = str("urgent, high, medium, low or none", { enum: PRIORITIES });
 const limit = int("Page size", 1, 100);
 const cursor = str("next_cursor from a previous page");
+const reportReadFilters = {
+  attempt_id: str('Filter to this task claim receipt; mutually exclusive with uncorrelated_only', { minLength: 1, maxLength: 256 }),
+  uncorrelated_only: bool('Only reports without a claim receipt; mutually exclusive with attempt_id'),
+};
+const reportReadRequest = (a: Args) => defined({ attemptId: a.attempt_id, uncorrelatedOnly: a.uncorrelated_only });
 
 function schema(properties: Args, required: string[] = []): Tool["inputSchema"] {
   return { type: "object", properties, ...(required.length ? { required } : {}) };
@@ -149,9 +154,9 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "list_task_artifact_links", title: "List task evidence",
     description: "A bounded page of artifact links and current metadata, without bodies. Follow nextCursor explicitly.",
-    inputSchema: schema({ task_id: str("Task id"), limit, cursor }, ["task_id"]), annotations: readOnly,
+    inputSchema: schema({ task_id: str("Task id"), limit, cursor, ...reportReadFilters }, ["task_id"]), annotations: readOnly,
     service: ArtifactService, method: "ListTaskArtifactLinks",
-    request: (a) => ({ taskId: a.task_id, page: defined({ limit: a.limit ?? 20, cursor: a.cursor }) }),
+    request: (a) => ({ taskId: a.task_id, ...reportReadRequest(a), page: defined({ limit: a.limit ?? 20, cursor: a.cursor }) }),
   },
   {
     name: "get_artifact_content", title: "Read a stored content prefix",
@@ -268,8 +273,21 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "list_task_notes", title: "List task notes",
     description: "A task's agent notes and handoffs, newest first.",
-    inputSchema: schema({ task_id: str("Task id"), limit, cursor }, ["task_id"]), annotations: readOnly,
-    service: TaskNoteService, method: "ListTaskNotes", request: (a) => ({ taskId: a.task_id, ...page(a) }),
+    inputSchema: schema({ task_id: str("Task id"), limit, cursor, ...reportReadFilters,
+      note_type: str('Only comment or handoff notes', { enum: ['comment', 'handoff'] }) }, ["task_id"]), annotations: readOnly,
+    service: TaskNoteService, method: "ListTaskNotes", request: (a) => ({ taskId: a.task_id, ...page(a), ...reportReadRequest(a), ...defined({ noteType: a.note_type }) }),
+  },
+  {
+    name: 'list_task_attempts', title: 'Read claim history',
+    description: 'A bounded page of recorded claim owners and claim/release times. Ownership records do not establish external process status. Follow nextCursor explicitly.',
+    inputSchema: schema({ task_id: str('Task id'), limit, cursor }, ['task_id']), annotations: readOnly,
+    service: TaskService, method: 'ListTaskAttempts', request: a => ({ taskId: a.task_id, ...page(a) }),
+  },
+  {
+    name: 'list_usage_records', title: 'Read reported task usage',
+    description: 'A bounded page of usage reports, optionally associated with a claim receipt. Returned totals remain task-wide even when records are filtered.',
+    inputSchema: schema({ task_id: str('Task id'), limit, cursor, ...reportReadFilters }, ['task_id']), annotations: readOnly,
+    service: TaskService, method: 'ListUsageRecords', request: a => ({ taskId: a.task_id, ...page(a), ...reportReadRequest(a) }),
   },
   {
     name: "add_comment", title: "Comment on a task",

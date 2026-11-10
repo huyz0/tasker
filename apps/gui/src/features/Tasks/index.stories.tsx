@@ -5,7 +5,7 @@ import { TasksWorkbench } from './index';
 
 const meta = {
   title: 'Features/TasksWorkbench', component: TasksWorkbench,
-  parameters: { router: false, layout: 'padded', docs: { description: { component: 'Deterministic board states use the real workbench. Optional task context is previewed in Features/Tasks/Optional context; assembled task routes and keyboard disclosure are covered in ui-layout.spec.ts. Existing task-write settlement also reconciles current Attention sources.' } } },
+  parameters: { router: false, layout: 'padded', docs: { description: { component: 'Deterministic board states use the real workbench. Optional context and Claim reports previews cover Summary, Evidence, ownership history and source scope; actual task routes and keyboard disclosure have separate browser coverage. Existing task-write settlement also reconciles current Attention sources.' } } },
 } satisfies Meta<typeof TasksWorkbench>;
 export default meta;
 type Story = StoryObj<typeof meta>;
