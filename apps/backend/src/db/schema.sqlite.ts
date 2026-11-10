@@ -1201,3 +1201,24 @@ export const domainEvents = sqliteTable("domain_events", {
   pendingIdx: index("domain_events_pending_idx").on(table.deliveredAt, table.nextAttemptAt, table.claimedUntil),
   orgCreatedIdx: index("domain_events_org_created_idx").on(table.orgId, table.createdAt),
 }));
+
+// M58: project references survive removal for explicit obsolete-view recovery.
+// The owning organization still removes its definitions through its cascade.
+export const savedViews = sqliteTable("saved_views", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  projectId: text("project_id").notNull(),
+  ownerUserId: text("owner_user_id").notNull().references(() => users.id),
+  screen: text("screen").notNull(),
+  visibility: text("visibility").notNull(),
+  audienceKey: text("audience_key").notNull(),
+  name: text("name").notNull(),
+  nameKey: text("name_key").notNull(),
+  definitionJson: text("definition_json").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, table => ({
+  nameIdx: uniqueIndex("saved_views_name_idx").on(table.orgId, table.screen, table.audienceKey, table.nameKey),
+  scopePageIdx: index("saved_views_scope_page_idx").on(table.orgId, table.screen, table.visibility, table.createdAt, table.id),
+  ownerIdx: index("saved_views_owner_idx").on(table.orgId, table.screen, table.ownerUserId, table.visibility),
+}));

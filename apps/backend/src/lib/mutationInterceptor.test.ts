@@ -33,7 +33,7 @@ describe('runtime mutation interception', () => {
     expect(await db.select().from(S.users)).toHaveLength(1);
   });
 
-  it.each([['TaskService', 'GetTask', false], ['EventService', 'SubscribeEvents', true], ['HealthService', 'Ping', false]])('avoids write units for explicit reads and all streams (%s.%s)', async (service, name, stream) => {
+  it.each([['TaskService', 'GetTask', false], ['EventService', 'SubscribeEvents', true], ['HealthService', 'Ping', false], ['SavedViewService', 'GetSavedView', false], ['SavedViewService', 'ListSavedViews', false]])('avoids write units for explicit reads and all streams (%s.%s)', async (service, name, stream) => {
     await createMutationInterceptor(db)(async () => {
       expect(currentUnitOfWork()).toBeUndefined(); return {} as any;
     })(request(service, name, stream));

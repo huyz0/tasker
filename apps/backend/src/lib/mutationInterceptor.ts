@@ -29,6 +29,7 @@ const READS: Record<string, readonly string[]> = {
   WebhookService: ['ListWebhooks', 'ListWebhookDeliveries'],
   WorkflowService: ['GetWorkflowTemplate', 'ListWorkflowTemplates'],
   ScheduleService: ['GetSchedule', 'ListSchedules', 'ListScheduleRuns'],
+  SavedViewService: ['GetSavedView', 'ListSavedViews'],
 };
 
 // These handlers explicitly own narrow units after external preparation or

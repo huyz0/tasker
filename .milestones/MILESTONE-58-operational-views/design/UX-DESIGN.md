@@ -81,3 +81,70 @@ states. Keep native controls and visible focus. Verify task open/close, report
 links and Back/Forward at375/768/1280px in both themes, with real request fields,
 reloads and no toolbar overflow. Retain current Summary/notes/report lifetime
 and ownership behavior; URLs confer no extra authority.
+
+## Named view interaction — T02/T03
+
+Use the existing task toolbar/report header action area; add no sidebar route.
+A compact Saved views control opens a dialog with Personal and Organization
+sections for the current organization/screen. Each section has independent
+bounded Previous/Next pages and cursor history, a count of views shown/total,
+and a name filter. Name filtering is local dialog intent, debounces its catalog
+read and resets that section to page one; it never changes the Tasks text filter
+or applies a saved definition. Never fetch all pages or retain an ever-growing
+appended catalog. Empty copy is based on that section's own authoritative count,
+not whichever mixed-audience rows happen to appear on a union's first page.
+
+Page loading/error/Retry stays within its section and current page. Disable
+page actions while pending, preserve visible context and name drafts, and reset
+page histories on organization/screen/filter changes or successful catalog
+writes. A section switch/page response cannot discard a Save/Rename draft or
+apply a row. Cover a personal and shared entry beyond the first100 records,
+independent section paging, filtered totals and a page-read failure/retry.
+
+Each row has a readable name and project context where currently authorized.
+Org:read does not imply project:read: only show a current project name obtained
+under its actual metadata permission. Otherwise use a generic Saved project or
+Unavailable project context; do not expose an unauthorized name or require a
+raw UUID to distinguish entries. Fresh Open still requires the screen's actual
+source-read permission. Show unavailable project/definition
+state explicitly. Names are organization/screen unique within each audience,
+so entries do not rely on truncated names or raw UUIDs for distinction.
+
+Save view captures the currently applied URL settings, opens a labelled Name
+field and defaults to Personal. Organization is a deliberate choice available
+only with current server-checked administration; the server still checks it on
+submit. Explain the audience in ordinary language. Save creates a new name;
+duplicate-name feedback stays in the dialog for correction. Empty/control/
+overlong names cannot submit. Preserve the editing name on recoverable errors.
+Cancel closes without writing or changing the URL and returns focus to its
+invoker. Pending submission prevents duplicate actions.
+
+Open is an explicit row action. A fresh authorized read either applies the
+whole supported definition and its project in one navigation, or leaves the
+current screen/settings intact with an actionable error. A catalog loading,
+refreshing or arriving late never applies anything. Opening a definition from
+another project is intentional and names that project when authorized; it does
+not reuse an unvalidated target from local cache. Capture current account/org/
+URL intent so a delayed Open cannot overwrite subsequent typing or navigation.
+
+Rename edits a label only; audience, owner and stored query remain unchanged.
+Delete confirms removal of the named configuration. Personal rows are editable
+only by their creator; organization rows require current server administration,
+including when the creator's earlier admin permission was revoked. Other users
+can open readable organization views but see no misleading editing actions.
+The server-derived canEdit state is refreshed and never substitutes for server
+checks. Read-only organization entries retain their visible audience label.
+
+Empty sections explain how Save view adds a name. Loading has a clear status;
+read errors offer Retry, and denied access remains a denial rather than an empty
+collection. Failed Open/rename/delete keeps useful context. A concurrently
+deleted name can be dismissed and its catalog refreshed. An obsolete project
+or definition offers recovery without navigating: retain current valid settings,
+allow authorized cleanup, and offer Save current view under a new name. A
+missing referenced project is never silently replaced with the active project.
+
+Keep current semantic colors, typography, wrapping controls and shared Dialog/
+confirmation patterns. On a phone, each row wraps name/context above actions;
+use ordinary vertical scrolling, visible keyboard focus and named controls.
+Verify empty/loading/error/denied/read-only/editable/duplicate/obsolete and
+pending states in both themes, with keyboard/focus and375px overflow checks.

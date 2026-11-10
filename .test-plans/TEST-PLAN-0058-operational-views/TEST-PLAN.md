@@ -68,3 +68,58 @@ wire/browser cases, revoke access/delete references, and exercise reload and
 Back/Forward. Both-dialect migration/legacy, generated client, full local,
 rendered accessibility/overflow and independent review checks must pass. Publish
 only after actual final-head CI; retain source/commands/results as evidence.
+
+## TC-005a — Personal and shared authority
+
+Given two people in one org, an administrator and another org, when creating a
+personal view with a forged owner/org property, then stored identity comes only
+from current credentials and the authorized project's org. Given another
+person's private ID, even for an admin, Get/Rename/Delete return NotFound and
+List/count omit it. Given a shared definition, only current org:admin may
+Create/Rename/Delete; membership without admin cannot edit it, including its
+former-admin creator after revocation. Agent credentials never become owners.
+
+## TC-005b — Allowed definitions and current references
+
+Given version1 Tasks/Reports controls, including priority0 and explicit false/
+default values, then canonical definitions round-trip through real generated
+codecs. Given unknown/contradictory/oversized/control-character or SQL/results/
+cursor fields, then validation refuses them before storage/use. Given a foreign,
+missing or archived project, then Create/Get cannot confer access. Given a
+previously saved entry whose project is removed or definition becomes invalid,
+then metadata identifies recovery while Get returns no query and the current
+screen remains unchanged. Revoked source-read rights are checked afresh.
+
+## TC-005c — Bounded lists, names and lifecycle
+
+Given more than100 accessible and inaccessible entries with mixed owners,
+visibility and screens, when listing/filtering/paging, then authorized SQL
+predicates apply before limit/count, pages stay bounded and scoped cursors do
+not replay another rowset. Given duplicate or concurrent normalized names,
+then each audience namespace rejects its own collision with AlreadyExists;
+other personal creators can use the same name. Given obsolete references,
+then authorized Rename/Delete can clean up metadata without reading old query
+contents. Given organization purge, then its definitions disappear atomically;
+project removal retains a discoverable unavailable entry. Given mutations,
+then private names/query contents never enter organization event payloads.
+
+## TC-005d — Dialects, migrations and clients
+
+Given populated pre-view SQLite/MySQL databases, when applying the additive
+migration and rebooting twice, then existing work and new definitions persist
+without duplicates or data loss. Given native MySQL concurrent name writes,
+then uniqueness holds and errors remain typed. Given the old SDK, then existing
+messages/fields/methods and actual decodes remain compatible. Restored owner,
+admin and reference-validation faults must make their refusal tests fail; full
+checks and current final-head CI are required before publication.
+
+## TC-006a — Large named catalogs and metadata privacy
+
+Given more than100 personal and organization entries, including a desired entry
+beyond the first page, when opening each section and using Previous/Next/name
+filter, then its own bounded page/count/history and target remain reachable
+without fetch-all or falsely empty sections. Given page loading/error/Retry
+while a Save/Rename draft exists, then controls and draft remain usable and no
+row is silently applied. Given org:read without project:read, then catalog/Get
+metadata does not expose that project's current display name; generic context
+remains usable and fresh Open still earns its independent source permission.

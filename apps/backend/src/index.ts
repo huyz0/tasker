@@ -1,6 +1,6 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService, NotificationService, EventService, WebhookService, WorkflowService, ScheduleService, AttentionService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService, NotificationService, EventService, WebhookService, WorkflowService, ScheduleService, AttentionService, SavedViewService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
@@ -21,6 +21,7 @@ import { createAgentsHandler } from "./modules/agents/agents.handler";
 import { createArtifactsHandler } from "./modules/artifacts/artifacts.handler";
 import { createCommentsHandler } from "./modules/comments/comments.handler";
 import { createLabelsHandler } from "./modules/labels/labels.handler";
+import { createSavedViewsHandler } from "./modules/views/views.handler";
 import { createTeamsHandler } from "./modules/teams/teams.handler";
 import { createRolesHandler } from "./modules/roles/roles.handler";
 import { createMemoryHandler } from "./modules/memory/memory.handler";
@@ -232,6 +233,7 @@ const handler = connectNodeAdapter({
     createSearchHandler(router, db);
     createDashboardHandler(router, db);
     router.service(AttentionService as any, createAttentionHandler(db));
+    router.service(SavedViewService as any, createSavedViewsHandler(db));
     createReportsHandler(router, db);
   },
 });

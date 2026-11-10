@@ -973,3 +973,23 @@ export const domainEvents = mysqlTable("domain_events", {
   pendingIdx: index("domain_events_pending_idx").on(table.deliveredAt, table.nextAttemptAt, table.claimedUntil),
   orgCreatedIdx: index("domain_events_org_created_idx").on(table.orgId, table.createdAt),
 }));
+
+// M58: no project FK, so a removed reference remains recoverable (ADR0044).
+export const savedViews = mysqlTable("saved_views", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  projectId: varchar("project_id", { length: 256 }).notNull(),
+  ownerUserId: varchar("owner_user_id", { length: 256 }).notNull().references(() => users.id),
+  screen: varchar("screen", { length: 16 }).notNull(),
+  visibility: varchar("visibility", { length: 16 }).notNull(),
+  audienceKey: varchar("audience_key", { length: 272 }).notNull(),
+  name: varchar("name", { length: 128 }).notNull(),
+  nameKey: varchar("name_key", { length: 64 }).notNull(),
+  definitionJson: text("definition_json").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, table => ({
+  nameIdx: uniqueIndex("saved_views_name_idx").on(table.orgId, table.screen, table.audienceKey, table.nameKey),
+  scopePageIdx: index("saved_views_scope_page_idx").on(table.orgId, table.screen, table.visibility, table.createdAt, table.id),
+  ownerIdx: index("saved_views_owner_idx").on(table.orgId, table.screen, table.ownerUserId, table.visibility),
+}));
