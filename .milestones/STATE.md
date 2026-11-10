@@ -1,8 +1,8 @@
 ---
 active_milestone: M57
-active_task: M57-T01
+active_task: M57-T02
 last_updated: 2026-11-10
-last_commit: fd378da
+last_commit: daab6a1
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,10 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M57-T01 verified:1/5 tasks.** Accepted ADR0043/UX/TC001–010 and ARCH-v3/UX-v2 define durable exact-generation ownership receipts, optional authenticated-owner reporting, real retention closure and bounded visible history. All36 checks pass (GUI1622/95.13% branches; backend2302/zero failures). Nine initial-render/deadline failures under fresh-build load pass unchanged in168 isolated cases and the full rerun with limited parallelism; no assertions/timeouts/product source changed. No M57 runtime feature exists yet. T02 is next;380 done/16 pending overall. Ready PR #9 remains at daab6a1 with final-head CI42812207225 at2 success/6 queued; main publication and base reconciliation remain pending. Original user WIP/services are preserved.
+
+**2026-11-10 — M57-T01 in progress.** Define durable claim generations, exact stale-release fencing and optional authenticated-owner evidence attribution before runtime changes. M46/M54 dependencies are done. Isolated branch starts from locally complete M56 daab6a1; PR #9 is ready and final-head CI42812207225 is queued, so M56 main publication and subsequent base reconciliation remain pending. API/security standards and static-design TDD exception apply;17 tasks remain.
 
 **2026-11-10 — M56 complete locally:4/4 tasks,4/4 exit criteria.** Registration, scoped one-time configuration and exact bearer proof pass all36 gates (GUI1622/95.13% branches; backend2302/zero failures),128 focused cases, full305 baseline/final39 rendered matrices and real mobile development/production CLI/MCP journeys. CODE-v8/ARCH-v3 approve. Reproduced focus, pre-emission validation and cached-destination defects are fixed with restored behavioral faults; public connection guidance is linked. Draft PR #9 still requires actual final-head CI/main publication. M57-T01 is next eligible, with base reconciliation after M56 merge.379 done/17 pending overall; original user WIP/services remain preserved.
 
@@ -1986,10 +1990,10 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
-| M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
+| M57 | Attempt Correlation | in-progress | M46, M54 | 5 | 1 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 379 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 380 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
