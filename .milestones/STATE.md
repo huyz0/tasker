@@ -1,8 +1,8 @@
 ---
 active_milestone: M55
-active_task: M55-T03
+active_task: M55-T04
 last_updated: 2026-11-10
-last_commit: 0d6a4a6
+last_commit: 6094c2c
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M55-T03 verified:3/5 tasks.** Scoped Attention/All projects, native source navigation, persistent shared-authority fences and once-only canonical task/Back restoration pass all35 gates (GUI1532/95.13% branches; backend2302/zero failures). Final254 previews pass1016 accessibility/508 overflow checks, both real browser journeys pass with51 questions/two projects, and five settled captures receive UX-v3/CODE-v6 approval.76 focused UI cases/nine restored faults pass. A reproduced Memory label carryover is corrected, and the new RPC is genuinely used without its staged exception. T04 next reconciles existing contextual actions/events, including the preflight's combined assignment exact-pair omission; no stale-incarnation guarantee before M57.23 tasks remain; PR #8 is draft.
 
 **2026-11-10 — M55-T03 in progress.** T02 is committed/pushed as7976c81 with all35 source/closure gates and reviewed both-dialect bounded reads. Drive absent-screen/projectless regressions before native source navigation, scoped query lifetimes and canonical task/Back restoration. Frontend/security standards plus TDD apply. Account+org denial epochs must fence sibling in-flight/project-switch/cache resurrection; project NotFound stays local. Existing typography/palette/tokens remain coherent.The screen passes30 focused source/race/Back cases and75 feature/shell/switcher cases, nine restored behavioral faults and both real browser journeys (51questions/two projects). Five settled375/1280 captures receive UX-v3/CODE-v5 approval after corrected return lifetime/mobile scope/preview timing. Both253-story matrices pass; a reproduced Attention→organization Memory empty-label regression is corrected with76 focused cases and CODE-v6 approval, and the unused helper export is private. Final254-story build/matrices and full35 are running/pending.24 tasks remain; no M55 milestone publication is implied.
 
@@ -1964,12 +1966,12 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
-| M55 | Attention Center | in-progress | M48, M53, M54 | 5 | 2 |
+| M55 | Attention Center | in-progress | M48, M53, M54 | 5 | 3 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 372 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 373 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

@@ -111,7 +111,7 @@ before main publication. Closure checks follow these ledger changes.
 
 ## M55-T03 — Scoped attention screen and navigation
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-10
 - **Changed**: Build the accepted grouped screen, bounded independent paging, intentional All projects switcher policy and actual-scope task/Back navigation.
 - **Verified**: T02 committed/pushed as7976c81 after all35 source and closure checks, SQLite/MySQL/current-process proof and approved amended source review.2/5 M55 tasks are complete;24 tasks remain.
@@ -209,3 +209,22 @@ tag hint). Backend/standalone/contract CI jobs pass; this is not a final-head CI
 claim. Current source typecheck passes. Final full35 and the254-story build are
 running; execute the final matrices after GUI coverage to avoid resource races.
 T03 remains in-progress and24 tasks remain.
+
+T03 final verification passes all35 checks (23 cached,3m50s), including GUI1532/
+95.13% branches, backend2302/zero failures/95.85% functions/96.80% lines,
+contracts/CLI/standalone. The first full attempt races a concurrent Storybook
+artifact replacement before tests; sequence the runs, then full2 passes. Final
+254-story bundle passes1016 settled WCAG scans and508 mobile-theme overflow
+checks with zero violations. Both actual browser journeys and all76 focused
+feature/shell/switcher cases pass; nine restored behavioral faults, five settled
+captures and CODE-v6/UX-v3 approvals are retained. No coverage floor or gate is
+relaxed. The exact staged RPC exception is gone.
+
+T03 is complete:3/5 M55 tasks,373 done/23 pending overall. T04 next connects
+existing source-mutation settlement and relevant events to attention reads,
+preserving notices/drafts/current authority. Independent preflight identifies
+an existing combined assignment payload omission: the GUI sends agent OR user,
+while the server matches the exact pair. Reproduce and fix that client payload
+without promising assignment-generation safety (M57). No new resolution forms
+or state machine are authorized. Draft PR #8 remains unready until T04/T05 and
+actual applicable final-head CI. Closure gates follow these ledger changes.

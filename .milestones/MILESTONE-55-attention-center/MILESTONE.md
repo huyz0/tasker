@@ -43,7 +43,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/backend/src/modules/attention/; apps/backend/src/modules/tasks/; packages/shared-contract/; apps/cli/gen/.
   - **Verify**: Use source kind+ID identity and per-source cursors; old/more-than-50 pending rows remain reachable; no capped Dashboard/Reports result reused as a complete queue; same-org permission filtering and current authorization apply.
 
-- [ ] **M55-T03** — Build the attention screen with reason, age, ownership and accurate project context.
+- [x] **M55-T03** — Build the attention screen with reason, age, ownership and accurate project context.
   - **Files**: apps/gui/src/features/Attention/; apps/gui/src/App.tsx; apps/gui/src/components/layout/AppShell.tsx; NAVIGATION.md.
   - **Verify**: Each group supports loading/empty/error/next-page retry, keyboard and mobile layouts; accessible count labels say what is loaded/total; canonical links use actual source scope; existing queues remain reachable.
 
