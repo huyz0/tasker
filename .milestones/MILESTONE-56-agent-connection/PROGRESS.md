@@ -341,3 +341,11 @@ credential-bearing settings fail without reflection/emission; changing only
 file is removed and the ordinary default build is restored. These are observed
 output proofs, not assertions over YAML text. Updated source review and final
 current previews/full36/production worker/head CI remain pending.
+
+CODE-v8 approves the cache amendments with no remaining source blocker. Current
+39 affected previews pass156 WCAG/78 overflow checks, supplementing the full305
+baseline. Final built-production375px journey passes10.0s using the real copied
+configuration through HTTP MCP and Go CLI/stdio, with visible reveal focus and
+stable post-revoke focus. The ordinary endpoint build has been restored after
+all configuration probes, and no owned environment file remains. Full36 is
+running before task closure; actual final-head CI/main publication still follows.

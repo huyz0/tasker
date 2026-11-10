@@ -2,7 +2,7 @@
 active_milestone: M56
 active_task: M56-T04
 last_updated: 2026-11-10
-last_commit: 0a2e5a3
+last_commit: d86e962
 blocked: false
 blocker: null
 ---
@@ -15,7 +15,7 @@ blocker: null
 
 ## Now
 
-**2026-11-10 — M56-T04 in progress.** T03 is committed/pushed0a2e5a3 with all35 source/closure gates. Commit the copied-configuration first MCP task read/note and optional real CLI proof, preserve metadata-based owned-token cleanup, and write public registration/configuration/verification/recovery guidance. Frontend/security plus TDD apply; no new permission, API or dependency.18 tasks remain; PR #9 remains draft until closure and final-head CI/main publication.
+**2026-11-10 — M56-T04 in progress.** Permanent copied-configuration MCP first read/note and optional real CLI proof, public guidance, owner-aware revoke focus and pre-emission build validation are implemented.128 affected cases, CLI/focus/build faults, real mobile development/production worker journeys, full305 baseline and final39 previews pass. CODE-v8/ARCH-v3 approve after an observed cached-endpoint bug is fixed/proved for environment values and Vite files; default build restored. Full36 runs before closure; final-head CI/main publication remain.18 tasks remain.
 
 **2026-11-10 — M56-T03 verified:3/4 tasks.** One-time scoped configuration, trusted endpoint defaults and exact bearer verification pass all35 checks (GUI1620/95.14% branches; backend2302/zero failures). CODE-v6/UX-v3 approve;126 affected cases/eight restored faults,39 previews/156 WCAG/78 mobile scans, real development/built-production browser journeys, privacy assertion/timeout/lost-response proof and19 CLI/MCP checks pass. An observed older schedule-expiry date fixture is corrected relative to its actual key; no assertion is relaxed. T04 next commits permanent worker/MCP activity proof and public docs, then requires final-head CI/main publication.378 done/18 pending overall; PR #9 remains draft.
 
