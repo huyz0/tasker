@@ -102,7 +102,7 @@ describe('one-time external worker connection', () => {
   it('revokes the current token and retires its verification with replacement guidance', async () => {
     mockRpc(AgentService, 'ListAgentTokens', { tokens: [metadata] }); mockRpc(AgentService, 'RevokeAgentToken', { success: true }); view(); await issue();
     fireEvent.click(screen.getByRole('button', { name: 'Verify token' })); await screen.findByText(/Token verified at/);
-    fireEvent.click(screen.getByRole('button', { name: 'Revoke token Release worker' })); await confirmAction('Revoke token');
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke token Release worker' })); await confirmAction();
     await waitFor(() => expect(screen.queryByText(secret)).not.toBeInTheDocument()); expect(screen.queryByText(/Token verified at/)).not.toBeInTheDocument();
     expect(screen.getByText(/Token revoked/)).toBeVisible();
   });
@@ -130,6 +130,16 @@ describe('one-time external worker connection', () => {
     view(); await issue(); expect(screen.getByText('never used')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Verify token' })); await screen.findByText(/Token verified at/);
     await waitFor(() => expect(screen.queryByText('never used')).not.toBeInTheDocument());
+  });
+
+  it('preserves the only secret during a transient token-list failure and permits retry', async () => {
+    const ui = view(); await issue(); mockRpcError(AgentService, 'ListAgentTokens', 'unavailable', 'offline');
+    await act(async () => { await ui.client.invalidateQueries({ queryKey: ['agentTokens'] }); });
+    expect(await screen.findByText(/Could not refresh token metadata/)).toBeVisible();
+    expect(screen.getByText(secret)).toBeVisible(); expect(screen.getByRole('button', { name: 'Copy token' })).toBeEnabled();
+    mockRpc(AgentService, 'ListAgentTokens', { tokens: [] }); fireEvent.click(screen.getByRole('button', { name: 'Retry tokens' }));
+    await waitFor(() => expect(screen.queryByText(/Could not refresh token metadata/)).not.toBeInTheDocument());
+    expect(screen.getByText(secret)).toBeVisible();
   });
 
 });

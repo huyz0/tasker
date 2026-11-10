@@ -170,3 +170,16 @@ request; those corrections and complete types/previews/review/full gates remain
 pending. The first test-authoring command used the wrong working directory and
 wrote no files; it is corrected before accepting the recorded source/test proof.
 No actual test credential is minted here; all fixture tokens are synthetic.
+
+T03 is rebased onto verified T02 closure3b22264. The added useful reveal-focus
+and actual last-use refresh regressions pass; the affected five-file suite
+passes119 cases, and the actual parent/session case additionally proves that a
+transient session failure retains the current secret but confirmed logout
+retires it and a late verification. A token-list network error first reproduces
+loss of the only secret; distinguish authority denial from transient metadata
+failure, preserve the credential and expose Retry. The initial assertion reads
+before query completion; wait for the actual error banner before checking the
+secret remains. All119 cases then pass. App types pass after correcting an
+unsupported confirmation-test helper argument. Final-source39 preview matrices
+are running; source review, controlled faults, real browser and full gates remain
+pending. No real test token has yet been minted.

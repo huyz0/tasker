@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
-import { AgentService, DashboardService, EventService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { AgentService, AuthService, DashboardService, EventService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { http, HttpResponse } from 'msw';
 import { BACKEND_URL } from '../../lib/backendUrl';
 import { mockRpc, mockRpcPending, server } from '../../test/mockRpc';
@@ -233,6 +233,24 @@ describe('registering an external worker identity', () => {
     view(<LiveReader />); await waitFor(() => expect(screen.getAllByText(existing.name)).toHaveLength(2)); await waitFor(() => expect(screen.getByLabelText('Event connection')).toHaveTextContent('live'));
     name = 'Renamed by peer'; act(() => controller.enqueue(frame('domain.agent.updated')));
     await waitFor(() => expect(screen.getAllByText(name)).toHaveLength(2));
+  });
+
+  it('retains an issued credential through transient session failure, then retires it on confirmed logout', async () => {
+    const secret = 'tskr_synthetic_session_fixture';
+    mockRpc(AgentService, 'CreateAgentToken', { token: { id: 'token-session', agentId: existing.id, orgId: existing.orgId, scopes: ['tasks:read'] }, plaintext: secret });
+    const verification = mockRpcPending(AuthService, 'GetIdentity');
+    const ui = view(); fireEvent.click(await screen.findByRole('button', { name: 'Tokens for Existing worker' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'New token' })); fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Session proof' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'tasks:read' })); fireEvent.click(screen.getByRole('button', { name: 'Create' })); await screen.findByText(secret);
+    server.use(http.get(`${BACKEND_URL}/api/auth/session`, () => HttpResponse.json({ message: 'Temporary outage' }, { status: 503 })));
+    await act(async () => ui.queryClient.refetchQueries({ queryKey: ['authSession'] })); expect(screen.getByText(secret)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Verify token' })); await waitFor(() => expect(verification.requests).toHaveLength(1));
+    act(() => ui.queryClient.setQueryData(['authSession'], { authenticated: false, userId: null })); await screen.findByText(/sign in to register/i);
+    await act(async () => verification.resolve({ agent: { id: existing.id, orgId: existing.orgId, tokenId: 'token-session', scopes: ['tasks:read'] } }));
+    expect(screen.queryByText(secret)).not.toBeInTheDocument();
+    act(() => ui.queryClient.setQueryData(['authSession'], { authenticated: true, userId: 'user-1' })); fireEvent.click(await screen.findByRole('button', { name: 'Tokens for Existing worker' }));
+    await screen.findByRole('button', { name: 'New token' }); expect(screen.queryByText(secret)).not.toBeInTheDocument(); expect(screen.queryByText(/Token verified at/)).not.toBeInTheDocument();
+    expect(JSON.stringify(ui.queryClient.getMutationCache().getAll().map(mutation => mutation.state))).not.toContain(secret);
   });
 
 });

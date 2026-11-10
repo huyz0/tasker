@@ -5,18 +5,21 @@ import { verifyAgentCredential, workerConfiguration, type IssuedIdentity } from 
 import { formatDateTime } from '../../lib/format';
 import { Button } from '../../components/ui/button';
 
-interface Props { credential: IssuedIdentity & { plaintext: string }; projectId?: string; onDismiss: () => void; }
-export function IssuedCredential({ credential, projectId, onDismiss }: Props) {
+interface Props { credential: IssuedIdentity & { plaintext: string }; projectId?: string; onDismiss: () => void; onVerified: () => void; focusOnReveal: boolean; }
+export function IssuedCredential({ credential, projectId, onDismiss, onVerified, focusOnReveal }: Props) {
   const [format, setFormat] = useState<'shell' | 'mcp'>('shell');
   const [copyStatus, setCopyStatus] = useState('');
   const lifetime = useRef({ active: true, copy: 0 });
   const request = useRef<AbortController | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { if (focusOnReveal) heading.current?.focus(); }, [focusOnReveal]);
   useEffect(() => {
     lifetime.current.active = true;
     return () => { lifetime.current.active = false; lifetime.current.copy++; request.current?.abort(); };
   }, []);
   const verification = useMutation({
     gcTime: 0,
+    onSuccess: onVerified,
     mutationFn: async () => {
       request.current?.abort();
       const controller = new AbortController(); request.current = controller;
@@ -35,7 +38,7 @@ export function IssuedCredential({ credential, projectId, onDismiss }: Props) {
   };
   return <section className="flex flex-col gap-4 rounded-md border bg-card p-3" aria-label="Newly issued credential">
     <div className="flex flex-col gap-2">
-      <h4 className="type-section-title">Save this token</h4>
+      <h4 ref={heading} tabIndex={-1} className="type-section-title rounded-sm focus-visible:outline-2 focus-visible:outline-primary">Save this token</h4>
       <p className="type-caption text-muted-foreground">This is the only time this token will be shown. Leaving or dismissing this section loses this copy. Save it securely; lost tokens must be revoked and replaced.</p>
       <code className="block break-all rounded-md bg-muted p-3 type-caption select-all">{credential.plaintext}</code>
       <div className="flex flex-wrap gap-2">

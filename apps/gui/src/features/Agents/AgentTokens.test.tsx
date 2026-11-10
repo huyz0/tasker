@@ -40,7 +40,7 @@ const renderPanel = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <AgentTokens agentId="agent-1" agentName="Reviewer Bot" />
+      <AgentTokens agentId="agent-1" agentName="Reviewer Bot" accountId="user-1" orgId="org-1" />
     </QueryClientProvider>,
   );
 };
@@ -58,12 +58,13 @@ describe('AgentTokens', () => {
     expect(await screen.findByText('No tokens for this agent.')).toBeInTheDocument();
   });
 
-  it('is absent entirely for a non-admin, rather than rendering a permission error', async () => {
+  it('shows unavailable guidance without offering administration to a non-admin', async () => {
     mockRpcError(AgentService, 'ListAgentTokens', 'permission_denied', 'permission_denied');
     const { container } = renderPanel();
     // listAgentTokens is admin-gated. Same call as M03-T13's invitations
     // section: do not offer what cannot be used.
-    await waitFor(() => expect(container.querySelector('h3')).toBeNull());
+    expect(await screen.findByText(/Token administration is unavailable/)).toBeInTheDocument();
+    expect(container.querySelector('h3')).toBeNull();
   });
 
   it('lists a token by prefix and state, never by secret', async () => {
@@ -149,7 +150,7 @@ describe('AgentTokens', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
     await screen.findByText('tskr_secret');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy token' }));
     // Silent failure here loses the value permanently.
     expect(await screen.findByText(/Could not copy automatically/)).toBeInTheDocument();
   });
@@ -167,7 +168,7 @@ describe('AgentTokens', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
     await screen.findByText('tskr_secret');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy token' }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('tskr_secret'));
   });
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@connectrpc/connect';
+import { Code, ConnectError, createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
 import { AgentService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -59,7 +59,7 @@ function expiryError(raw: string): string | null {
 
 interface Props { agentId: string; agentName: string; accountId: string; orgId: string; projectId?: string; }
 interface IssueVariables { name: string; scopes: string[]; expiresInDays: number; revision: number; }
-type Credential = IssuedIdentity & { plaintext: string };
+type Credential = IssuedIdentity & { plaintext: string; focusOnReveal: boolean };
 
 export function AgentTokens(props: Props) {
   return <ScopedAgentTokens key={JSON.stringify([props.accountId, props.orgId, props.agentId])} {...props} />;
@@ -74,6 +74,8 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
   const [expiresInDays, setExpiresInDays] = useState('');
   const [credential, setCredential] = useState<Credential | null>(null);
   const [notice, setNotice] = useState('');
+  const issuanceForm = useRef<HTMLFormElement>(null);
+  const newTokenButton = useRef<HTMLButtonElement>(null);
   const intent = useRef({ active: true, revision: 0 });
   useEffect(() => {
     intent.current.active = true;
@@ -91,7 +93,7 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
       if (!intent.current.active || intent.current.revision !== variables.revision) return;
       const token = response.token;
       if (!token || !response.plaintext || token.agentId !== agentId || token.orgId !== orgId || token.scopes.length !== variables.scopes.length || [...token.scopes].sort().some((scope, index) => scope !== [...variables.scopes].sort()[index])) throw new Error('Could not confirm the issued token. Refresh the token list and revoke any unusable token.');
-      setCredential({ plaintext: response.plaintext, tokenId: token.id, agentId, orgId, scopes: [...token.scopes] });
+      setCredential({ focusOnReveal: document.activeElement === document.body || !!issuanceForm.current?.contains(document.activeElement), plaintext: response.plaintext, tokenId: token.id, agentId, orgId, scopes: [...token.scopes] });
       setName(''); setScopes([]); setExpiresInDays(''); setIsCreating(false); setNotice('');
       // The mutation resolves without the response: its cache never receives a secret.
     },
@@ -104,15 +106,17 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
       if (intent.current.active && credential?.tokenId === tokenId) { retire(); setNotice('Token revoked. Issue a replacement to reconnect the worker.'); }
     },
   });
+  const administrationDenied = tokensQuery.isError && tokensQuery.error instanceof ConnectError && (tokensQuery.error.code === Code.PermissionDenied || tokensQuery.error.code === Code.Unauthenticated);
+  const tokens = tokensQuery.data ?? [];
   const knownUnavailable = credential && tokensQuery.data?.some(token => token.id === credential.tokenId && (token.revokedAt || token.expired));
   useEffect(() => {
-    if (tokensQuery.isError || knownUnavailable) {
+    if (administrationDenied || knownUnavailable) {
       intent.current.revision++; setCredential(null); createMutation.reset();
       if (knownUnavailable) setNotice('Token revoked or expired. Issue a replacement to reconnect the worker.');
     }
-  }, [tokensQuery.isError, knownUnavailable]);
+  }, [administrationDenied, knownUnavailable]);
 
-  if (!tokensQuery.isSuccess) return tokensQuery.isLoading
+  if (!tokensQuery.isSuccess && (!tokensQuery.data || administrationDenied)) return tokensQuery.isLoading
     ? <p role="status" className="p-3 type-caption text-muted-foreground">Loading tokens…</p>
     : <div className="flex flex-col items-start gap-2 p-3"><p role="alert" className="type-caption text-muted-foreground">Token administration is unavailable. An authorized administrator can manage tokens; check your access or retry.</p><button type="button" className="type-caption text-primary underline underline-offset-2" onClick={() => void tokensQuery.refetch()}>Retry tokens</button></div>;
 
@@ -121,6 +125,7 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-sm font-medium">Tokens</h3>
         <button
+          ref={newTokenButton}
           onClick={() => { retire(); createMutation.reset(); setIsCreating(value => !value); }}
           className="text-xs px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md font-medium"
         >
@@ -128,11 +133,13 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
         </button>
       </div>
 
+      {tokensQuery.isError && <div role="alert" className="mb-3 flex flex-col items-start gap-2 type-caption text-muted-foreground"><p>Could not refresh token metadata. Your one-time token is still available; retry when connected.</p><button type="button" className="text-primary underline underline-offset-2" onClick={() => void tokensQuery.refetch()}>Retry tokens</button></div>}
       {notice && <p role="status" className="mb-3 type-caption text-muted-foreground">{notice}</p>}
-      {credential && !knownUnavailable && <IssuedCredential key={credential.tokenId} credential={credential} projectId={projectId} onDismiss={() => { retire(); createMutation.reset(); setNotice('Lost this token? Revoke it and issue a replacement; its secret cannot be recovered.'); }} />}
+      {credential && !knownUnavailable && <IssuedCredential key={credential.tokenId} credential={credential} projectId={projectId} focusOnReveal={credential.focusOnReveal} onVerified={() => { void queryClient.invalidateQueries({ queryKey: ['agentTokens', agentId, orgId, accountId] }); void queryClient.invalidateQueries({ queryKey: ['dashboard', orgId] }); }} onDismiss={() => { retire(); createMutation.reset(); setNotice('Lost this token? Revoke it and issue a replacement; its secret cannot be recovered.'); newTokenButton.current?.focus(); }} />}
 
       {isCreating && (
         <form
+          ref={issuanceForm}
           onSubmit={(e) => { e.preventDefault(); createMutation.mutate({ name: name.trim(), scopes: [...scopes], expiresInDays: expiresInDays ? Number(expiresInDays) : 0, revision: intent.current.revision }); }}
           className="mb-3 p-3 border rounded-md flex flex-col gap-2 bg-card"
         >
@@ -207,11 +214,11 @@ function ScopedAgentTokens({ agentId, agentName, accountId, orgId, projectId }: 
         </p>
       )}
 
-      {tokensQuery.data.length === 0 ? (
+      {tokens.length === 0 ? (
         <p className="text-xs text-muted-foreground">No tokens for this agent.</p>
       ) : (
         <ul className="flex flex-col gap-1">
-          {tokensQuery.data.map((t) => {
+          {tokens.map((t) => {
             const state = t.revokedAt ? 'revoked' : t.expired ? 'expired' : 'active';
             return (
               <li key={t.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs p-2 border rounded-md bg-card">

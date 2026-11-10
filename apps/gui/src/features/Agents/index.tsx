@@ -70,6 +70,7 @@ export function AgentsDashboard() {
 
 function AgentsWorkspace({ accountId, orgId: activeOrgId }: WorkspaceProps) {
   const scopedTo = useScopedTo();
+  const activeProjectId = useLayoutStore(state => state.activeProjectId);
   const { confirm, confirmDialog } = useConfirm();
   const queryClient = useQueryClient();
 
@@ -270,7 +271,7 @@ function AgentsWorkspace({ accountId, orgId: activeOrgId }: WorkspaceProps) {
             <p className="type-body text-muted-foreground">Issue a scoped token and configure your external worker.</p></div>
           <button type="button" aria-label="Close connection setup" onClick={closeConnection} className="rounded-md border bg-background px-3 py-2 type-caption hover:bg-accent">Close</button>
         </div>
-        <AgentTokens key={connection.id} agentId={connection.id} agentName={connectionName} accountId={accountId} orgId={activeOrgId} />
+        <AgentTokens key={connection.id} agentId={connection.id} agentName={connectionName} accountId={accountId} orgId={activeOrgId} projectId={activeProjectId || undefined} />
       </section>}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
