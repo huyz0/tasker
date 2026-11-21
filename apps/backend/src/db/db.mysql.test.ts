@@ -3,7 +3,7 @@ import { setupDatabase } from "./db";
 
 // Requires a real MySQL instance reachable via DB_HOST/DB_USER/DB_PASSWORD/DB_NAME
 // (e.g. `docker compose up -d mysql` from the repo root) - not run by default
-// `bun test` since CI has no MySQL service. This test exists because
+// `bun test`; the explicit CI runner supplies real MySQL and owned schemas. This test exists because
 // setupDatabase's mysql branch previously never ran migrations at all (no
 // drizzle-mysql folder existed), so a fresh MySQL deployment would boot with
 // zero tables - a bug the sqlite-only integration test suite could never

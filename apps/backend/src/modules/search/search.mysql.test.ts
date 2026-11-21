@@ -6,7 +6,7 @@ import createSearchHandler from "./search.handler";
 
 // Requires a real MySQL instance reachable via DB_HOST/DB_USER/DB_PASSWORD/DB_NAME
 // (`docker compose up -d mysql` from the repo root) - not run by default
-// `bun test`, matching `tasks.mysql.test.ts`, since CI has no MySQL service.
+// `bun test`, matching the explicit owned-schema CI gate in tasks.mysql.test.ts.
 //
 // This is M07-T07's verify line: the clustered dialect returns the same
 // *ranking* as standalone. "Same ranking" means the same resulting order, not

@@ -7,7 +7,7 @@ import { createTaskManagementHandler } from "./tasks.handler";
 
 // Requires a real MySQL instance reachable via DB_HOST/DB_USER/DB_PASSWORD/DB_NAME
 // (e.g. `docker compose up -d mysql` from the repo root) - not run by default
-// `bun test` since CI has no MySQL service. This test exists because
+// `bun test`; the explicit CI runner supplies real MySQL and owned schemas. This test exists because
 // createTask's task-number allocation (update-then-select, now a `SELECT ...
 // FOR UPDATE` transaction) is only exercised for real concurrency bugs under
 // MySQL's multi-connection model - SQLite's single-writer model can't
