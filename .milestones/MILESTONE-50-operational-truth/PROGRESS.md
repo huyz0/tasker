@@ -242,3 +242,16 @@
   proof to investigate the intermittent original failure. Stop on the first
   failure and preserve its safe diagnostics; no retry-to-green loop.
   The original cause is still unknown and T03 stays unchecked.
+
+### Second observer control and earlier-checkpoint evidence gap
+
+- Job136904967519 again passes ordinary recovery and the empty-backup
+  proof, but the consumer-kill control times out60 seconds with no observer
+  phases. The absence of even the pre-broker snapshot means output collection
+  is not established as its cause; the original root cause remains unknown.
+- Instrument both the first audit projection and post-restart projection
+  with the same safe observer. Run the control asynchronously with private
+  stdout/stderr files and explicit kill-stage markers, so a watchdog reports
+  the last fixed stage rather than discarding the useful partial record.
+  Continue to reject timeout/bootstrap/cleanup as proof, and preserve all
+  real source/audit assertions and their existing70-second bounds.
