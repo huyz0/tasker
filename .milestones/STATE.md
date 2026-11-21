@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T02
 last_updated: 2026-11-21
-last_commit: f502365
+last_commit: 0586a92
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T02 test plan and owned fixture in progress.** Start from reviewed T01 combined candidate0586a920 while PR #17 final checks/publication finish. Extend real MySQL recovery coverage and verify two independent HTTP API processes, current scoped actors, stable retries, claim exclusivity, acknowledged audit deduplication and reconnect revocation against an owned broker/schema. Lost/duplicate projection faults must fail real oracles. Test plan is written before code. M58 is published as main2ebfc34; no new UI behavior or capacity claim is introduced.399 total/391 done/seven pending. Original local drafts remain preserved while Cloud startup is pending.
 
 **2026-11-21 — M49-T01 verified; combined final publication next.** Candidatef5023657 passes all10 CI44890697502 jobs and both Integration44890697419 jobs. Each MySQL8.0.46/8.4.13 job executes12 files/19 native cases with zero skips and a restored failing claim proof. Real NATS passes live feed/audit plus five committed recovery cases; four explicit MySQL recovery counterparts remain T02. The exact hosted36-task gate passes in6m38.838s, with GUI1764/backend2421/contract1158/builds. CODE-v2 approves. PR #16 has published M58 as main2ebfc34 with identical tree; carry that published tree and all saved-view gates into this final T01 candidate. PR #17 still requires final-head CI/integration before merge. M49 is2/6; next T02, then bounded load, measured limits and operations docs.399 total/391 done/seven pending. Cloud startup is still pending and original local drafts remain preserved.
 

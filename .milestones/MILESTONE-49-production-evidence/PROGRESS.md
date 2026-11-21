@@ -92,3 +92,12 @@
   391 done, one dropped, seven pending. Final combined-head CI/integration
   still gate PR #17 publication. T02 next proves MySQL two-instance recovery;
   load/capacity and operations documentation remain outstanding.
+
+## M49-T02 — Two-instance recovery and authenticated boundaries
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Changed**: Exercise the existing recovery cases on both SQL dialects and add two independent API processes sharing a real MySQL schema and an owned JetStream broker.
+- **Verified**: T01 source candidate passes both native versions, real SQLite/NATS recovery and the exact full repository command. Ready PR #17 final combined-head checks remain running. This dependent branch starts from0586a920 and preserves all published M58 behavior and records.
+- **Notes**: Testing/security plus TDD apply. Own every temporary schema, broker, process and port; keep real human/agent credentials in memory. New persistent behavior is not introduced, so no product ADR or UI redesign is needed. The test plan precedes code. Real SQL/RPC/broker acknowledgements are independent oracles; intentional lost/duplicate audit faults must fail their own assertions and restore source before ordinary checks.
+- **Next**: Add the real two-process scenario, enable existing MySQL recovery counterparts in required CI, prove lost/duplicate detection on owned fixtures, review and run full/final hosted gates. Load and capacity remain T03/T04 and are not inferred from these cases.
