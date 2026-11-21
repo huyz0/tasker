@@ -222,3 +222,22 @@
   smoke failed before executing because main was absent in shallow Git.
   That checkout is corrected and real HTTP/JSON verification remains pending.
   No load or capacity result is inferred.
+
+## M49-T02 — Reopen recurring ACK-worker fixture correction
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Observed**: Final job136843138595 reproduces exit0/signal none/stage ready
+  in the ack-pause worker at its real broker-ACK checkpoint. The earlier
+  source3410e39 did pass all12 checks; the final-head gate correctly catches
+  that the failure can recur. No root-cause attribution to OOM or the Cloud
+  environment is made.
+- **Approach**: The worker currently uses a one-shot sweep and can finish
+  without reaching any ACK. This scenario must instead use the production
+  recurring relay until its actual ACK callback writes the checkpoint.
+  Defer owned source eligibility by one second in the fixture to exercise
+  waiting, preserving the existing parent watchdog and every ACK/outcome
+  assertion. Ordinary one-shot relay-result workers remain one-shot.
+- **Next**: Implement this fixture correction after the observed red, retain
+  rejected CODE-v8 and re-run required services/faults and final gates.
+  Reopen T02/its criterion; M49 is2/6,399 total/391 done/one dropped/seven pending.

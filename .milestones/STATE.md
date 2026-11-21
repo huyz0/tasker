@@ -1,8 +1,8 @@
 ---
 active_milestone: M49
-active_task: M49-T03
+active_task: M49-T02
 last_updated: 2026-11-21
-last_commit: 3410e39
+last_commit: 52d4680
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T02 reopened by final ACK-worker failure.** Final job136843138595 records exit0/signal none/stage ready at the ack-pause checkpoint. The fixture permits a one-shot sweep to finish without reaching an ACK. Use the production recurring relay for this pause scenario and a deliberately deferred owned source to exercise waiting, preserving the parent timeout and all real-ACK/outcome assertions. Retain rejected CODE-v8 and the earlier all-green source3410e39 evidence; no environmental/OOM cause is invented. T02/its criterion are reopened: M49 is2/6,399 total/391 done/one dropped/seven pending. T03 sourceaaf900c adds a late SQL-commit oracle test before any checker change; its ordinary four-caller smoke and core/fault proof pass. Cloud failed; hosted verification and original local drafts remain the working boundary.
 
 **2026-11-21 — M49-T02 verified; bounded load next.** Source3410e39 passes all10 CI and both integration jobs. Each MySQL version executes native19/recovery10 and the claim/audit failure proofs with zero required skips; exact36 passes in8m1.445s, backend2423, GUI1764, browser103 passes/three existing skips, and388 rendered stories have no accessibility/mobile overflow findings. CODE-v7 approves. PR #18 carries the final publication gate; M49 is3/6 and program399 total/392 done/one dropped/six pending. Resume T03 in PR #19/sourcebb90cb8: core7 and input-fault proof pass; the real HTTP smoke's shallow-Git failure is corrected but no load result exists yet. Temporary CI-maintenance files were removed from that dependent draft after four verified obsolete-run cancellations; per-PR concurrency preserves main checks. Cloud startup failed; hosted execution supplies all current evidence and original local drafts remain untouched.
 
@@ -2042,7 +2044,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 3 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 2 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2053,7 +2055,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 392 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 391 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
