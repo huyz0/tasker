@@ -189,3 +189,12 @@
 - **Next**: Establish the actual failing core tests, implement the minimal
   harness and exercise a small correctness smoke. Separate T04 stages and
   published capacity claims require their own measured artifacts.
+
+### Independent core-test feedback
+
+- The core scaffold/tests import only Bun built-ins and the local helper.
+  Their dedicated job therefore needs no package install, generated contract
+  or service. Run it independently of the shared-contract queue, retaining
+  all ordinary backend, native SQL, browser and full repository gates.
+- This is still the failing-test checkpoint. No measurement implementation or
+  passing red/green evidence is inferred from the job configuration.

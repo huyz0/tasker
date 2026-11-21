@@ -163,8 +163,6 @@ jobs:
           cd apps/backend && bun install
       - name: Owned fixture cleanup regressions
         run: cd apps/backend && bun test src/test/ownedCleanup.test.ts
-      - name: Bounded measurement core regressions
-        run: cd apps/backend && bun test src/test/concurrencyMeasurement.test.ts
       - name: Build & Test (Cached)
         run: moon run backend:typecheck backend:test
 
@@ -332,3 +330,16 @@ jobs:
         run: moon run backend:test-recovery-mysql
       - name: Prove acknowledged audit loss and duplicates fail
         run: cd apps/backend && bun run test:recovery:audit-proof
+
+  measurement-core:
+    name: Bounded measurement core (Bun)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+      # Pure Bun tests: no generated contract, SQL, broker or package install.
+      # Keep their feedback independent of the contract/service job queues.
+      - name: Bounded measurement core regressions
+        run: cd apps/backend && bun test src/test/concurrencyMeasurement.test.ts
