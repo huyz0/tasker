@@ -394,6 +394,9 @@ jobs:
         uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Real stalled-RPC deadline and cancellation regressions
+        working-directory: apps/backend
+        run: bun test src/test/measurementTransport.test.ts
       - name: Measurement script types
         run: moon run backend:typecheck-measurement
       - name: Prepare owned broker image

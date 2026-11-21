@@ -7,6 +7,7 @@ tasks:
       - 'src/**/*'
       - '**/*.test.ts'
       - 'scripts/concurrency-core.ts'
+      - 'scripts/measurement-transport.ts'
   test-integration:
     deps:
       - 'shared-contract:install-deps'
@@ -86,6 +87,7 @@ tasks:
       - 'src/**/*'
       - 'tsconfig.json'
       - 'scripts/concurrency-core.ts'
+      - 'scripts/measurement-transport.ts'
       - '/packages/shared-contract/gen/**/*'
 
   # Explicit real-service commands never reuse a cached prerequisite skip.

@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import mysql from 'mysql2/promise';
 import { connect as natsConnect, type NatsConnection } from 'nats';
 import { createClient, ConnectError, Code } from '@connectrpc/connect';
-import { createConnectTransport } from '@connectrpc/connect-node';
+import { createMeasurementTransport } from './measurement-transport';
 import { AgentService, AuthService, OrgService, ProjectService, ProjectTemplateService, TaskService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { STREAM_NAME, DURABLE_NAME } from '../src/consumers/stream';
 import { settleOwnedCleanup } from '../src/test/ownedCleanup';
@@ -113,8 +113,7 @@ async function main(args: string[]) {
     return endpoint;
   }
   function transport(endpoint: string, header: string, value: string) {
-    return createConnectTransport({ baseUrl: endpoint, httpVersion: '1.1', defaultTimeoutMs: 5000,
-      interceptors: [next => async request => { request.header.set(header, value);return next(request); }] });
+    return createMeasurementTransport({ endpoint, header, value, signal: interrupted.signal });
   }
   try {
     admin = await mysql.createConnection(adminConfig);
