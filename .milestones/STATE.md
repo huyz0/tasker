@@ -1,6 +1,6 @@
 ---
-active_milestone: M50
-active_task: M50-T01
+active_milestone: M49
+active_task: M49-T05
 last_updated: 2026-11-21
 last_commit: 85fca13
 blocked: false
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49 final browser oracle race observed.** Job136880956867 fails an immediate exact-one-history-request assertion with zero or two valid older-cursor requests; canonical ownership is already correct. Reopen T05 only, preserve rejected CODE-v17 and await real refresh completion while asserting all requests keep the visible cursor. Add an actual head-page fault proof; production UI/intervals/timeouts remain unchanged. Other17 final gates pass, including repeated native1000-caller stages. Candidate394 done/one dropped/four pending; main remains unchanged. M50 static work is committed separately and its independent private rehearsal remains draft until parent publication.
 
 **2026-11-21 — M49 repaired source and fresh atomic candidate complete.** Source e94372e passes all18 non-skipped checks, exact37 in4m18.434s, actual stalled-RPC controls/faults, both repeated1000-caller oracles/cleanup and all native/browser/rendered/packaging gates. CODE-v14/v15/v16 resolve the final controller regression while retaining CODE-v13 and earlier measurements. Severe saturation remains, with269/213 of3000 workflows complete and2731/2787 errors. This fresh branch contains four atomic completed tasks from verified T02 commit9f0eba8; main is still unchanged and the combined-head publication gate must pass before rebase merge. Candidate M49 is6/6 with all criteria,395 done/one dropped/three pending. M50 source-truth edits are already committed separately and can resume from this verified dependency.
 
@@ -2054,7 +2056,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | done | M46, M47, M48 | 6 | 6 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 5 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2065,7 +2067,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 395 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 394 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
