@@ -459,3 +459,209 @@
   This atomic task commit contains implementation, tests, checkbox, journal
   and ledger together. M49 is 4/6; program 393 done/one dropped/five pending.
   Final combined-head gates still precede main publication.
+
+## M49-T04 — Staged caller and recovery experiments
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Changed**: Prepare hosted, disposable-service experiments using the T03
+  controller unchanged: a four-caller correctness baseline followed by100
+  and1000 distinct callers, two API processes,1000 existing tasks and a
+  fifteen-second admission window bounded at3000 logical operations per stage.
+- **Verified**: T03 source282f72f smoke job136849580992 passes20/20 real
+  logical operations,60 RPCs, matching20 task/source/audit records and no
+  correctness or cleanup failures. Its late-SQL fault actually commits and
+  exits1 with unexpected1/valid false/cleanup0; source bytes are restored.
+  That small smoke is not a capacity result. Full source gates remain pending.
+- **Plan**: Run stages sequentially on the same named hosted hardware. Stop
+  escalation on correctness, cleanup or bootstrap failure; retain every
+  completed JSON and fixed failure phase. Transport errors remain saturation
+  evidence. Follow completed stages with the existing real MySQL/NATS
+  cross-process recovery and audit-loss/duplicate fault proofs on that host.
+  These are separate recovery experiments, not faults during1000-caller load.
+- **Limits**: Preserve production limiter/pool defaults. Report requested and
+  observed peak callers, duration including settlement, data size, throughput,
+  success/all latency, error codes, uncertain commits, memory and queue
+  observations. No20000, sustained, multi-host or streaming capacity claim.
+- **Notes**: This task adds execution configuration and static evidence, not
+  new controller behavior; the TDD protocol's pure-configuration exception
+  applies. Existing controller tests, actual fault proofs and final gates
+  remain required. The failed Cloud environment prevents local execution;
+  hosted Actions is the explicit evidence source.
+- **Next**: Configure and execute the bounded stages, publish their actual
+  results and review evidence before checking T04. Keep T02/T03 unchecked
+  until their independent current-source gates pass.
+
+## M49-T05 — Repository-pinned CI and packaging toolchains
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Observed**: CI selects a floating Node24 while .prototools still names
+ 24.12.0; release.yml selects latest Bun and a floating Moon setup action.
+  The real integration jobs do not explicitly select Node. These paths can
+  test/package different runtimes from the repository pins.
+- **Approach**: Read and verify the exact Node pin through a local composite
+  action, use the existing pinned Bun/Moon actions in release packaging, and
+  select Node explicitly in integration/capacity jobs. Preserve Go's exact
+  go.mod selection. Broaden full-gate detection to all workflow configuration.
+- **Research**: Official Node releasev24.22.3, published2026-11-11, is a
+  security release in the already-selected24 line:
+  <https://github.com/nodejs/node/releases/tag/v24.22.3> .
+  Update the old24.12.0 pin and tech-stack record to24.22.3 rather than freezing
+  an obsolete patch. No new dependency, runtime family or advisory suppression.
+- **Verify**: Actual setup must print and compare the selected version.
+  Require exact hosted moon check --all, native services, browser E2E,
+  rendered UI and standalone smoke; retain reports/artifacts. This is pure
+  configuration, so no constant-mirroring TDD test is added. No release tag,
+  published binary release or deployment is requested or performed.
+- **Next**: Implement pinned selection/report retention and verify the final
+  publication candidate. Keep T05 and all unfinished task boxes unchecked.
+
+### Pinned packaging and observed smoke verification
+
+- Source 35b8d33 uses Node 24.22.3, Bun 1.3.11 and Moon 2.4.6.
+  Release run 44907118503 passes all three packaging targets; Linux also
+  executes the standalone smoke. Both tag-only publishing jobs are skipped.
+  The Node action actually prints and compares v24.22.3.
+- Both Integration 44907118610 jobs pass. CI 44907118504 passes dependency
+  audits, contract compilation, seven core cases/input fault, the real HTTP
+  smoke and late-SQL fault. The smoke completes 20 logical workflows with
+  matching task/source/audit records and cleanup zero. The late transaction
+  actually commits and is rejected with unexpected 1, exit 1 and cleanup zero;
+  the proof restores source bytes. Full 37-check/native/browser/rendered gates
+  are still running or queued; no final result is inferred.
+- Staged runs 44906822995 (initial controller source) and 44907118491
+  (pinned-toolchain checkout) remain inside their sequential caller step.
+  The first started that step at 13:06:36 UTC and has exceeded twelve minutes.
+  The fifteen-second value bounds admission, not total setup/recovery/cleanup.
+  Final logs are unavailable while active. Do not invent a cause or publish
+  a capacity figure; each job retains its 25-minute external watchdog.
+- T02 source e321baae passes all ten CI and both integration jobs, including
+  both MySQL versions, native 19/recovery 10 and actual fault proofs. CODE-v9
+  and its atomic completed-task candidate are on feature/m49-production-final,
+  commit 9f0eba8. Blob comparison proves that only milestone metadata/review
+  differ from the tested source. This work branch retains the reopened ledger
+  until its task results are assembled atomically on that publication branch.
+- Main remains d7e2e45: 391 done, one dropped and seven pending. Publication
+  candidate T02 is 392 done/six pending and has not been merged. Keep both
+  levels explicit. PR #18 and draft #19 now describe the actual evidence.
+- Source audit for M50 identifies stale architecture, API unary-only and
+  missing-scanner claims; roadmap M47/M53–M58 statuses also drift. Prepare an
+  offline SQLite and disposable MySQL backup/restore rehearsal that checks
+  exact restored identities and rejects a deliberately broken backup.
+  Do not start M50 implementation before M49's dependency is satisfied.
+
+### Observed documentation gate and link correction
+
+- Workspace job 136856196396 on source 35b8d33 fails the real Markdown
+  gate on exactly two MD034 bare-URL findings: the official Node release
+  reference here and in tech-stack.md. All 24 harness-contract tests pass;
+  this is a documentation-format defect, not a Node/runtime failure.
+- Wrap those primary-source references in valid Markdown autolinks. No lint
+  rule or runtime/source assertion changes. Advance draft PR #19 normally
+  with this correction and the committed handoff; standard per-PR concurrency
+  replaces superseded checks and preserves their completed/interrupted logs.
+- Inspect interrupted staged evidence for the observed long runtime before
+  attributing it to a controller, service or resource cause. Initial staged
+  push run 44906822995 remains unaffected and retains its external watchdog.
+
+### Actual 100-caller evidence and uncompleted 1000-caller stage
+
+- Interrupted pinned job 136854961314 retains two complete positive reports.
+  Its 100-caller stage uses 100 actual principals/peak active operations, two
+  API PIDs and 1000 existing tasks on a four-vCPU AMD EPYC 9V74 runner with
+  16759431168 bytes host RAM. Bun 1.3.11, MySQL 8.4.13 and NATS 2.10.29.
+- All 1508 attempted logical workflows complete, with 4524 RPCs, matching
+  1508 task/source/audit rows, zero request/correctness/cleanup failures and
+  no uncertain outcomes. Request settlement is 15.421865s, throughput
+  97.783247 workflows/s, p50/p95/p99 993.221/1445.677/1934.209ms.
+  Separate recovery is 19.604031s; total is 41.277869s.
+- API sampled RSS peaks at 577028096 bytes, generator at 175022080; producer
+  pending peaks at 963, consumer unacked at two, with zero read failures.
+  The recovery API drains 962 pending source rows to zero. These short,
+  one-host/one-project results are not sustained capacity or all-endpoint
+  latency evidence. The aggregate report checkout is b9cb15c, source 35b8d33.
+- The subsequent 1000-caller command has no completed JSON when superseded.
+  Its unresolved phase is not assigned a service/controller/resource cause.
+  The initial push-based run remains active under its 25-minute job bound.
+- Add fixed non-sensitive controller phase diagnostics and a per-stage
+  240-second external watchdog with 45-second graceful termination allowance.
+  Preserve failed/partial reports and stop escalation; force-kill cannot
+  guarantee controller cleanup and never counts as valid measurement.
+  No operational deadline or correctness assertion is relaxed.
+- This is fixture diagnostics and execution configuration after the observed
+  uncompleted run, not a production behavior change. T03/T04 remain unchecked;
+  inspect the actual diagnostic run before proposing a runtime fix.
+
+### Preserve the completed stage as reviewable evidence
+
+- Commit the exact 100-caller aggregate JSON and a sourced table in
+  docs/performance.md. Name the cancelled parent job, the completed stage,
+  actual checkout, hardware, dataset, defaults and separate recovery tail.
+  The incomplete 1000-caller stage and unrun later failure steps remain open.
+- Preserve uncertainty and all limitations. A zero-error short stage does
+  not establish steady-state queue stability or maximum supported capacity.
+
+### Preserve the initial host observation too
+
+- Initial job 136854082350 reaches its external job deadline after the later
+  1000-caller command produces no completed report. Its already-completed
+  100-caller stage is valid evidence: 1174 workflows, 3522 RPCs, zero request/
+  correctness/cleanup failures, 75.042356 workflows/s and p95 1979.019ms.
+- Retain that exact JSON beside the faster AMD-host observation, name its
+  Intel Xeon 8573C hardware and separate 13.689327s recovery tail. Do not
+  cherry-pick the faster host or infer a controlled comparison. The active
+  diagnostic run, T03/T04 closure and final publication remain pending.
+
+### Actual staged saturation and separate recovery results
+
+- Job 136860547110 on source 2e8b14b/checkout 18ae2c6 completes all three
+  stages with valid SQL/source/audit reconciliation and cleanup zero, then
+  all ten required recovery cases and both actual audit faults pass.
+- On the same four-CPU Xeon 6973P-C host, 100 callers complete all 1701
+  workflows without errors in a 15.363392s request phase (110.717737/s,
+  successful p95 1293.429ms), followed by 22.585613s separate recovery.
+- At 1000 actual/peak callers, the 3000-operation cap is exhausted before
+  15 seconds: only 57 workflows complete, 2943 request errors remain, and
+  successful p95 is 7081.129ms. There are 822 acknowledged first writes,
+  194 unacknowledged but committed intents and 1984 absent intents. All 1016
+  final task/source/audit rows reconcile with zero lost/duplicate/changed
+  outcomes. No request error or uncertain outcome is suppressed.
+- Preserve exact JSON for all three verified stages and both earlier
+  100-caller hosts. Lead docs/performance.md with saturation, not a healthy
+  1000-caller claim. Recovery runs after load, not during it. Neither earlier
+  incomplete 1000-caller run is assigned a root cause; the diagnostic change
+  does not claim a production fix. Final full/native/browser gates and
+  four-lens task closure remain required before main publication.
+
+### Final workflow scope and handoff
+
+- The staged experiment is actual green evidence, including the severe
+  saturation result and separate failure experiments. Keep source 2e8b14b's
+  remaining checks running while preparing evidence-only publication edits.
+- Remove the initial feature-branch push trigger. The permanent workflow is
+  available manually and on main/PR changes to the harness or pinned toolchain;
+  ordinary backend changes retain their existing real-service/native gates.
+- Use the tested CI/integration concurrency pattern here too: each main SHA
+  gets a distinct group, so an older pending main proof cannot be replaced by
+  a newer pending one. PR checks alone cancel superseded work. The final
+  combined-head workflow still gates publication; no test rule is disabled.
+
+### T04 final evidence review and atomic publication candidate
+
+- CODE-v11 approves the exact staged data, explicit saturation boundary,
+  retained earlier observations and separate failure experiments. All
+  18 source checks pass, including exact 37 checks in 7m23.324s.
+- Publish all five aggregate JSON records without modification. The latest
+  1000-caller record is a valid correctness measurement with only 57/3000
+  complete workflows; 2943 request errors remain visible. Its 194 later
+  confirmed commits are not described as acknowledged successes.
+- Preserve the two earlier incomplete 1000-caller commands without assigning
+  a root cause. The external stage watchdog and fixed phase markers are
+  diagnostic/fixture controls, not a claimed production performance fix.
+- The permanent workflow removes the one-off branch trigger, preserves each
+  main SHA's proof and cancels only superseded PR work. Failure/recovery
+  experiments are after the stages, not concurrent with the burst.
+- This completed task is atomic with its workflow, data, docs, checked box,
+  journal and ledger. M49 is 5/6; program 394 done/one dropped/four pending.
+  T05 and final combined-head publication remain required.

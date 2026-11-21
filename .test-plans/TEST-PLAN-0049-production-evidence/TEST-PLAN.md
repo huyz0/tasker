@@ -100,3 +100,32 @@ unexpected0 and valid true. The correction must stop the projector and wait for
 all other SQL sessions in the owned schema to close before final reads, so the
 same delayed commit becomes an observed unexpected outcome. Pending producer
 work after that SQL drain also invalidates correctness.
+
+## M49-T04 staged experiments
+
+Use one hosted Linux job with an isolated MySQL service. Run the existing
+controller sequentially at4 callers/20 fixture tasks/20 operations, then100
+and1000 callers/1000 fixture tasks/3000 maximum operations, two API PIDs,
+seed42 and15 seconds admitting work for each larger stage.
+
+Require a completed checked report with positive acknowledged writes,
+successful cleanup, matching configured/observed principals and fixture count,
+two distinct API PIDs and valid correctness before advancing. Retain request
+errors and uncertain committed/absent counts; they are not a reason to hide a
+completed stage. Never promote bootstrap failure or absent JSON to capacity.
+
+Run the existing required MySQL cross-process recovery and real acknowledged
+audit-loss/duplicate fault proofs after the stages. Report them separately
+from the load phases. Retain each aggregate JSON and sanitized recovery logs;
+name actual hardware, runtime versions, timings, sample sizes, sampled memory,
+queue observations and limitations. No20000 or steady-state claim is accepted.
+
+## Recorded staged interpretation
+
+The actual 1000-caller measurement is valid only as a complete, reconciled
+experiment: 57 of 3000 workflows complete, with 2943 request errors and 194
+unacknowledged intents later confirmed committed. Do not convert successful
+measurement execution into a service-capacity claim. Preserve all raw aggregate
+records and prior incomplete runs. The 240-second external stage watchdog plus
+45-second graceful allowance bounds fixture execution; force-kill never counts
+as valid cleanup. Separate recovery/fault experiments follow the load phases.
