@@ -15,6 +15,7 @@ import { setupDatabase } from '../../db/db';
 import * as S from '../../db/schema.mysql';
 import { brokerEventReference } from '../../lib/domainEventRelay';
 import { STREAM_NAME, DURABLE_NAME } from '../../consumers/stream';
+import { settleOwnedCleanup } from '../ownedCleanup';
 
 const realTest = process.env.TASKER_REAL_INTEGRATION === '1' && process.env.TASKER_MYSQL_INTEGRATION === '1' ? it : it.skip;
 type Child = { process: Subprocess; errors: Promise<string> };
@@ -26,7 +27,8 @@ realTest('two API processes share claims, retries, acknowledged audit identity a
   const root = join(import.meta.dir, '../..'), children: Child[] = [], stopFeeds: Array<() => Promise<void>> = [];
   const dockerEnv = { ...process.env };
   for (const key of ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_TLS', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete dockerEnv[key];
-  let admin: mysql.Connection | undefined, db: any, nc: NatsConnection | undefined, created = false, brokerCreated = false;
+  let admin: mysql.Connection | undefined, db: any, nc: NatsConnection | undefined, created = false, brokerAttempted = false;
+  let primaryError: unknown;
   async function wait(check: () => Promise<boolean>, label: string, budget = 15_000) {
     const deadline = Date.now() + budget;
     while (Date.now() < deadline) { if (await check()) return;await Bun.sleep(25); }
@@ -80,7 +82,8 @@ realTest('two API processes share claims, retries, acknowledged audit identity a
     admin = await mysql.createConnection({ host: process.env.DB_HOST || '127.0.0.1', user: process.env.DB_USER || 'root', password: process.env.DB_PASSWORD });
     await admin.query('CREATE DATABASE ' + database + ' CHARACTER SET utf8mb4');created = true;
     process.env.DB_NAME = database;db = await setupDatabase('mysql');
-    await docker('run', '-d', '--name', container, '-p', '127.0.0.1::4222', '-p', '127.0.0.1::8222', 'nats:2.10-alpine', '-js', '-m', '8222');brokerCreated = true;
+    brokerAttempted = true;
+    await docker('run', '-d', '--name', container, '--label', 'tasker.proof.owner=' + suffix, '-p', '127.0.0.1::4222', '-p', '127.0.0.1::8222', 'nats:2.10-alpine', '-js', '-m', '8222');
     const natsPort = Number((await docker('port', container, '4222/tcp')).split(':').at(-1));
     const monitorPort = Number((await docker('port', container, '8222/tcp')).split(':').at(-1));
     const url = 'nats://127.0.0.1:' + natsPort;
@@ -161,22 +164,36 @@ realTest('two API processes share claims, retries, acknowledged audit identity a
       if (frame?.subject === 'stream.heartbeat') { heartbeat = true;break; }
     }
     expect(heartbeat).toBe(true);
+  } catch (error) {
+    primaryError = error;throw error;
   } finally {
-    const failures: unknown[] = [];
-    await Promise.allSettled(stopFeeds.map(stop => stop()));
-    for (const child of children.reverse()) {
-      if (child.process.exitCode === null) child.process.kill('SIGTERM');
-      const deadline = setTimeout(() => child.process.kill('SIGKILL'), 15_000);
-      try { const code = await child.process.exited;await child.errors;if (code !== 0) failures.push(new Error('An owned process did not drain cleanly.')); }
-      finally { clearTimeout(deadline); }
-    }
-    await nc?.close();if (db) await db.$client.end();
-    if (created && admin) await admin.query('DROP DATABASE ' + database);
-    await admin?.end();
-    if (brokerCreated) { try { await docker('rm', '-f', container); } catch (error) { failures.push(error); } }
-    rmSync(directory, { recursive: true, force: true });
-    if (previousName === undefined) delete process.env.DB_NAME;else process.env.DB_NAME = previousName;
-    if (previousStandalone === undefined) delete process.env.STANDALONE;else process.env.STANDALONE = previousStandalone;
-    if (failures.length) throw new AggregateError(failures, 'Owned two-instance cleanup failed.');
+    const failures = await settleOwnedCleanup([
+      async () => { await Promise.allSettled(stopFeeds.map(stop => stop())); },
+      ...children.reverse().map(child => async () => {
+        if (child.process.exitCode === null) child.process.kill('SIGTERM');
+        const deadline = setTimeout(() => child.process.kill('SIGKILL'), 15_000);
+        try {
+          const code = await child.process.exited;await child.errors;
+          if (code !== 0) throw new Error('An owned process did not drain cleanly.');
+        } finally { clearTimeout(deadline); }
+      }),
+      async () => { await nc?.close(); },
+      async () => { if (db) await db.$client.end(); },
+      async () => { if (created && admin) await admin.query('DROP DATABASE ' + database); },
+      async () => { await admin?.end(); },
+      async () => {
+        if (!brokerAttempted) return;
+        // A timed-out run may still have created the container. Match only
+        // this fixture's generated ownership label, including stopped objects.
+        const ids = await docker('ps', '-aq', '--filter', 'label=tasker.proof.owner=' + suffix);
+        for (const id of ids.split('\n').filter(Boolean)) await docker('rm', '-f', id);
+        if (await docker('ps', '-aq', '--filter', 'label=tasker.proof.owner=' + suffix)) throw new Error('Owned broker still exists after cleanup.');
+      },
+      () => { rmSync(directory, { recursive: true, force: true }); },
+    ], () => {
+      if (previousName === undefined) delete process.env.DB_NAME;else process.env.DB_NAME = previousName;
+      if (previousStandalone === undefined) delete process.env.STANDALONE;else process.env.STANDALONE = previousStandalone;
+    });
+    if (failures.length) throw new AggregateError(primaryError === undefined ? failures : [primaryError, ...failures], 'Owned two-instance cleanup failed.');
   }
 }, 180_000);

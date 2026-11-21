@@ -132,3 +132,19 @@
   typed scaffold first; the dedicated hosted step must demonstrate the red
   before implementation. The task remains in progress and no cleanup safety
   or successful recovery pass is claimed yet.
+
+### Cleanup red and correction
+
+- Dedicated job136815090896 runs the new cleanup regressions against the empty
+  typed scaffold and fails both real filesystem assertions: Expected false,
+  Received true. Test finalizers remove those temporary directories and restore
+  their own marker even on red. This establishes the red before implementation.
+- Implement settled teardown that attempts every step, restores ambient test
+  state in finally and returns aggregated failures. Use it for streams, each
+  owned process, both SQL handles, schema, broker and directory. Track the
+  broker attempt before Docker and discover only objects carrying this
+  fixture's generated ownership label, including partially created containers.
+- Fault proofs also reject cleanup aggregates, so an intended outcome failure
+  cannot hide failed fixture teardown. The required outer recovery schema is
+  already generated and passed explicitly; nested fixtures preserve their
+  separate ownership. Re-run actual normal/fault/source gates before approval.

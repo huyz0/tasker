@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T02
 last_updated: 2026-11-21
-last_commit: 0586a92
+last_commit: 610d19b
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T02 isolation and cleanup corrections under verification.** Preserve rejected CODE-v4. The actual first candidate reproduces ER_BAD_DB_ERROR in the inherited atomic fixture; the required wrapper now creates and passes only its own UUID outer schema. Dedicated cleanup regressions fail their intended filesystem assertions on the scaffold before implementation. Settled teardown now attempts all owned resources and always restores ambient test state; broker creation attempts are tracked with a generated ownership label. Audit fault proof rejects cleanup aggregates. T02 remains unchecked pending real normal/fault checks and re-review. Parent main d7e2e45 is published after all12 checks.399 total/391 done/seven pending. Cloud startup remains pending and original drafts are preserved.
 
 **2026-11-21 — M49-T02 test plan and owned fixture in progress.** Start from reviewed T01 combined candidate0586a920 while PR #17 final checks/publication finish. Extend real MySQL recovery coverage and verify two independent HTTP API processes, current scoped actors, stable retries, claim exclusivity, acknowledged audit deduplication and reconnect revocation against an owned broker/schema. Lost/duplicate projection faults must fail real oracles. Test plan is written before code. M58 is published as main2ebfc34; no new UI behavior or capacity claim is introduced.399 total/391 done/seven pending. Original local drafts remain preserved while Cloud startup is pending.
 

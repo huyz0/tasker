@@ -22,6 +22,6 @@ for (const mode of ['lost', 'duplicate']) {
   const decoder = new TextDecoder(), output = decoder.decode(result.stdout) + '\n' + decoder.decode(result.stderr);
   const intended = mode === 'lost' ? output.includes('Lost audit outcome after acknowledged delivery')
     : Number(/Duplicate audit outcome: (\d+) rows/.exec(output)?.[1] ?? 0) > 1;
-  if (result.exitCode !== 1 || !/\b1 fail\b/.test(output) || !intended) throw new Error('The ' + mode + ' audit fault did not reach its actual acknowledged-outcome assertion.');
+  if (result.exitCode !== 1 || !/\b1 fail\b/.test(output) || !intended || output.includes('Owned two-instance cleanup failed')) throw new Error('The ' + mode + ' audit fault did not reach its actual acknowledged-outcome assertion.');
   console.log('Real two-instance ' + mode + ' audit fault fails its intended assertion; source restored byte-for-byte.');
 }
