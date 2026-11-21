@@ -13,7 +13,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "typecheck:e2e:saved-views": "tsc --noEmit --project tests/e2e/tsconfig.saved-views.json",
+    "test:e2e:saved-view-proof": "bun run scripts/prove-saved-view-intent.mjs"
   },
   "dependencies": {
     "@mdxeditor/editor": "^4.2.0",

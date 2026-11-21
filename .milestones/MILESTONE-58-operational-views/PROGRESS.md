@@ -435,3 +435,64 @@
 - Explicit repository pre-commit passes all36 checks (33 cached) in7.840s after
   closure and ledger updates. No hook is skipped; the repository script is run
   explicitly because core.hooksPath is not installed in this checkout.
+
+## M58-T04 — Permanent named-view browser proof and guide
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Changed**: Promote the saved-view privacy, history, shared-access recovery and obsolete-resource journeys into permanent browser coverage; publish the Tasks/Reports saved-view guide.
+- **Verified**: PR #14 is merged as main9be092b after all8 original-head checks passed. Nine post-main jobs pass; the newly published Go advisory is isolated in M49-T06/draft PR #15. This dependent branch starts from its reviewed candidate debb00ba. The Cloud workspace remains starting; unfinished local T04 edits in tasker-saved-view-ui are preserved.
+- **Notes**: Testing/security plus TDD apply to this task. Static documentation has no runtime TDD cycle. Use real generated RPC clients and owned synthetic identities, with credential recordings disabled. Execute permanent native checks in the existing hosted browser job; a temporary intent-guard fault must fail the intended browser assertion and restore source byte-for-byte before the ordinary suite. The hosted exact repository gate is separately required; it is not described as a local pass.
+- **Next**: Add the permanent cases, strict browser types, restored fault proof and guide, run actual hosted checks and independent review, then reconcile parent completion and close/publish M58. Original M49-T01–T05 and M50 remain outstanding.
+
+### Hosted candidate prepared
+
+- Provider checkpoint c0078270 contains two permanent native browser journeys,
+  the strict saved-view browser typecheck, an intent fault that must fail its
+  specific assertion, and byte-for-byte restoration before the ordinary E2E
+  suite. The guide is linked from README. No product component is changed.
+- PR #16 targets main so the repository's main-only PR workflow filter can run
+  its actual checks. It carries the reviewed PR #15 runtime patch as a dependency;
+  publish that parent first and reconcile the branch comparison before merge.
+  The original local T04 draft is preserved while Cloud startup remains pending.
+
+### Parent publication and source-review feedback
+
+- PR #15 final head 8b132f2 passes all eight CI44888465901 jobs, including the
+  exact full repository command, and publishes as main ed1b323. Its fetched
+  Git tree matches the tested d2349fc tree exactly. Preserve this parent in the
+  provider branch with a normal merge commit; no branch is force-pushed.
+- T04 candidate 9dd19509 passes strict browser typing and the actual native
+  intent-fault proof in job136800857500. Ordinary E2E/full results remain
+  pending. CODE-v9 approves source with no blockers and notes one useful proof
+  improvement: attach the Reports request observer after the seven-day
+  baseline. Apply that correction and assert its set is empty before Open,
+  excluding late initial-page traffic from the fresh source-read proof.
+
+### T04 closure and milestone evidence
+
+- Reviewed candidate 99ff7c37 passes all eight CI44889512496 jobs. Its actual
+  strict browser types and native intent-fault step pass; source is restored
+  byte-for-byte before all102 ordinary browser tests pass in6m54.842s. The
+  two new journeys exercise real generated clients and owned identities,
+  including the corrected fresh Reports observer, personal defaults, private
+  ID refusal, current shared access, reload/history, retained drafts, bounded
+  filtered catalogs and obsolete-project cleanup.
+- The exact hosted repository command passes all36 checks (7 cached) in
+  7m37.852s: GUI1764, backend2421/zero failures, contract1158, strict types and
+  production/standalone builds. The actual browser/rendered gate also passes;
+  current product UI follows the already approved UX-v8 captures. CODE-v9
+  approves source and CODE-v10 approves the observer correction.
+- T02's published native SQLite/MySQL persistence, both populated migrations,
+  real auth/socket and legacy-client proofs remain valid: T04 changes no
+  persistence, authorization or generated contract. T03's actual two-user,
+  large SQL catalogs and rendered/native workflow proofs remain recorded.
+  Parent Go repair ed1b323 now passes all10 post-main CI/integration jobs.
+- Check T04 and the final criterion. M58 is5/5 with4/4 exit criteria, completed
+  2026-11-21. Program399 total/390 done/one dropped/eight pending. The public
+  guide is linked from README. Final-head hosted CI and main publication still
+  gate this task's merge; no unavailable local execution is claimed.
+- Next finish M49-T01 in separate draft PR #17. Its newly enabled real-service
+  checks have exposed a stale fixed-date expiry fixture and a five-second
+  cold-migration default on8.0; investigate/correct those without relaxing
+  operational query assertions. Preserve all local drafts while startup is pending.

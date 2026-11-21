@@ -144,6 +144,8 @@ separate frontend build:
 ./tasker --open --seed
 ```
 
+[**Saved Tasks and Reports views**](docs/saved-views.md) — URL history, personal defaults, organization sharing and recovery when access changes.
+
 👉 **[Quickstart](docs/quickstart.md)** — ten minutes from nothing to a working
 instance, whichever way you are running it.
 
