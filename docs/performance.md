@@ -9,9 +9,9 @@ measurements are a different workload.
 
 ## Prerequisites and command
 
-Use Linux, the repository-pinned toolchains, a disposable local MySQL8.0 or8.4
-service on port3306, and the local Docker daemon. Set DB_PASSWORD in the
-environment; DB_HOST defaults to127.0.0.1 and DB_USER to root. The account must
+Use Linux, the repository-pinned toolchains, a disposable local MySQL 8.0 or 8.4
+service on port 3306, and the local Docker daemon. Set DB_PASSWORD in the
+environment; DB_HOST defaults to 127.0.0.1 and DB_USER to root. The account must
 create/drop generated fixture schemas. The command accepts no deployment URL or
 schema name and ignores an inherited DB_NAME.
 
@@ -27,9 +27,9 @@ bun run measure:concurrency --concurrency 4 --duration 3 --fixture 20 --instance
 ```
 
 The command generates its own schema, broker ownership label, temporary directory,
-HTTP ports and credentials. It removes owned resources on normal completion,
-errors and graceful SIGINT/SIGTERM interruption; force-killing the controller
-cannot run its cleanup. Credentials remain in memory. JSON stdout contains only
+HTTP ports and credentials. Cleanup attempts every owned resource on normal completion,
+errors and graceful SIGINT/SIGTERM interruption; a cleanup failure fails the run.
+Force-killing the controller cannot run its cleanup. Credentials remain in memory. JSON stdout contains only
 aggregate evidence; failure diagnostics on stderr contain fixed phases/codes.
 
 ## Workload dimensions
@@ -63,6 +63,8 @@ operations are both recorded.
   throughput divides confirmed completions or acknowledged first writes by
   that actual elapsed time. A logical completion includes create, replay and
   read. Error-code counts retain failures at each stage.
+- timing also separates setup, post-measurement observation, API drain,
+  recovery, source reconciliation and cleanup; totalMs includes them all.
 - latencyMs reports nearest-rank p50/p95/p99 for all logical completions,
   successful logical completions and acknowledged first writes separately.
   Empty sample sets report null. Short samples do not establish stable tails.
@@ -97,6 +99,6 @@ hosts, sustained long-duration load or streaming connections. Generator and
 observer overhead are included. Errors at saturation remain part of the result;
 configured caller count does not imply an acceptable service level.
 
-M49-T04 records the separate100 and1000 caller experiments, their hardware,
+M49-T04 records the separate 100 and 1000 caller experiments, their hardware,
 dataset, saturation, recovery behavior and limitations. Until those artifacts
 exist and are reviewed, those caller counts remain planned experiments.

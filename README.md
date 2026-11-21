@@ -33,8 +33,8 @@ declared in `api-standard.md` §6, and every endpoint is inside its budget.
 *Concurrency* has a [bounded HTTP measurement command](docs/performance.md)
 for isolated MySQL/NATS fixtures. Its smoke and staged results are published
 only after actual verification; configured caller counts are not capacity
-claims.20,000 simultaneous callers have never been validated. The100,002-row
-principal fixture above describes stored data, rather than100,002 active
+claims. 20,000 simultaneous callers have never been validated. The 100,002-row
+principal fixture above describes stored data, rather than 100,002 active
 clients.
 
 ---

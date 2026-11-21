@@ -31,6 +31,7 @@ function rss(pid: number): number | null {
 }
 
 async function main(args: string[]) {
+  const launched = performance.now();
   const config = measurementConfig(args);
   const host = process.env.DB_HOST || '127.0.0.1';
   if (process.platform !== 'linux' || !['127.0.0.1', 'localhost'].includes(host) || Number(process.env.DB_PORT || 3306) !== 3306 || !process.env.DB_PASSWORD) {
@@ -221,9 +222,12 @@ async function main(args: string[]) {
     const phaseMs = performance.now() - started;
     clearInterval(timer);timer = undefined;if (sampling) await sampling;
     await sample();
+    const postObservationMs = performance.now() - started - phaseMs;
     if (measured.some(child => child.process.exitCode !== null) || projector.process.exitCode !== null) throw new Error('Owned process exited during measurement.');
     phase = 'drain';
+    const apiDrainAt = performance.now();
     await stopAll(measured);
+    const apiDrainMs = performance.now() - apiDrainAt;
     const tailStart = performance.now(), pendingAfterApiDrain = await pending();
     let recoveryApiStarted = false;
     if (pendingAfterApiDrain) { await api('recovery', url);recoveryApiStarted = true; }
@@ -231,6 +235,7 @@ async function main(args: string[]) {
     await stopAll(children.filter(child => child.kind === 'recovery'));
     const recoveryMs = performance.now() - tailStart;
     phase = 'oracle';
+    const oracleAt = performance.now();
     const sourceRows = await query('SELECT id, title FROM tasks WHERE project_id = ? AND title LIKE ?', [projectId, prefix + '%']);
     const outcomes = reconcileOutcomes(attempts, sourceRows.map((row: any) => ({ key: row.title, id: row.id })));
     const taskIds = new Set<string>(sourceRows.map((row: any) => row.id));
@@ -264,7 +269,7 @@ async function main(args: string[]) {
       kind: 'tasker-http-concurrency-v1', startedAt, commit: process.env.GITHUB_SHA || 'unrecorded',
       workload: { ...config, mode: 'closed-loop create/replay/get; one shared project', actualPrincipals: actualAgents, apiPids: measured.map(child => child.process.pid),
         peakActive, fixtureTasks: actualFixtureTasks, poolSizePerApi: Number(process.env.DB_POOL_SIZE) || 20, poolQueueLimitPerApi: Number(process.env.DB_POOL_QUEUE_LIMIT) || 200 },
-      timing: { phaseMs, lastAdmissionOffsetMs, recoveryMs, observerIntervalMs: 500 },
+      timing: { setupMs: started - launched, phaseMs, lastAdmissionOffsetMs, postObservationMs, apiDrainMs, recoveryMs, oracleMs: performance.now() - oracleAt, cleanupMs: 0, totalMs: 0, observerIntervalMs: 500 },
       counts: { attemptedLogical: attempts.length, completedLogical: completed.length, acknowledgedWrites: acknowledged, persistedMeasuredTasks: sourceRows.length, persistedProducerEvents: producers.length, persistedAuditRows: audit.length, rpcCalls, errors },
       throughput: { completedLogicalPerSecond: completed.length * 1000 / phaseMs, acknowledgedWritesPerSecond: acknowledged * 1000 / phaseMs },
       latencyMs: { allLogical: latencySummary(attempts.map(attempt => attempt.milliseconds)), successfulLogical: latencySummary(completed.map(attempt => attempt.milliseconds)), acknowledgedFirstWrite: latencySummary(firstWriteLatencies) },
@@ -277,6 +282,7 @@ async function main(args: string[]) {
     };
   } catch (error) { failed = true;primary = error; }
   finally {
+    const cleanupAt = performance.now();
     if (timer) clearInterval(timer);if (sampling) await sampling;
     const failures = await settleOwnedCleanup([
       ...[...children].reverse().map(child => () => stop(child)),
@@ -297,6 +303,7 @@ async function main(args: string[]) {
     ], () => { process.removeListener('SIGINT', onInterrupt);process.removeListener('SIGTERM', onInterrupt);for (const [key, value] of previous) { if (value === undefined) delete process.env[key];else process.env[key] = value; } });
     if (report) {
       report.cleanupFailures = failures.length;report.correctness.ok &&= failures.length === 0;
+      report.timing.cleanupMs = performance.now() - cleanupAt;report.timing.totalMs = performance.now() - launched;
       console.log(JSON.stringify(report));
       if (!report.correctness.ok) process.exitCode = 1;else if (!report.evidenceValid) process.exitCode = 2;
     }

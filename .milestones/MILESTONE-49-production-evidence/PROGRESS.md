@@ -260,3 +260,18 @@
 - Source3410e39 (T02) passes both integration jobs, audit and contract; its
   corrected normal/fault/type/full gates remain queued. T03 core sourcef6aa796
   also awaits hosted green. Both tasks remain unchecked.
+
+### Independent smoke feedback and complete timing
+
+- The smoke provisions/installs its own tools, dependencies and services and
+  consumes the committed contract. Run it independently; the contract and all
+  existing repository gates still separately gate publication. This removes
+  an ordering dependency, not a verification requirement.
+- Report setup, request settlement, post-measurement observation, API drain,
+  recovery, SQL/audit reconciliation and cleanup separately, with total time
+  through cleanup. Keep request throughput tied to its measured phase.
+  The smoke requires actual positive setup/total timing as well as its other
+  independent observations.
+- Clarify that teardown attempts every owned resource and a cleanup failure
+  fails the run; force-kill cannot guarantee graceful cleanup. Results remain
+  pending, not inferred.
