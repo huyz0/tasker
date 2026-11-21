@@ -1,8 +1,8 @@
 ---
 active_milestone: M50
-active_task: M50-T01
+active_task: M50-T02
 last_updated: 2026-11-21
-last_commit: 85fca13
+last_commit: 654c222
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M50-T01 source truth complete.** Architecture/API/security/technology guidance matches current source and passed real Markdown/spec/doc-drift checks on8ba3834. CODE-v1 approves. M49 is published main654c222 after all18 final checks, exact37 and103 browser passes, with identical checked/published tree. M50 is1/3,396 done/one dropped/two pending. T02/T03 and final combined-head publication remain; T03 records the separate Bun runtime crash and actual restore evidence. No local execution/clean-tree claim.
 
 **2026-11-21 — M49 corrected final source approved.** Source185d0ad passes all18 non-skipped checks, exact37 in7m26.908s and actual head-page browser fault plus103 ordinary cases. CODE-v18 resolves the final oracle race while preserving v17 rejection. Reuse the first three atomic task commits and publish a fresh final T05 commit after its own combined gate. M49 candidate6/6,395 done/one dropped/three pending; main remains unchanged until merge. M50 runbook/private-restore draft is PR #22; no local execution is claimed.
 
@@ -2057,7 +2059,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
 | M49 | Production Evidence | done | M46, M47, M48 | 6 | 6 |
-| M50 | Operational Truth | todo | M49 | 3 | 0 |
+| M50 | Operational Truth | in-progress | M49 | 3 | 1 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
@@ -2067,7 +2069,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 395 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 396 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

@@ -5,8 +5,8 @@ Every entry under **In Use** is traceable to a committed manifest — `package.j
 dependency appears in a manifest without an entry here, or an entry here names
 something no manifest declares.
 
-**Planned** names technology a later milestone will introduce. It is not
-installed. An agent must not import from it.
+**Future decisions** names uninstalled choices that require an explicit new
+owner/decision before adoption. Delivered technology is not left in that list.
 
 **Dropped** records ambitions that were written here, never built, and are owned
 by nobody. They are listed so nobody reintroduces them by accident.
@@ -27,20 +27,20 @@ written as `@scope/*` covers that scope's packages.
 
 | Technology | Version | Role |
 |---|---|---|
-| `react`, `react-dom` | ^19.2.5 | UI runtime |
-| `vite` + `@vitejs/plugin-react` | ^8.0.8 / ^6.0.1 | Build and dev server |
-| `typescript` | ^6.0.2 | Language |
-| `tailwindcss` + `@tailwindcss/vite` | ^4.2.2 | Styling, via semantic HSL tokens |
-| `react-router-dom` | ^7.14.0 | Client-side routing |
-| `@tanstack/react-query` | ^5.97.0 | Server state |
-| `@tanstack/react-virtual` | ^3.14.6 | List virtualization |
-| `zustand` | ^5.0.12 | Cross-tree UI state |
-| `lucide-react` | ^1.8.0 | Icon set |
+| `react`, `react-dom` | ^19.2.8 | UI runtime |
+| `vite` + `@vitejs/plugin-react` | ^8.2.2 / ^6.1.0 | Build and dev server |
+| `typescript` | ^6.0.3 | Language |
+| `tailwindcss` + `@tailwindcss/vite` | ^4.3.3 | Styling, via semantic HSL tokens |
+| `react-router-dom` | ^7.18.2 | Client-side routing |
+| `@tanstack/react-query` | ^5.101.4 | Server state |
+| `@tanstack/react-virtual` | ^3.14.10 | List virtualization |
+| `zustand` | ^5.0.15 | Cross-tree UI state |
+| `lucide-react` | ^1.33.0 | Icon set |
 | `react-markdown`, `remark-gfm`, `rehype-sanitize` | ^10.1.0 / ^4.0.1 / ^6.0.0 | Markdown rendering |
 | `@mdxeditor/editor` | ^4.2.0 | WYSIWYG markdown editing (`RichMarkdownEditor`, piloted on task description — ADR-0018) |
 | `use-debounce` | ^10.1.1 | Input debouncing |
-| `storybook`, `@storybook/*` (react, react-vite, addon-a11y, addon-docs, addon-vitest) | ^10.3.5 | Component documentation |
-| `@chromatic-com/storybook` | ^5.1.1 | Storybook addon only — no Chromatic service is configured |
+| `storybook`, `@storybook/*` (react, react-vite, addon-a11y, addon-docs, addon-vitest) | ^10.5.10 | Component documentation |
+| `@chromatic-com/storybook` | ^5.3.0 | Storybook addon only — no Chromatic service is configured |
 | `axe-core` | ^4.11.3 | Accessibility scanning, driven directly by `scripts/storybook-a11y.mjs` — a direct dependency rather than relying on `@storybook/addon-a11y`'s own transitive copy, which `require.resolve` from `apps/gui/package.json`'s own directory could not reliably find in a clean CI install |
 
 The GUI is a **client-rendered single-page app**. There is no server-side
@@ -74,14 +74,14 @@ what Radix now exists in this repo to prevent.
 | Technology | Version | Role |
 |---|---|---|
 | `bun` | 1.3.11 (`.prototools`) | Runtime and package manager |
-| `elysia` | ^1.4.28 | Routing for `/api/auth/*` and `/api/debug/*` only — the listener is `node:http` |
-| `@connectrpc/connect`, `@connectrpc/connect-node`, `@connectrpc/connect-web` | ^2.1.1 | Transport for the TypeSpec contract |
-| `@bufbuild/protobuf` | ^2.11.0 | Generated message runtime |
+| `elysia` | ^1.4.29 | Routing for `/api/auth/*` and `/api/debug/*` only — the listener is `node:http` |
+| `@connectrpc/connect`, `@connectrpc/connect-node`, `@connectrpc/connect-web` | ^2.1.2 | Transport for the TypeSpec contract |
+| `@bufbuild/protobuf` | ^2.14.0 | Generated message runtime |
 | `drizzle-orm` / `drizzle-kit` | ^0.45.2 / ^0.31.10 | Schema, queries, migrations |
-| `mysql2` | ^3.22.0 | MySQL driver |
+| `mysql2` | ^3.23.4 | MySQL driver |
 | `bun:sqlite` | built into Bun | Standalone/local driver |
-| `nats` | ^2.29.3 | Domain event publishing |
-| `zod` | ^4.3.6 | Runtime validation at boundaries |
+| `nats` | ^2.29.3 | Durable relay, audit consumption and ephemeral live feed |
+| `zod` | ^4.4.3 | Runtime validation at boundaries |
 | `pino` | ^10.3.1 | Structured JSON logging |
 | `nodemailer` | ^9.0.5 | SMTP for the invitation email; no transport is constructed unless `SMTP_HOST` is set |
 | `@opentelemetry/api`, `@opentelemetry/core` | ^1.9.1 / ^2.10.0 | Trace context and the propagator (M11) |
@@ -89,12 +89,18 @@ what Radix now exists in this repo to prevent.
 | `@opentelemetry/exporter-trace-otlp-http` | ^0.221.0 | OTLP export, created only when an endpoint is configured |
 | `@opentelemetry/resources`, `@opentelemetry/semantic-conventions` | ^2.10.0 / ^1.43.0 | Service identity and standard attribute names |
 
-**Authentication**: OAuth 2.1 with Google, implemented in
-`apps/backend/src/modules/auth/`.
+**Authentication**: local username/password accounts and optional linked Google
+identity, implemented in `apps/backend/src/modules/auth/` and
+`apps/backend/src/lib/credentials.ts`. Agent tokens are separate scoped,
+revocable principals; they are not human session credentials.
 
-**Events**: the backend publishes to NATS and a separate consumer process
-projects those events into `audit_log` (M08-T02/T03). The GUI subscribes to a
-live feed of the same subjects over `EventService.SubscribeEvents` (M08-T07).
+**Events**: production mutations capture SQL source events and deterministic
+webhook rows transactionally. An ACKed, fenced relay publishes bounded NATS
+references; a separate consumer projects the committed source into `audit_log`.
+Standalone without a broker projects locally. The bounded/resync-capable live
+`EventService.SubscribeEvents` feed is separate from durable audit delivery.
+See `lib/domainEventOutbox.ts`, `lib/domainEventRelay.ts`,
+`consumers/auditProjector.ts` and `modules/events/events.handler.ts`.
 
 **Tracing** (M11, superseding ADR-0004's "not yet"): the SDK is always present,
 but an exporter is created **only** when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
@@ -107,14 +113,15 @@ standalone promise intact.
 
 - **MySQL** for the clustered deployment, **`bun:sqlite`** for standalone, behind
   one schema per dialect (`src/db/schema.mysql.ts`, `src/db/schema.sqlite.ts`).
-- **Search is `LIKE`-based** — `src/modules/search/search.handler.ts:35`. An FTS5
-  virtual table `search_index` is created in `src/db/db.ts` and read only by the
-  health probe; **nothing writes to it**. A real index is M07.
-- **OpenSearch is not installed** — see Planned.
+- **Search uses SQLite FTS5 and MySQL FULLTEXT**, implemented in
+  `apps/backend/src/modules/search/search.handler.ts` with maintained indexes.
+  M07 superseded the original LIKE-scanning decision.
+- **OpenSearch and a separate read store are not installed.** A saturated
+  one-project write burst does not select a replacement read architecture.
 
 | Technology | Version | Role |
 |---|---|---|
-| `better-sqlite3` | ^12.8.0 | Not imported by this repo — `drizzle-kit` loads it dynamically for `sqlite` migrations. See the correction below. |
+| `better-sqlite3` | ^12.11.1 | Not imported by this repo — `drizzle-kit` loads it dynamically for `sqlite` migrations. See the correction below. |
 
 ### CLI — `apps/cli/go.mod`
 
@@ -127,17 +134,20 @@ standalone promise intact.
 | `google.golang.org/protobuf` | v1.36.11 | Generated message runtime |
 | `golang.org/x/term` | v0.45.0 | Masked password prompt for `auth login --username` (M13-T13) — reading a raw terminal without echo cross-platform isn't a stdlib one-liner, so this is the one dependency-standard.md's minimalism rule doesn't reject. |
 
-Output is human-readable text or `--json`. **There is no TUI and no MCP server
-mode**; Viper, the Charmbracelet ecosystem and `mcp-go` are not dependencies.
+Output is human-readable text or compact `--json`; supported paged commands
+provide `--page-all` NDJSON. `tasker mcp` relays stdio to the existing backend
+MCP endpoint. The default `--timeout` is 30 seconds per backend request, not
+an entire command/session. There is no TUI, field-mask or schema-inspection
+command; Viper, Charmbracelet and `mcp-go` remain absent.
 
 ### API contract — `package.json`
 
 | Technology | Version | Role |
 |---|---|---|
-| `@typespec/compiler` | ^1.11.0 | Contract language |
+| `@typespec/compiler` | ^1.15.0 | Contract language |
 | `@typespec/protobuf` | ^0.81.0 | TypeSpec → protobuf emitter |
-| `@bufbuild/protoc-gen-es` | ^2.11.0 | protobuf → TypeScript |
-| `@bufbuild/buf` | ^1.67.0 | Proto linting and breaking-change detection |
+| `@bufbuild/protoc-gen-es` | ^2.14.0 | protobuf → TypeScript |
+| `@bufbuild/buf` | ^1.72.0 | Proto linting and breaking-change detection |
 
 `packages/shared-contract` holds the generated output.
 
@@ -157,14 +167,14 @@ resolve through proto's shims, so these versions are what actually run.
 
 | Technology | Version | Role |
 |---|---|---|
-| `oxlint` | ^1.61.0 | Linting — replaces ESLint and Prettier |
+| `oxlint` | ^1.79.0 | Linting — replaces ESLint and Prettier |
 | `knip` | ^6.32.2 | Unused files, dependencies and exports |
-| `vitest`, `@vitest/coverage-v8`, `@vitest/browser-playwright` | ^4.1.4 | Unit and integration tests, 95% thresholds |
+| `vitest`, `@vitest/coverage-v8`, `@vitest/browser-playwright` | ^4.1.11 | Unit and integration tests, 95% thresholds |
 | `msw` | ^2.15.0 | Network-level interception in GUI RPC tests (M12-T01) — intercepts the real `fetch` the real Connect transport makes, so a test exercises real request/response serialization instead of a hand-mocked client |
-| `playwright`, `@playwright/test` | ^1.59.1 | End-to-end and screenshot capture |
-| `@testing-library/react`, `@testing-library/dom`, `@testing-library/jest-dom` | ^16.3.2 / ^10.4.1 / ^6.9.1 | Component queries |
+| `playwright`, `@playwright/test` | ^1.62.1 | End-to-end and screenshot capture |
+| `@testing-library/react`, `@testing-library/dom`, `@testing-library/jest-dom` | ^16.3.2 / ^10.4.1 / ^6.10.0 | Component queries |
 | `jest-axe` | ^11.0.0 | Accessibility assertions per page |
-| `jsdom` | ^29.0.2 | Test DOM |
+| `jsdom` | ^29.1.1 | Test DOM |
 | `markdownlint-cli2`, `@a24z/mermaid-parser`, `glob` | ^0.23.2 / ^1.0.0 / ^13.0.6 | Markdown and Mermaid gate |
 
 Git hooks are plain shell in `.githooks/`, wired by `moon run :setup-hooks`.
@@ -189,19 +199,17 @@ built in M02-T04 is what forced the second look:
 
 ---
 
-## Planned
+## Future decisions
 
-Not installed. Each is owned by the milestone that will introduce it.
+No uninstalled technology is approved here merely because an old milestone
+once named it. FTS indexes, event consumers, OpenTelemetry, GoReleaser and
+vulnerability CI are delivered. The in-process transport was rejected in
+ADR-0019. A visual state-machine canvas, separate read store and shared
+rate coordination need a new recorded decision before adding dependencies.
 
-| Technology | Purpose | Owner |
-|---|---|---|
-| A real search index (OpenSearch or SQLite FTS5 populated for real) | Replace `LIKE` scanning | **M07** |
-| Event consumers over NATS | Audit trail and live-updating GUI | **M08** |
-| In-process transport | Bypass the network stack inside the single binary | **M09** |
-| Graphical state-machine editing | Configure task state machines from the GUI; library not yet chosen | **M05** |
-| OpenTelemetry | Distributed tracing and metrics, OTLP export | **M11** |
-| GoReleaser | Multi-platform CLI release | **M12** |
-| Dependency vulnerability scanning | Supply-chain gate | **M11** |
+Actual staged limits are in [performance evidence](../../docs/performance.md).
+The 1000-caller workload saturates severely; neither that run nor historical
+data-volume measurements establish 20000 concurrent clients.
 
 ---
 
@@ -213,12 +221,11 @@ reintroduce without a roadmap entry and an owner.
 | Technology | Why it is gone |
 |---|---|
 | Server-side rendering | The GUI is a client-rendered SPA. No milestone plans SSR, and the single-binary target (M09) serves static assets. |
-| React Flow | Named as the state-machine editor before that surface was designed. M05 owns the capability; the library is an open choice. |
+| React Flow | A visual state-machine canvas is not built; M05 delivered the existing list/detail editor. No library is selected for a future canvas. |
 | Typedoc | No generated API documentation is published or planned. |
 | Stylelint | Tailwind class usage is covered by `gui:design-lint`. |
-| MSW | Tests mock the generated ConnectRPC clients directly. |
 | ArkType | Zod is the single validation library. |
-| Charmbracelet TUI, Viper, `mcp-go` | The CLI is flag-and-JSON driven. No milestone owns a TUI or an MCP server mode. |
+| Charmbracelet TUI, Viper, `mcp-go` | No TUI or these libraries are installed. The delivered stdio MCP relay is existing Go/HTTP code, not `mcp-go`. |
 | Chromatic service, Checkly | No visual-regression or uptime service is configured or budgeted. |
 | `npx skills` distribution | Skills are read from `.agents/` by the host agent; nothing is packaged or published. `npx` is forbidden repo-wide. |
 
@@ -229,6 +236,6 @@ The root lockfile refresh stays within existing dependency ranges. Root override
 Go's module minimum and proto pin are 1.26.11. The earlier publication scan found ten reachable standard-library vulnerabilities on 1.26.6, requiring crypto/x509's 1.26.10 fix (GO-2026-6809). The 21 November post-main audit additionally reports net/http GO-2026-6859 in 1.26.10; 1.26.11 fixes that advisory. No Go production dependency is added.
 
 CI and release packaging read exact Node/Bun/Moon versions from `.prototools`
-through local setup actions. Node24.22.3 is the official2026-11-11 security
+through local setup actions. Node 24.22.3 is the official 2026-11-11 security
 release (<https://github.com/nodejs/node/releases/tag/v24.22.3>). The Node action
 compares the selected executable version; Go reads its exact module minimum.
