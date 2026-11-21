@@ -120,7 +120,7 @@ standalone promise intact.
 
 | Technology | Version | Role |
 |---|---|---|
-| `go` | 1.26.1 (`.prototools`, `go.mod`) | Language |
+| `go` | 1.26.11 (`.prototools`, `go.mod`) | Language |
 | `connectrpc.com/connect` | v1.19.1 | RPC client |
 | `github.com/spf13/cobra` | v1.10.2 | Command parsing |
 | `github.com/spf13/pflag` | v1.0.10 | Direct, not transitive: the flag-reset test helper uses `SliceValue.Replace` to stop slice flags accumulating across shuffled runs |
@@ -148,7 +148,7 @@ mode**; Viper, the Charmbracelet ecosystem and `mcp-go` are not dependencies.
 | `moon` | 2.4.6 | Task running, caching, CI orchestration |
 | `node` | 24.12.0 | Runs the zero-dependency gate scripts |
 | `bun` | 1.3.11 | Backend runtime, package manager, test runner |
-| `go` | 1.26.1 | CLI toolchain |
+| `go` | 1.26.11 | CLI toolchain |
 
 proto owns all four pins. Every moon project is `language: system`; commands
 resolve through proto's shims, so these versions are what actually run.
@@ -226,4 +226,4 @@ reintroduce without a roadmap entry and an owner.
 
 The root lockfile refresh stays within existing dependency ranges. Root overrides select `markdown-it` 15.0.3 (through markdownlint-cli2), `undici` 7.30.1 (through jsdom), Vite 8.3.6 and Zod 4.6.7 so their already-installed transitive copies cannot remain on releases with the November 2026 high-severity advisories. These are dependency patch constraints, not additional product libraries. Storybook is refreshed within its existing range; Vite and Zod constraints deduplicate old nested copies within their existing ranges; the audit gate and its empty exception list remain enabled.
 
-Go's module minimum and proto pin are 1.26.10. The publication scan found ten reachable standard-library vulnerabilities on 1.26.6; the highest required fix is crypto/x509 in 1.26.10 (GO-2026-6809). No Go production dependency is added.
+Go's module minimum and proto pin are 1.26.11. The earlier publication scan found ten reachable standard-library vulnerabilities on 1.26.6, requiring crypto/x509's 1.26.10 fix (GO-2026-6809). The 21 November post-main audit additionally reports net/http GO-2026-6859 in 1.26.10; 1.26.11 fixes that advisory. No Go production dependency is added.
