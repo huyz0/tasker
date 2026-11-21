@@ -362,6 +362,8 @@ testIf('the real server over a real socket', () => {
     await expect(viewsB.getSavedView({ viewId: privateA.id })).rejects.toMatchObject({ code: Code.NotFound });
     const catalog = await viewsB.listSavedViews({ orgId: org.id, screen: 'tasks', visibility: 'personal' });
     expect(catalog.views.map(view => view.id)).toEqual([privateB.id]);
+    expect(catalog.canCreateShared).toBe(false);
+    expect((await viewsA.listSavedViews({ orgId: org.id, screen: 'tasks' })).canCreateShared).toBe(true);
     expect(JSON.stringify(catalog)).not.toContain('private wire query');
     const shared = (await viewsA.createSavedView({ projectId: project.id, name: 'Shared reports', visibility: 'organization', definition: { version: 1, screen: 'reports', reports: { windowDays: 90 } } })).view!;
     expect((await viewsB.getSavedView({ viewId: shared.id })).definition?.reports?.windowDays).toBe(90);
@@ -373,6 +375,7 @@ testIf('the real server over a real socket', () => {
     await expect(viewsB.getSavedView({ viewId: privateA.id })).rejects.toMatchObject({ code: Code.NotFound });
     const formerAdmin = (await viewsB.createSavedView({ projectId: project.id, name: 'Created as admin', visibility: 'organization', definition: { version: 1, screen: 'tasks', tasks: {} } })).view!;
     await orgs.updateOrgMemberRole({ orgId: org.id, userId: b.userId, role: 'member' });
+    expect((await viewsB.listSavedViews({ orgId: org.id, screen: 'tasks' })).canCreateShared).toBe(false);
     await expect(viewsB.renameSavedView({ viewId: formerAdmin.id, name: 'No retained admin' })).rejects.toMatchObject({ code: Code.PermissionDenied });
     await expect(viewsB.deleteSavedView({ viewId: formerAdmin.id })).rejects.toMatchObject({ code: Code.PermissionDenied });
     expect((await viewsA.renameSavedView({ viewId: formerAdmin.id, name: 'Managed by current admin' })).view?.ownerUserId).toBe(b.userId);

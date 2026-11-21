@@ -1,3 +1,4 @@
+import { SavedViews } from '../../components/SavedViews/SavedViews';
 import { useEffect } from 'react';
 import { useReportView } from '../../hooks/useOperationalView';
 import { useQuery } from '@tanstack/react-query';
@@ -86,6 +87,8 @@ export function ReportsScreen() {
           </>
         }
         actions={
+          <>
+          <SavedViews screen="reports" />
           <div role="group" aria-label="Report window" className="flex shrink-0 gap-0.5 rounded-md border p-0.5">
             {REPORT_WINDOWS.map((days) => (
               <button
@@ -102,6 +105,7 @@ export function ReportsScreen() {
               </button>
             ))}
           </div>
+          </>
         }
       />
 

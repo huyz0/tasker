@@ -1,3 +1,4 @@
+import { SavedViews } from '../../components/SavedViews/SavedViews';
 import { useEffect, useRef, useState } from 'react';
 import { useTaskView } from '../../hooks/useOperationalView';
 import { TASK_SORT_FIELDS, taskViewPath, type TaskSortKey as SortKey } from '../../lib/operationalView';
@@ -703,6 +704,7 @@ export function TasksWorkbench() {
                 Table
               </button>
             </div>
+            <SavedViews screen="tasks" onApplied={() => setSelectedTaskIds(new Set())} />
             <div className="flex flex-col flex-1 min-w-36 md:w-56">
               <label className="sr-only" htmlFor="task-filter">Filter tasks</label>
               <input

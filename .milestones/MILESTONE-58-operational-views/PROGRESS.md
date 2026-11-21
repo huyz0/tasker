@@ -263,3 +263,175 @@
 
 - Explicit repository pre-commit gate passes all36 checks (33 cached) in7.988s
   after closure/ledger updates. No local gh-act simulation is claimed.
+
+## M58-T03 — Named view interactions
+
+- **Status**: done
+- **Date**: 2026-11-10
+- **Changed**: Implement the approved compact Saved views dialog in Tasks and Reports, with independently bounded personal/shared catalogs, explicit fresh Open and guarded save/rename/delete forms.
+- **Verified**: Isolated feature/m58-saved-view-ui starts from verified e95d370, whose tested/reconciled tree is identical. T02 raw4c0a2b7 is preserved; PR #13 is ready/attached, CI42908033822 remains queued. Main780499c and all10 post-main jobs pass. Frozen dependencies install without lock changes.
+- **Notes**: Frontend/security and TDD apply; accepted ADR0044, UX-v7 and TC005/006 bind the flow. Reuse the independently researched M51 typography/palette/layering and shared Dialog patterns, not repository design-skill authority. Add one optional server-derived current-admin catalog hint so an empty catalog can accurately offer organization creation; it grants no access and mutations still recheck policy. No other filters, routes or query language are introduced.
+- **Next**: Drive current-admin hint, real-codec save/open/history/privacy/scope-race/paging regressions red before runtime changes; implement screens/stories, actual browser/native compatibility, independent review and full gates. Reconcile only the clean T03 checkpoint onto published T02 before publication, no force-push.
+
+### T03 first interaction feedback
+
+- Empty-catalog authority first fails Expected true/Received undefined, then
+  passes all37 service cases after an optional current-policy catalog hint.
+  Real generated bindings preserve false/absence. GUI URL helper passes10
+  cases; initial UI run22/25 identifies delete incorrectly validating an empty
+  name plus two test observation mismatches. Validate names only for save/
+  rename, await the shared Dialog's normal asynchronous focus restoration and
+  assert the complete generic project/audience text; all25 then pass.
+- Two actual-screen entry regressions fail before wiring the shared control.
+  Add it to Tasks' wrapping toolbar and Reports' action area; no new route.
+  Native forms use installed Zod/shared Dialog patterns; React Hook Form is
+  neither installed nor listed in the actual technology stack, so no new
+  dependency is introduced just to satisfy that outdated standard sentence.
+  More paging/late-intent/authority/draft cases are running; stories, actual
+  rendering/browser, restored faults and final reviews/full gates remain.
+
+### T02 publication verified during T03
+
+- PR #13 exact e95d370 passes all8 CI42908033822 jobs and merges to main
+  4b86afb784bbdbd335d7581475c87d6e220940b7. Fetched main and the tested source
+  have identical tree e7ebdcfd3cf3c20ca5444dc7da5af0561ff99b8e. T02's owned
+  checkout stays clean. Post-main jobs are separate verification; do not infer
+  them from the PR result. This dirty T03 candidate still has e95d370 as its
+  parent and must reconcile its own clean checkpoint onto published main later.
+- The first rendered two-story gates pass8 accessibility and4 overflow cases,
+  but those broad gates do not exercise real CSS hover and allow horizontal
+  scrollers. A native-pointer/actual form geometry probe finds307px content
+  expanding to2157px for a long delete name. Direct native hover colors also
+  warrant an explicit computed contrast check before claiming their validity.
+
+- Native inspection confirms an enabled Save button can combine the neutral
+  hover fill with primary foreground text (dark contrast1.22:1); sampled colors
+  during transitions are not treated as settled evidence. Keep neutral hover
+  only on neutral controls and retain primary/destructive semantic pairs on
+  their own hover variants. Wrap the dynamic delete heading so its128-character
+  name cannot turn the vertical dialog into a horizontal scroller. Rebuild and
+  repeat native pointer/settled contrast/form geometry before claiming success.
+
+- Native settled hover/form verification passes after the source fixes:
+  Save contrast5.625:1 light/6.434:1 dark with enabled native-hover buttons;
+  the375px long-name form is307px wide/307px scroll width instead of2157px.
+  The first green probe incorrectly treated modern Oklab color components as
+  RGB; correct the probe using the browser canvas color parser and ancestor
+  alpha compositing, without further product changes. Screenshots retain the
+  actual before/after states. Broad static gates alone did not establish this.
+
+### T03 denial, recovery and confirmation checks
+
+- Native MySQL current-admin metadata/core/private paging passes (list p95
+  35.06ms); real auth/socket passes12 cases/75 assertions with one independent
+  optional skip. Metadata flags do not replace existing mutation policy checks.
+- Recovery tests reproduce misleading empty-page/session copy and a sibling
+  authorization race. Latch organization List denials for the dialog generation,
+  hide both audience catalogs and reject an earlier pending Open; explicit
+  Refresh starts new reads while keeping the naming draft. Get source refusals
+  remain local. A disabled Refresh button initially blocks this recovery, and
+  its regression requires it to remain actionable after pending Open settles.
+- The actual PageResponse count is an int32 scalar with a zero default, not
+  bigint/presence-safe optional data. Follow real decoded semantics: an absent
+  PageResponse is unknown; present0 is the contract's zero. Preserve the old
+  protocol instead of fabricating an absence distinction. Same-name deletion
+  now identifies audience/project and wraps the name beneath a fixed heading.
+- All53 focused GUI cases pass with97.41% branches/99.16% lines; strict app
+  types pass. This is focused verification, not the final full suite. Source
+  faults, final previews, actual browser journeys and independent reviews
+  still gate T03. Both main4b86afb integration42912005168 jobs pass; its
+  CI42912005240 is still running.
+
+### T03 independent correction
+
+- CODE-v7 rejects two concrete UI authority-recovery gaps, without a backend
+  bypass: merely starting a retry re-enabled retained writes, and shared
+  Rename/Delete kept the old row capability after revocation. Five regressions
+  fail before correction. A dialog-local generation/epoch/read receipt now
+  requires both fresh audience reads after org denial, retains denial across
+  failed/pending retries and rejects every older positive administrative fact.
+  Current shared edit proof comes from explicit server administration metadata
+  or legacy shared-row canEdit; it never invents a shared-create grant.
+- Retained shared form submission and mutation entry require current proof;
+  Check editing access earns a new bounded metadata read without losing drafts.
+  All60 focused cases pass at97.84% branches/99.33% lines, including legacy
+  metadata and older-positive-sibling cases. Metadata UI assertions await the
+  actual normal query-observer render, without increasing a deadline.
+  CODE-v8 approves corrected source; runtime/final gates remain separate.
+- The55-preview run finds SavePending scrollable-region-focusable; its vertical
+  body becomes a named keyboard-focusable region so pending disabled controls
+  cannot remove keyboard scrolling. Rebuild/re-run the full affected matrix.
+- A new private browser fixture first catches duplicate default project keys;
+  create its second project with explicit OPS in a fresh database, without
+  copying or modifying previous data. Backend8101/GUI5189/NATS4227 are ready.
+  Main4b86afb now passes all8 CI42912005240 jobs and both integration jobs.
+
+### T03 final real-browser and rendered feedback
+
+- 57 previews pass228 WCAG/contrast and114 mobile-overflow cases after the
+  keyboard-scroller fix. Full388-story index is restored. The actual browser
+  passes Tasks/Reports fresh project/settings, reload, Back/Forward and focus
+  at375/768/1280 in both themes, actual held Get POST200 after newer history,
+  held committed Save with native Tab/PageDown, two-user private/read-only
+  sharing, revoked/restored shared edits, both SQL-backed catalogs beyond100
+  with20-row independent pages/draft retention, and obsolete project cleanup.
+- The first browser probe incorrectly expected Usage's windowDays instead of
+  its actual days field; fix the harness to require all three distinct source
+  methods with their real contract fields, with no product change.
+- The first full journey's final cleanup correctly refuses a demoted creator's
+  shared Delete. Clean shared fixtures with the current admin and keep personal
+  cleanup with each creator; do not weaken policy. A standalone cleanup helper
+  also assumed empty repeated fields appear in raw protobuf JSON; default them
+  to[] as the real generated client does. The corrected full browser run exits0,
+  cleans its owned definitions and restores its private project. A fresh API
+  cleanup check confirms zero remaining proof definitions.
+
+### T03 final review and fault proof
+
+- CODE-v8 and rendered UX-v8 approve the current source and actual captures.
+  Eight restored source faults make privacy validation, history-key intent,
+  revoked retry gating, older-positive admin receipts, retained shared form
+  gating, personal default, same-query bulk selection and server hint tests
+  fail as intended. Every changed production source is restored byte-for-byte.
+- Final broad local36 runs with one GUI worker and serialized heavy gates.
+  Current actual native MySQL/socket/old SDK proofs remain valid; final strict
+  app types pass. The working implementation is not yet published; T02 main
+  4b86afb is verified with all10 jobs, and only the clean T03 checkpoint is to
+  be reconciled onto it after these final checks.
+
+### T03 full-gate formatting feedback
+
+- Full1 stops before GUI tests on seven design-lint findings: compact JSX places
+  a nested native button on the parent's div line, which the gate's line-based
+  opening-tag scan incorrectly treats as a div click handler. Every handler
+  already belongs to a native button. Separate the JSX lines; keep the lint
+  rules and real keyboard semantics unchanged. Re-run the gate and full suite.
+
+### T03 full-suite feedback
+
+- Full2 passes all1764 GUI cases in7m31s, with95.37% branches and98.96%
+  lines. It next stops on nine Markdown formatting findings in new evidence:
+  redundant blank lines and one missing list-marker space. Normalize only
+  those document whitespace issues; keep product source and assertions intact.
+  Resume the full gate with its successful GUI result cached.
+
+### T03 closure
+
+- Full3 passes all36 repository checks (19 cached) in3m1.449s after full2's
+  successful GUI run:1764 GUI cases/95.37% branches/98.96% lines,2421 backend
+  cases/zero failures/88 explicit prerequisite skips/95.99% functions/96.86%
+  lines,1158 contract cases, CLI coverage and production/standalone builds.
+  Optional gh-act is unavailable and skipped, not counted as a local simulation.
+- Actual native MySQL, authenticated socket, old-client binary, rendered/native
+  browser and eight restored-fault proofs are recorded above; source and UX
+  reviews approve. Check T03 and the source-authorization criterion.398 total,
+  388 done, one dropped, nine pending; M58 is4/5, with permanent end-to-end
+  coverage and milestone closure owned by T04.
+- Preserve a clean raw checkpoint, reconcile only T03 from e95d370 onto the
+  identical-tree published T02 main4b86afb, and push a ready PR. Actual final-head
+  hosted CI and main publication remain separate gates; no production deployment
+  is claimed. Original user worktrees, WIP and services remain preserved.
+
+- Explicit repository pre-commit passes all36 checks (33 cached) in7.840s after
+  closure and ledger updates. No hook is skipped; the repository script is run
+  explicitly because core.hooksPath is not installed in this checkout.

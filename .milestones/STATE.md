@@ -1,8 +1,8 @@
 ---
 active_milestone: M58
-active_task: M58-T03
+active_task: M58-T04
 last_updated: 2026-11-10
-last_commit: 780499c
+last_commit: 4b86afb
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,10 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-10 — M58-T03 verified; publication next.** Personal/shared Save/Open/Rename/Delete, fresh URL/project application, bounded catalogs and draft-preserving authority recovery pass all36 checks (19 cached;3m1.449s after cached full2 GUI1764/95.37% branches). Backend2421/zero failures, contract1158, production/standalone builds, native MySQL/socket/22 old-client roundtrips,57 previews and actual browser sharing/history/obsolete-resource journeys pass; eight restored faults fail correctly. CODE-v8/UX-v8 approve.398 total/388 done/nine pending, M584/5. Preserve the raw atomic checkpoint, reconcile only T03 onto published main4b86afb with identical-tree proof, and merge after actual final-head CI. T04 owns permanent end-to-end coverage and milestone closure. Original worktrees/WIP/services remain preserved.
+
+**2026-11-10 — M58-T03 final gate running.** T02 is published on main4b86afb via PR #13; all eight CI and both integration jobs pass. Named-view UI passes60 focused cases,57 rendered previews (228 accessibility/114 overflow), actual browser history/sharing/revocation/obsolete-resource journeys, actual MySQL/socket/old-client checks and eight restored source faults. CODE-v8/UX-v8 approve. Full1 stops on compact-JSX false-positive design lint; separating native button lines passes361 files/zero findings and final native hover/long-name probes. Full2 is running. Atomic checkpoint, base reconciliation and hosted final-head publication remain.398 total/387 done/10 pending, M583/5. Original worktrees/services remain preserved.
 
 **2026-11-10 — M58-T02 verified; publication next.** Strict personal/shared definition persistence, derived ownership and current authority/source checks pass all36 checks (17 cached,13m5.093s): GUI1701/95.21% branches, backend2420/zero failures, contract1158, CLI87.4% and production/standalone builds. ARCH-v2/UX-v7/CODE-v6 approve; native core/race/both populated upgrades, six restored faults, actual old SDK18 roundtrips and real socket12/72 pass. The unrelated artifact timeout passes unchanged in isolation and full2.398 total/387 done/10 pending, M583/5. Preserve a raw checkpoint and reconcile only this owned task onto main780499c with identical-tree proof; final-head hosted CI/main publication remain mandatory. Next T03 owns the still-undelivered Save/Open/Rename/Delete interface. Original user worktrees/WIP/services remain preserved.
 
@@ -2025,9 +2029,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
-| M58 | Operational Views | in-progress | M53 | 5 | 3 |
+| M58 | Operational Views | in-progress | M53 | 5 | 4 |
 
-**Total: 398 tasks across 52 milestones — 387 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 398 tasks across 52 milestones — 388 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

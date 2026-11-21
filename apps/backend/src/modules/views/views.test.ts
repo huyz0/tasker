@@ -78,6 +78,15 @@ describe('named operational definitions (ADR0044)', () => {
     expect((await views.deleteSavedView({ viewId: view.id }, ctx())).success).toBe(true);
   });
 
+  it('reports shared-create authority for an empty catalog using current server policy', async () => {
+    expect((await list({}, admin)).canCreateShared).toBe(true);
+    expect((await list({}, bob)).canCreateShared).toBe(false);
+    await db.update(S.organizationMembers).set({ role: 'member' }).where(and(eq(S.organizationMembers.orgId, orgId), eq(S.organizationMembers.userId, admin)));
+    expect((await list({}, admin)).canCreateShared).toBe(false);
+    await db.update(S.organizationMembers).set({ role: 'admin' }).where(and(eq(S.organizationMembers.orgId, orgId), eq(S.organizationMembers.userId, bob)));
+    expect((await list({}, bob)).canCreateShared).toBe(true);
+  });
+
   it('hides another person’s private ID from members, administrators and other organizations', async () => {
     const { view } = await create();
     for (const userId of [alice, admin, outsider]) {

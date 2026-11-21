@@ -123,3 +123,26 @@ while a Save/Rename draft exists, then controls and draft remain usable and no
 row is silently applied. Given org:read without project:read, then catalog/Get
 metadata does not expose that project's current display name; generic context
 remains usable and fresh Open still earns its independent source permission.
+
+## TC-006b — Empty-catalog authority and delayed intent
+
+Given an empty catalog for a current org admin/member/viewer, when opening Save,
+then only a fresh explicit server current-admin hint offers Organization; an
+absent hint, failure, account/scope change or revoked authority cannot reuse
+an older shared-create choice. Given a delayed fresh Open, when account/org/
+project/URL search/navigation or dialog lifetime changes, then its eventual
+response cannot overwrite the current screen. Given an unchanged explicit Open,
+then all supported settings and the authorized project apply together in one
+history step, with Back/Forward restoring the previous scope and settings.
+
+## TC-006c — Sibling denial and truthful recovery
+
+Given one audience catalog returns an organization permission denial while a
+sibling response or explicit Open is delayed, then neither later result exposes
+names or applies settings. Remote writes stay blocked and local naming drafts
+remain recoverable through explicit fresh-list retry. Given an independent
+source-read refusal, then current settings remain and other org metadata is not
+falsely revoked. Given session verification failure, then Retry session checks
+again rather than claiming sign-out. Given an empty page with positive count or
+absent PageResponse, then Previous/Refresh is offered without claiming a zero
+collection; a present zero count retains truthful unfiltered/filtered emptiness.
