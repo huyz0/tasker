@@ -111,3 +111,208 @@
   restore/runbook and full/final-gate closure, including the recorded Bun
   panic and one diagnostic retry. Final combined-head publication remains
   required; no local execution/clean-tree or production restore is claimed.
+
+## M50-T03 — Exercise private backup and recovery procedures
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Plan**: Extend the existing real process/broker recovery fixture after
+  a killed producer commits pending source/webhook rows. Quiesce/checkpoint
+  SQLite, close it, copy/remove/restore the owned file and reopen production
+  database setup. Use the existing MySQL service image's dump/client tools
+  to restore into a second generated schema, then continue real recovery.
+- **Verify**: Compare exact task/event/delivery IDs and payload/secret hashes,
+  without logging bodies or private SQL. An empty SQLite restore must boot
+  and fail the exact restored-identity oracle. Restore source bytes.
+  Required MySQL8.0/8.4 and SQLite jobs execute every counterpart.
+- **Safety**: Track original/restored schema creation separately; delete
+  only created resources, remove private backups, preserve encryption keys.
+  Supply the owned service container ID explicitly in CI step environment.
+  No system package, runtime dependency or production procedure is executed.
+- **Source facts**: Both dialect schemas confirm SQLite timestamp columns use
+  Unix seconds, not milliseconds. Existing recovery tests use controlled
+  fixture clocks; the runbook will distinguish them from operator waiting.
+- **Notes**: This is a verification fixture/config/static runbook, not a new
+  production algorithm. Existing-behavior tests are followed by an actual
+  deliberate-break check as TDD requires. T01/T02/T03 remain unchecked
+  until hosted gates and review. The independent M49 browser-oracle
+  correction is still under final validation; no parent/main merge is claimed.
+
+### First rehearsal results and Markdown correction
+
+- Source89124eb's SQLite job136888555129 restores exact one task/three
+  sources/one delivery and matching private hashes, then passes real broker
+  recovery. The actual empty restored database fails the intended identity
+  assertion; source restores byte-for-byte. No SQL backup is uploaded.
+- Workspace job136888847389 rejects README.md:40 for one duplicate blank
+  line (MD012). Remove that extra blank, retaining the substantive text.
+  This is a static formatting correction; no new product test is needed.
+  All M50 tasks stay unchecked until the corrected hosted gate and review.
+
+### T03 verified source, retained crash and final closure
+
+- Source8ba3834 has all18 non-skipped checks green (two tag-only jobs
+  skipped). CI44918803128, Integration44918803100, staged/separate recovery
+ 44918803090 and packaging44918803098 retain actual results. Exact
+  `moon check --all` completes37 (7 cached) in7m20.789s:
+  backend2432/GUI1764/contract1158. Generated CLI docs-check passes.
+- SQLite integration job136890084536 restores exact task/source/delivery
+  identities and private hashes, continues real ACK/audit/signed-webhook/
+  broker recovery, and proves an actual empty restore fails the intended
+  identity assertion with byte restoration. Separate job136890084541
+  passes all ten required cases and both audit faults after repeated stages.
+- MySQL8.0 job136891567180 passes native19/all12 files, all10 recovery,
+  empty-backup proof, native claim fault and both audit faults. MySQL8.4
+  job136891567170 instead records Bun1.3.11 panic(main thread): Unknown
+  tag:0 in twoInstance.integration.test.ts after8319ms, before any backup
+  assertion. It is not hidden or labeled a product/backup assertion failure.
+- One diagnostic failed-job rerun, requested only after the workflow ended,
+  succeeds as job136895175616: native19/all12, recovery10/zero skips,
+  exact restored identities/hashes, empty-backup and audit/claim faults.
+  No source change or deterministic runtime root-cause fix is claimed.
+- Browser103 passes/three existing skips, actual saved-view/cursor faults,
+  rendered388-story accessibility/mobile, standalone and all three packaging
+  targets pass. No native Windows/macOS execution or production restore.
+- Final review narrows dump/import error diagnostics so private SQL cannot
+  enter an exception's stderr, and clarifies that fixture replay is not an
+  operator command. Normal Docker cleanup diagnostics remain. This is a
+  reversible diagnostic/prose change; no implementation-mirroring test is
+  added. The final candidate's real normal/fault/full gates still apply.
+- CODE-REVIEW-v3 approves four lenses and the honest recovery boundaries:
+  coordinated SQL/broker snapshots, encryption keys, restored authorization,
+  external effects, finite retention and migration-compatible rollback.
+- Close T03 and every exit criterion. M50 is3/3; all399 tracked tasks are
+  resolved:398 done/one deliberately dropped, zero pending across52
+  milestones. The fresh branch contains three atomic task commits from
+  published M49 main654c222. Its own final checks precede rebase publication;
+  verify the published tree exactly. Raw draft PR #22 is superseded only
+  after that merge. All task changes are committed Git objects; Cloud failed,
+  local worktrees are preserved and no local clean-tree check is claimed.
+
+### Final assembly Markdown correction
+
+- PR #24 job136896968950 rejects two duplicate blank lines introduced when
+  assembling this journal (lines56/101, MD012). Normalize the journal in
+  each atomic task snapshot and retain that observed failed gate.
+- Rebuild the three task commits from published main654c222 without force
+  pushes. Product, fixture, private diagnostic guard, workflows and other
+  documents are identical to the previous final candidate. The fresh final
+  branch runs its own combined checks before publication.
+- A static inspection of every candidate Markdown file finds no multiple
+  blank-line runs. CODE-REVIEW-v4 approves the narrow formatting correction;
+  no runtime test is added for reversible prose formatting.
+
+## M50-T03 — Diagnose final restored-SQLite broker recovery failure
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Observed**: Final PR #25 job136898577466 restores SQLite/MySQL identities
+  and passes nine required cases, but its restored SQLite broker-restart
+  case times out at auditCount===4 after70000ms. The MySQL counterpart
+  passes. Final8.4 job136898577483 passes all recovery/fault cases normally.
+- **Evidence gap**: The fixture captures child output but sets LOG_LEVEL
+  silent and never reports worker state at this failure. No consumer exit,
+  SQL-lock, broker-readiness or product root cause is established.
+- **Plan before code**: Enable only owned consumer error logs; on failure
+  capture bounded SQL/broker/ACK counts and numeric worker exit/signal
+  state. Kill owned workers only after failure to collect their safe fixed
+  error classifications. Preserve the exact audit oracle and70-second bound.
+- **Proof**: A temporary real consumer kill must reach the new observer,
+  report the stopped consumer plus four source/three audit rows, fail the
+  intended checkpoint and restore source bytes. Do not count bootstrap,
+  timeout or cleanup failure as that proof. Use actual diagnostics to decide
+  the correction; do not rerun unchanged assertions until green.
+- **State**: Reopen T03/operator criterion only. Candidate M50 is2/3,
+ 397 done/one dropped/one pending; published main remains654c222 with its
+  own15 checks green. CODE-v5 rejects the final candidate's unresolved
+  recovery. The prior Bun panic/retry and Markdown correction stay recorded.
+
+### Observer's actual negative-control failure
+
+- Integration job136903046789 passes the ordinary SQLite restore/recovery
+  and empty-backup proof. The new real consumer-kill proof instead reaches
+  its60-second watchdog: exitCode null/stoppedConsumerObserved false. It
+  correctly rejects this as proof; no intended observation is claimed.
+- Inspection finds unbounded worker-output collection in the observer.
+  Replace consumer pipes with private owned log files, read only bounded
+  content, and never await a live worker's output. Emit aggregate stages
+  before broker probes and require a completed observer in the fault proof.
+  The original70-second checkpoint and exact audit oracle remain unchanged.
+- Exercise five isolated real SQLite broker-recovery runs after the observer
+  proof to investigate the intermittent original failure. Stop on the first
+  failure and preserve its safe diagnostics; no retry-to-green loop.
+  The original cause is still unknown and T03 stays unchecked.
+
+### Second observer control and earlier-checkpoint evidence gap
+
+- Job136904967519 again passes ordinary recovery and the empty-backup
+  proof, but the consumer-kill control times out60 seconds with no observer
+  phases. The absence of even the pre-broker snapshot means output collection
+  is not established as its cause; the original root cause remains unknown.
+- Instrument both the first audit projection and post-restart projection
+  with the same safe observer. Run the control asynchronously with private
+  stdout/stderr files and explicit kill-stage markers, so a watchdog reports
+  the last fixed stage rather than discarding the useful partial record.
+  Continue to reject timeout/bootstrap/cleanup as proof, and preserve all
+  real source/audit assertions and their existing70-second bounds.
+
+### Control reaches killed consumer but nullable exit polling misses it
+
+- Async control job136907107285 reaches first-audit-ready, broker-restarted,
+  before-consumer-kill and after-consumer-kill, then its60-second watchdog
+  fires without entering either observer phase. The consumer's .exited
+  promise has resolved, yet polling its nullable exitCode has not observed
+  completion. Raw exit getters and awaited results have not yet been logged.
+- Track each owned child's authoritative .exited promise settlement/result
+  before any kill. Use that lifecycle for checkpoint/observer/teardown state,
+  and record the nullable getter/signal versus awaited result in a tiny real
+  signal probe. The existing real consumer-kill control must now fail its
+  intended checkpoint with source4/audit3 and complete safe observations.
+- This corrects fixture lifecycle observation, not an asserted root cause
+  of the original broker recovery. Original outcomes/time bounds and T03's
+  incomplete state remain intact.
+
+## M50-T03 — Verified lifecycle observer and final recovery closure
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Actual control**: Job136908945643 on sourcedf71b14 records
+  getterExitCode null, signal SIGKILL, awaitedExitCode137. Nullable exitCode
+  does not mean the process remains alive. Each owned child now tracks
+  settlement/result of .exited before any kill; checkpoint, observer and
+  teardown use that authoritative lifecycle.
+- **Actual negative proof**: The killed consumer reaches both observer
+  phases with four retained source rows/three audit rows, exit1 and no
+  watchdog. Its source restores byte-for-byte and cleanup remains clean.
+  The runtime probe and controlled consumer both record the signal-only
+  getter behavior. Earlier60-second controls are retained as real reds.
+- **Actual stability**: Five separate SQLite broker-recovery commands each
+  pass and stop-on-first-failure behavior is retained. Both required MySQL
+  versions pass native19/all12 files, recovery10/zero required skips,
+  exact private restore identities/hashes, empty-backup proof, consumer-kill
+  observer proof and actual claim/audit faults.
+- **All source gates**: Every15 applicable check passes: CI44924969637,
+  Integration44924969560 and staged/separate recovery44924969538. Exact
+  `moon check --all` completes37 (7 cached) in6m3.175s, with
+  backend2432/GUI1764/contract1158 and generated CLI docs-check. Browser103
+  passes/three existing skips, saved-view/cursor faults, rendered388-story
+  accessibility/mobile and standalone smoke pass. Production/package code
+  is unchanged from verified M49; tag-driven packaging is not retriggered.
+- **Limits**: The original PR #25 SQLite audit timeout remains unattributed.
+  It does not recur on this instrumented source's required dialect cases,
+  five isolated runs or separate recovery job. Do not claim the nullable
+  getter caused that original timeout, a deterministic runtime fix, or
+  universal reliability from these runs. The earlier Bun panic also stays
+  recorded. Future failures now report process/SQL/broker state safely.
+- **Security/architecture**: Owned private file logs and bounded aggregate
+  classification replace unbounded live-pipe collection. No raw SQL,
+  payload, credential, new dependency, production retry or toolchain change.
+  Runbook distinguishes a stopped consumer from pending retry and documents
+  supervisor/operator restart. CODE-REVIEW-v6 approves four lenses.
+- **Closure**: Restore T03/operator criterion and every exit criterion.
+  M50 is3/3;399 tracked tasks/52 milestones resolve to398 done/one dropped,
+  zero pending. Reuse normalized T016f6f3b6
+  and T021a8d53b, then build only this final T03 commit from T02.
+  Preserve all WIP/failure evidence on draft #25; do not merge that history.
+  The fresh three-task candidate must pass its own checks and publish with
+  an identical tree. No local clean-tree or production restore is claimed.

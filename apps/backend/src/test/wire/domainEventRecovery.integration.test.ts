@@ -1,9 +1,9 @@
 import { expect, it } from 'bun:test';
 import { spawn, type Subprocess } from 'bun';
-import { createHmac } from 'node:crypto';
+import { createHmac, createHash } from 'node:crypto';
 import * as http from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import mysql from 'mysql2/promise';
@@ -12,7 +12,7 @@ import { count, eq } from 'drizzle-orm';
 import { setupDatabase } from '../../db/db';
 import { transactionConflict } from '../../db/errors';
 import { brokerEventReference } from '../../lib/domainEventRelay';
-import { STREAM_NAME } from '../../consumers/stream';
+import { STREAM_NAME, DURABLE_NAME } from '../../consumers/stream';
 
 const WORKER = String.raw`
 const c = JSON.parse(process.env.TASKER_DOMAIN_RECOVERY_CASE);
@@ -120,7 +120,7 @@ try {
 `;
 
 type Driver = 'sqlite' | 'mysql';
-type Child = { process: Subprocess; output: Promise<string>; errors: Promise<string> };
+type Child = { process: Subprocess; output: Promise<string>; errors: Promise<string>; exit: { settled: boolean; code: number | null }; logs?: { stdout: string; stderr: string } };
 const enabled = process.env.TASKER_REAL_INTEGRATION === '1';
 
 for (const driver of ['sqlite', 'mysql'] as Driver[]) {
@@ -131,34 +131,49 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
     const path = join(directory, 'source.sqlite');
     const suffix = crypto.randomUUID().replaceAll('-', '');
     const databaseName = `tasker_recovery_${suffix}`;
+    const restoredDatabaseName = databaseName + '_restore';
     const container = `tasker-domain-proof-${suffix}`;
     const sourceRoot = join(import.meta.dir, '../..');
     const orgId = `org-${suffix}`, userId = `user-${suffix}`, projectId = `project-${suffix}`;
     const children: Child[] = [];
     const sockets = new Set<Socket>();
     const teardownErrors: string[] = [];
-    let db: any, admin: mysql.Connection | undefined, receiver: http.Server | undefined, containerAttempted = false;
+    let db: any, admin: mysql.Connection | undefined, receiver: http.Server | undefined, containerAttempted = false, sourceCreated = false, restoreCreated = false;
     const dockerEnv = { ...process.env };
     for (const key of ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_TLS', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete dockerEnv[key];
-    async function docker(...args: string[]) {
-      const child = spawn({ cmd: ['docker', '--host=unix:///var/run/docker.sock', ...args], env: dockerEnv, stdout: 'pipe', stderr: 'pipe' });
+    async function dockerInput(args: string[], inputPath?: string, privateOutput = false) {
+      const child = spawn({ cmd: ['docker', '--host=unix:///var/run/docker.sock', ...args], env: dockerEnv, stdin: inputPath ? Bun.file(inputPath) : 'ignore', stdout: 'pipe', stderr: 'pipe' });
       const timeout = setTimeout(() => child.kill('SIGKILL'), 15_000);
       try {
         const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
-        if (code !== 0) throw new Error(`owned Docker command failed (${code}): ${stderr}`);
-        return stdout.trim();
+        if (code !== 0) throw new Error(privateOutput || inputPath
+          ? `owned private MySQL backup command failed (${code}).`
+          : `owned Docker command failed (${code}): ${stderr}`);
+        return stdout;
       } finally { clearTimeout(timeout); }
     }
+    async function docker(...args: string[]) { return (await dockerInput(args)).trim(); }
     const childEnv = () => ({ ...process.env, STANDALONE: driver === 'sqlite' ? 'true' : 'false', DB_PATH: path, NODE_ENV: 'test', LOG_LEVEL: 'silent', OTEL_EXPORTER_OTLP_ENDPOINT: '', OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: '' });
-    function track(process: Subprocess): Child {
-      const child = { process, output: new Response(process.stdout as ReadableStream).text(), errors: new Response(process.stderr as ReadableStream).text() };
-      children.push(child); return child;
+    function track(childProcess: Subprocess, logs?: Child['logs']): Child {
+      const exit: Child['exit'] = { settled: false, code: null };
+      const child: Child = {
+        process: childProcess, exit, logs,
+        output: logs ? Promise.resolve('') : new Response(childProcess.stdout as ReadableStream).text(),
+        errors: logs ? Promise.resolve('') : new Response(childProcess.stderr as ReadableStream).text(),
+      };
+      void childProcess.exited.then(code => { exit.code = code; exit.settled = true; });
+      children.push(child);
+      return child;
     }
     function worker(mode: string, url: string, extra: Record<string, unknown> = {}) {
       return track(spawn({ cmd: [process.execPath, '--eval', WORKER], cwd: join(sourceRoot, '..'), env: { ...childEnv(), TASKER_DOMAIN_RECOVERY_CASE: JSON.stringify({ sourceRoot, driver, path, mode, url, orgId, userId, projectId, ...extra }) }, stdout: 'pipe', stderr: 'pipe' }));
     }
     function consumer(url: string) {
-      return track(spawn({ cmd: [process.execPath, 'run', join(sourceRoot, 'consumers/index.ts')], cwd: directory, env: { ...childEnv(), NATS_URL: url }, stdout: 'pipe', stderr: 'pipe' }));
+      const logs = { stdout: join(directory, 'consumer-' + children.length + '.stdout'),
+        stderr: join(directory, 'consumer-' + children.length + '.stderr') };
+      const childProcess = spawn({ cmd: [process.execPath, 'run', join(sourceRoot, 'consumers/index.ts')], cwd: directory,
+        env: { ...childEnv(), NATS_URL: url, LOG_LEVEL: 'error' }, stdout: Bun.file(logs.stdout), stderr: Bun.file(logs.stderr) });
+      return track(childProcess, logs);
     }
     async function result(child: Child) {
       const timeout = setTimeout(() => child.process.kill('SIGKILL'), 20_000);
@@ -184,7 +199,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
     async function checkpoint(child: Child, name: string) {
       await wait(async () => {
         if (existsSync(name)) return true;
-        if (child.process.exitCode !== null) {
+        if (child.exit.settled) {
           const exitCode = await child.process.exited;
           const recorded = existsSync(name + '.stage') ? await Bun.file(name + '.stage').text() : 'not-reported';
           const stage = ['database', 'ready', 'task-committed', 'folder-committed', 'artifact-committed', 'waiting-for-ack'].includes(recorded) ? recorded : 'not-reported';
@@ -199,6 +214,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       if (driver === 'mysql') {
         admin = await mysql.createConnection({ host: process.env.DB_HOST || '127.0.0.1', user: process.env.DB_USER || 'root', password: process.env.DB_PASSWORD || 'password' });
         await admin.query(`CREATE DATABASE \`${databaseName}\` CHARACTER SET utf8mb4`);
+        sourceCreated = true;
         process.env.DB_NAME = databaseName;
       }
       db = await setupDatabase(driver, path);
@@ -238,6 +254,77 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       const sourceStates = () => db.select({ id: S.domainEvents.id, deliveredAt: S.domainEvents.deliveredAt, attempts: S.domainEvents.attempts }).from(S.domainEvents).where(eq(S.domainEvents.orgId, orgId));
       const auditRows = () => db.select().from(S.auditLog).where(eq(S.auditLog.orgId, orgId));
       const auditCount = async () => Number((await db.select({ value: count() }).from(S.auditLog).where(eq(S.auditLog.orgId, orgId)))[0].value);
+      async function waitForAudit(expectedAuditRows: number, projector: Child, relay: Child | undefined, label: string) {
+        try {
+          await wait(async () => {
+            if (projector.exit.settled) throw new Error('owned audit consumer exited during broker recovery');
+            if (relay && relay.exit.settled) throw new Error('owned producer relay exited during broker recovery');
+            return (await auditCount()) === expectedAuditRows;
+          }, label, 70_000);
+        } catch (error) {
+          const observed: Record<string, unknown> = {
+            kind: 'runbook-broker-recovery-observation', driver, expectedAuditRows,
+            relayExitCode: relay?.exit.code ?? null, consumerExitCode: projector.exit.code,
+            relaySignal: relay?.process.signalCode ?? null, consumerSignal: projector.process.signalCode ?? null,
+            relayWasRunning: relay ? !relay.exit.settled : null, consumerWasRunning: !projector.exit.settled,
+          };
+          try {
+            const rows = await sourceStates();
+            observed.sourceCount = rows.length;
+            observed.deliveredSources = rows.filter((row: any) => row.deliveredAt).length;
+            observed.attemptedSources = rows.filter((row: any) => row.attempts > 0).length;
+            observed.auditRows = await auditCount();
+          } catch { observed.sqlProbeFailed = true; }
+          console.error(JSON.stringify({ ...observed, phase: 'before-broker' }));
+          let observer: Awaited<ReturnType<typeof natsConnect>> | undefined;
+          try {
+            observer = await natsConnect({ servers: url, timeout: 500, maxReconnectAttempts: 0 });
+            const manager = await observer.jetstreamManager({ timeout: 1500 });
+            const stream = await manager.streams.info(STREAM_NAME);
+            const info = await manager.consumers.info(STREAM_NAME, DURABLE_NAME);
+            observed.brokerMessages = stream.state.messages;
+            observed.consumerPending = info.num_pending;
+            observed.consumerUnacked = info.num_ack_pending;
+            observed.consumerAckFloor = info.ack_floor.stream_seq;
+            observed.consumerDelivered = info.delivered.stream_seq;
+          } catch { observed.brokerProbeFailed = true; }
+          finally { if (observer) await observer.close(); }
+          // Consumer logs are private owned files. Never wait for a live
+          // worker's pipe EOF merely to explain an already-failed checkpoint.
+          const classify = async (child: Child) => {
+            let output: string | null;
+            if (child.logs) {
+              const read = async (path: string) => {
+                const file = Bun.file(path);
+                return await file.slice(Math.max(0, file.size - 65_536)).text();
+              };
+              try { output = (await read(child.logs.stdout)) + '\n' + (await read(child.logs.stderr)); }
+              catch { return { unavailable: true }; }
+            } else if (!child.exit.settled) {
+              return { unavailable: true, running: true };
+            } else {
+              output = await Promise.race([
+                Promise.all([child.output, child.errors]).then(values => values.join('\n')),
+                Bun.sleep(250).then(() => null),
+              ]);
+              if (output === null) return { unavailable: true };
+            }
+            const events = ['consumer.start_failed', 'consumer.event_failed', 'consumer.nats_connect_failed',
+              'consumer.uncaughtException', 'consumer.unhandledRejection', 'consumer.shutdown_failed'];
+            return {
+              events: events.filter(event => output!.includes('"' + event + '"')),
+              sqliteBusy: /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i.test(output),
+              bunPanic: output.includes('panic(main thread)') || output.includes('Bun has crashed'),
+              connectionRefused: /CONNECTION_REFUSED|ECONNREFUSED/.test(output),
+              jetstreamUnavailable: /JetStream not enabled|jetstream.*not available/i.test(output),
+            };
+          };
+          observed.relayErrors = relay ? await classify(relay) : { notApplicable: true };
+          observed.consumerErrors = await classify(projector);
+          console.error(JSON.stringify({ ...observed, phase: 'complete' }));
+          throw error;
+        }
+      }
       const capturePoint = join(directory, 'committed');
       const producer = worker('capture', url, { key: 'committed-work', large: true, checkpoint: capturePoint });
       const captured = await checkpoint(producer, capturePoint);
@@ -249,6 +336,56 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       expect(await db.select().from(S.tasks)).toHaveLength(1);
       expect(await db.select().from(S.webhookDeliveries)).toHaveLength(1);
       expect(captured.taskId).toBeTruthy();
+
+      // All producer writers are stopped. Restore private SQL before relay work.
+      async function backupIdentities() {
+        const taskRows: { id: string }[] = await db.select({ id: S.tasks.id }).from(S.tasks);
+        const eventRows: { id: string; payload: string }[] = await sourceEvents();
+        const deliveryRows: { id: string }[] = await db.select({ id: S.webhookDeliveries.id }).from(S.webhookDeliveries);
+        const hookRows: { id: string; encrypted: string }[] = await db.select({ id: S.webhooks.id, encrypted: S.webhooks.secretEncrypted }).from(S.webhooks);
+        const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+        return {
+          tasks: taskRows.map(row => row.id).sort(),
+          events: eventRows.map(row => [row.id, digest(row.payload)]).sort((left, right) => left[0]!.localeCompare(right[0]!)),
+          deliveries: deliveryRows.map(row => row.id).sort(),
+          secrets: hookRows.map(row => [row.id, digest(row.encrypted)]).sort((left, right) => left[0]!.localeCompare(right[0]!)),
+        };
+      }
+      const expectedBackup = await backupIdentities();
+      const backupPath = join(directory, driver === 'sqlite' ? 'private-backup.sqlite' : 'private-backup.sql');
+      if (driver === 'sqlite') {
+        const checkpoint = db.$client.query('PRAGMA wal_checkpoint(TRUNCATE)').get();
+        expect(Number(checkpoint.busy)).toBe(0);
+        db.$client.close();db = undefined;
+        copyFileSync(path, backupPath);
+        rmSync(path);
+        copyFileSync(backupPath, path);
+      } else {
+        await db.$client.end();db = undefined;
+        const service = process.env.TASKER_MYSQL_SERVICE_CONTAINER || '';
+        if (!/^[a-f0-9]{12,64}$/i.test(service)) throw new Error('Owned MySQL service container ID is required for backup rehearsal.');
+        const image = await docker('inspect', '--format', '{{.Config.Image}}', service);
+        expect(/^mysql:8\.(0|4)(?:$|[.@-])/.test(image)).toBe(true);
+        const dump = await dockerInput(['exec', service, 'sh', '-c',
+          'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --routines --events --triggers --no-tablespaces --set-gtid-purged=OFF "$1"',
+          'sh', databaseName], undefined, true);
+        await Bun.write(backupPath, dump);
+        await admin!.query('CREATE DATABASE ' + restoredDatabaseName + ' CHARACTER SET utf8mb4');
+        restoreCreated = true;
+        await dockerInput(['exec', '-i', service, 'sh', '-c',
+          'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot "$1"', 'sh', restoredDatabaseName], backupPath);
+        process.env.DB_NAME = restoredDatabaseName;
+      }
+      db = await setupDatabase(driver, path);
+      const restoredBackup = await backupIdentities();
+      console.log(JSON.stringify({ kind: 'runbook-backup-observation', driver, tasks: restoredBackup.tasks.length,
+        events: restoredBackup.events.length, deliveries: restoredBackup.deliveries.length,
+        matched: JSON.stringify(restoredBackup) === JSON.stringify(expectedBackup) }));
+      expect(restoredBackup.tasks).toEqual(expectedBackup.tasks);
+      expect(restoredBackup.events).toEqual(expectedBackup.events);
+      expect(restoredBackup.deliveries).toEqual(expectedBackup.deliveries);
+      expect(restoredBackup.secrets).toEqual(expectedBackup.secrets);
+
 
       const ackPoint = join(directory, 'accepted-before-bookkeeping');
       const interruptedRelay = worker('ack-pause', url, { checkpoint: ackPoint, deferMs: 1000 });
@@ -267,7 +404,9 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
         await nc.jetstream().publish(sources[0].subject, Buffer.from(JSON.stringify(brokerEventReference(sources[0]))), { msgID: `duplicate-${sources[0].id}` });
       } finally { await nc.drain(); }
       const projector = consumer(url);
-      await wait(async () => (await auditCount()) === 3, 'SQL reference projection with custom DB_PATH', 70_000);
+      console.error(JSON.stringify({ kind: 'runbook-recovery-stage', driver, stage: 'first-audit-start' }));
+      await waitForAudit(3, projector, undefined, 'SQL reference projection with custom DB_PATH');
+      console.error(JSON.stringify({ kind: 'runbook-recovery-stage', driver, stage: 'first-audit-ready' }));
       const projected = await auditRows();
       expect(new Set(projected.map((row: any) => row.eventId)).size).toBe(3);
       const large = projected.find((row: any) => row.subject === 'domain.artifact.created');
@@ -278,7 +417,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       const firstSender = worker('webhook', url);
       await wait(async () => {
         if (held) return true;
-        if (firstSender.process.exitCode !== null) throw new Error(`sender exited before HTTP: ${await firstSender.errors}`);
+        if (firstSender.exit.settled) throw new Error(`sender exited before HTTP: ${await firstSender.errors}`);
         return false;
       }, 'first signed webhook HTTP request');
       firstSender.process.kill('SIGSTOP');
@@ -304,8 +443,9 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       await wait(async () => (await sourceStates()).some((event: any) => event.attempts > 0 && !event.deliveredAt), 'broker outage retains attempted pending source');
       await docker('start', container);
       await wait(async () => { try { const nc = await natsConnect({ servers: url, timeout: 250, maxReconnectAttempts: 0 }); await nc.drain(); return true; } catch { return false; } }, 'owned broker restart');
+      console.error(JSON.stringify({ kind: 'runbook-recovery-stage', driver, stage: 'broker-restarted' }));
       const resumedProjector = consumer(url);
-      await wait(async () => (await auditCount()) === 4, 'broker/relay recovery and resumed audit', 70_000);
+      await waitForAudit(4, resumedProjector, reconnecting, 'broker/relay recovery and resumed audit');
       await wait(async () => (await sourceStates()).every((event: any) => event.deliveredAt), 'source completion after broker recovery', 70_000);
       expect(await db.select().from(S.tasks)).toHaveLength(2);
       expect(await db.select().from(S.webhookDeliveries)).toHaveLength(2);
@@ -314,7 +454,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       if (originalStandalone === undefined) delete process.env.STANDALONE; else process.env.STANDALONE = originalStandalone;
       if (originalName === undefined) delete process.env.DB_NAME; else process.env.DB_NAME = originalName;
       for (const child of children) {
-        try { if (child.process.exitCode === null) child.process.kill('SIGKILL'); }
+        try { if (!child.exit.settled) child.process.kill('SIGKILL'); }
         catch (error) { teardownErrors.push(String(error)); }
       }
       await Promise.all(children.map(child => child.process.exited));
@@ -331,9 +471,12 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       ]);
       for (const outcome of cleanup) if (outcome.status === 'rejected') teardownErrors.push(String(outcome.reason));
       if (admin) {
-        try { await admin.query(`DROP DATABASE IF EXISTS \`${databaseName}\``); }
-        catch (error) { teardownErrors.push(String(error)); }
-        finally { try { await admin.end(); } catch (error) { teardownErrors.push(String(error)); } }
+        for (const name of [restoreCreated ? restoredDatabaseName : null, sourceCreated ? databaseName : null]) {
+          if (!name) continue;
+          try { await admin.query('DROP DATABASE ' + name); }
+          catch (error) { teardownErrors.push(String(error)); }
+        }
+        try { await admin.end(); } catch (error) { teardownErrors.push(String(error)); }
       }
       try { rmSync(directory, { recursive: true, force: true }); } catch (error) { teardownErrors.push(String(error)); }
       if (teardownErrors.length) await Bun.write(Bun.stderr, JSON.stringify({ cleanupErrors: teardownErrors }) + '\n');
