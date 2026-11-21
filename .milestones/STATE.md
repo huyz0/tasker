@@ -1,8 +1,8 @@
 ---
 active_milestone: M49
-active_task: M49-T02
+active_task: M49-T03
 last_updated: 2026-11-21
-last_commit: 1d47090
+last_commit: 3410e39
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T02 verified; bounded load next.** Source3410e39 passes all10 CI and both integration jobs. Each MySQL version executes native19/recovery10 and the claim/audit failure proofs with zero required skips; exact36 passes in8m1.445s, backend2423, GUI1764, browser103 passes/three existing skips, and388 rendered stories have no accessibility/mobile overflow findings. CODE-v7 approves. PR #18 carries the final publication gate; M49 is3/6 and program399 total/392 done/one dropped/six pending. Resume T03 in PR #19/sourcebb90cb8: core7 and input-fault proof pass; the real HTTP smoke's shallow-Git failure is corrected but no load result exists yet. Temporary CI-maintenance files were removed from that dependent draft after four verified obsolete-run cancellations; per-PR concurrency preserves main checks. Cloud startup failed; hosted execution supplies all current evidence and original local drafts remain untouched.
 
 **2026-11-21 — M49-T02 observed worker exit and strict matcher correction.** Source1d47090 passes both integration jobs, audit/workspace, all19 native MySQL8.4 cases and the new two-API scenario. The older MySQL domain-event worker exits before its first checkpoint with empty stderr, leaving9 recovery passes/one failure. GitHub rejects a retry while the overall run remains active. Add fixed stage/exit/signal diagnostics; no cause is inferred. Backend TS2769 shows the object-wrapper matcher still narrows to string; compare exact boolean identity instead. Retain rejected CODE-v6 and keep T02 unchecked. Dependent PR #19/source9f036827 contains T03 plan, tests/scaffold and an independent Bun core job awaiting actual red; no implementation or capacity claim.399 total/391 done/one dropped/seven pending. Cloud startup has explicitly failed; use hosted verification and preserve original local drafts.
 
@@ -2040,7 +2042,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 2 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 3 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2051,7 +2053,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 391 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 392 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

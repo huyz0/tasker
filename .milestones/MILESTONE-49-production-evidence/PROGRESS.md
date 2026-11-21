@@ -95,7 +95,7 @@
 
 ## M49-T02 — Two-instance recovery and authenticated boundaries
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-21
 - **Changed**: Exercise the existing recovery cases on both SQL dialects and add two independent API processes sharing a real MySQL schema and an owned JetStream broker.
 - **Verified**: T01 source candidate passes both native versions, real SQLite/NATS recovery and the exact full repository command. Ready PR #17 final combined-head checks remain running. This dependent branch starts from0586a920 and preserves all published M58 behavior and records.
@@ -194,3 +194,31 @@
 - Cloud startup is now explicitly failed (executor configuration capabilities
   could not be queried). Continue through connected GitHub and hosted Actions;
   no local command, clean-tree check or service execution is claimed.
+
+### T02 verified source and final publication evidence
+
+- All10 CI44897279959 jobs and both Integration44897279964 jobs pass on
+  source3410e39. MySQL8.0.46 and8.4.13 each run all12 native files/19 cases,
+  all10 required recovery cases without skips, the real claim-failure proof
+  and both acknowledged audit-loss/duplicate faults with byte restoration.
+- Backend2423/zero failures and strict types pass. The exact hosted repository
+  command passes all36 checks (7 cached) in8m1.445s, including GUI1764,
+  contract1158 and production/standalone builds. Real browser E2E reports
+ 103 passes/three existing skips plus strict saved-view types and the native
+  intent-fault proof. Rendered checks cover388 stories across light/dark and
+  narrow/wide widths with zero accessibility findings, plus zero375px overflow.
+- The prior1d47090 worker exit remains unattributed. It does not recur on the
+  instrumented source in either required MySQL job; failures now include fixed
+  stage, exit and signal diagnostics. No environmental/root-cause fix is
+  invented. Exact environment restoration assertions are type-correct.
+- CODE-v7 approves the tested source and the narrow per-PR concurrency
+  configuration. Completed evidence remains available; each main SHA retains
+  its own checks. Temporary cancellation files exist only on the dependent
+  load draft and have already been removed there, never added to this task.
+- Check T02 and its outcome criterion. M49 is3/6; program399 total/392 done,
+  one dropped/six pending. Final-head CI/integration still gate PR #18 merge.
+  Source code remains on the published M58/T01 tree, with no force push.
+- Resume T03 in draft PR #19/sourcebb90cb8: core7/fault proof pass; its first
+  smoke failed before executing because main was absent in shallow Git.
+  That checkout is corrected and real HTTP/JSON verification remains pending.
+  No load or capacity result is inferred.
