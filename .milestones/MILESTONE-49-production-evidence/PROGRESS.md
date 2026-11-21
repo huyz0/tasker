@@ -565,3 +565,24 @@
   Intel Xeon 8573C hardware and separate 13.689327s recovery tail. Do not
   cherry-pick the faster host or infer a controlled comparison. The active
   diagnostic run, T03/T04 closure and final publication remain pending.
+
+### Actual staged saturation and separate recovery results
+
+- Job 136860547110 on source 2e8b14b/checkout 18ae2c6 completes all three
+  stages with valid SQL/source/audit reconciliation and cleanup zero, then
+  all ten required recovery cases and both actual audit faults pass.
+- On the same four-CPU Xeon 6973P-C host, 100 callers complete all 1701
+  workflows without errors in a 15.363392s request phase (110.717737/s,
+  successful p95 1293.429ms), followed by 22.585613s separate recovery.
+- At 1000 actual/peak callers, the 3000-operation cap is exhausted before
+  15 seconds: only 57 workflows complete, 2943 request errors remain, and
+  successful p95 is 7081.129ms. There are 822 acknowledged first writes,
+  194 unacknowledged but committed intents and 1984 absent intents. All 1016
+  final task/source/audit rows reconcile with zero lost/duplicate/changed
+  outcomes. No request error or uncertain outcome is suppressed.
+- Preserve exact JSON for all three verified stages and both earlier
+  100-caller hosts. Lead docs/performance.md with saturation, not a healthy
+  1000-caller claim. Recovery runs after load, not during it. Neither earlier
+  incomplete 1000-caller run is assigned a root cause; the diagnostic change
+  does not claim a production fix. Final full/native/browser gates and
+  four-lens task closure remain required before main publication.
