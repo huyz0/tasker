@@ -98,6 +98,8 @@ jobs:
       # They do not establish resilience while 1000 callers are active.
       - name: Separate cross-process MySQL and broker recovery
         working-directory: apps/backend
+        env:
+          TASKER_MYSQL_SERVICE_CONTAINER: ${{ job.services.mysql.id }}
         run: |
           set -o pipefail
           bun run test:recovery:mysql 2>&1 | tee "$RUNNER_TEMP/tasker-capacity/recovery.log"

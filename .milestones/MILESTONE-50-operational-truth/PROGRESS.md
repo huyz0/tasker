@@ -111,3 +111,93 @@
   restore/runbook and full/final-gate closure, including the recorded Bun
   panic and one diagnostic retry. Final combined-head publication remains
   required; no local execution/clean-tree or production restore is claimed.
+
+## M50-T03 — Exercise private backup and recovery procedures
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Plan**: Extend the existing real process/broker recovery fixture after
+  a killed producer commits pending source/webhook rows. Quiesce/checkpoint
+  SQLite, close it, copy/remove/restore the owned file and reopen production
+  database setup. Use the existing MySQL service image's dump/client tools
+  to restore into a second generated schema, then continue real recovery.
+- **Verify**: Compare exact task/event/delivery IDs and payload/secret hashes,
+  without logging bodies or private SQL. An empty SQLite restore must boot
+  and fail the exact restored-identity oracle. Restore source bytes.
+  Required MySQL8.0/8.4 and SQLite jobs execute every counterpart.
+- **Safety**: Track original/restored schema creation separately; delete
+  only created resources, remove private backups, preserve encryption keys.
+  Supply the owned service container ID explicitly in CI step environment.
+  No system package, runtime dependency or production procedure is executed.
+- **Source facts**: Both dialect schemas confirm SQLite timestamp columns use
+  Unix seconds, not milliseconds. Existing recovery tests use controlled
+  fixture clocks; the runbook will distinguish them from operator waiting.
+- **Notes**: This is a verification fixture/config/static runbook, not a new
+  production algorithm. Existing-behavior tests are followed by an actual
+  deliberate-break check as TDD requires. T01/T02/T03 remain unchecked
+  until hosted gates and review. The independent M49 browser-oracle
+  correction is still under final validation; no parent/main merge is claimed.
+
+### First rehearsal results and Markdown correction
+
+- Source89124eb's SQLite job136888555129 restores exact one task/three
+  sources/one delivery and matching private hashes, then passes real broker
+  recovery. The actual empty restored database fails the intended identity
+  assertion; source restores byte-for-byte. No SQL backup is uploaded.
+- Workspace job136888847389 rejects README.md:40 for one duplicate blank
+  line (MD012). Remove that extra blank, retaining the substantive text.
+  This is a static formatting correction; no new product test is needed.
+  All M50 tasks stay unchecked until the corrected hosted gate and review.
+
+### T03 verified source, retained crash and final closure
+
+- Source8ba3834 has all18 non-skipped checks green (two tag-only jobs
+  skipped). CI44918803128, Integration44918803100, staged/separate recovery
+ 44918803090 and packaging44918803098 retain actual results. Exact
+  `moon check --all` completes37 (7 cached) in7m20.789s:
+  backend2432/GUI1764/contract1158. Generated CLI docs-check passes.
+- SQLite integration job136890084536 restores exact task/source/delivery
+  identities and private hashes, continues real ACK/audit/signed-webhook/
+  broker recovery, and proves an actual empty restore fails the intended
+  identity assertion with byte restoration. Separate job136890084541
+  passes all ten required cases and both audit faults after repeated stages.
+- MySQL8.0 job136891567180 passes native19/all12 files, all10 recovery,
+  empty-backup proof, native claim fault and both audit faults. MySQL8.4
+  job136891567170 instead records Bun1.3.11 panic(main thread): Unknown
+  tag:0 in twoInstance.integration.test.ts after8319ms, before any backup
+  assertion. It is not hidden or labeled a product/backup assertion failure.
+- One diagnostic failed-job rerun, requested only after the workflow ended,
+  succeeds as job136895175616: native19/all12, recovery10/zero skips,
+  exact restored identities/hashes, empty-backup and audit/claim faults.
+  No source change or deterministic runtime root-cause fix is claimed.
+- Browser103 passes/three existing skips, actual saved-view/cursor faults,
+  rendered388-story accessibility/mobile, standalone and all three packaging
+  targets pass. No native Windows/macOS execution or production restore.
+- Final review narrows dump/import error diagnostics so private SQL cannot
+  enter an exception's stderr, and clarifies that fixture replay is not an
+  operator command. Normal Docker cleanup diagnostics remain. This is a
+  reversible diagnostic/prose change; no implementation-mirroring test is
+  added. The final candidate's real normal/fault/full gates still apply.
+- CODE-REVIEW-v3 approves four lenses and the honest recovery boundaries:
+  coordinated SQL/broker snapshots, encryption keys, restored authorization,
+  external effects, finite retention and migration-compatible rollback.
+- Close T03 and every exit criterion. M50 is3/3; all399 tracked tasks are
+  resolved:398 done/one deliberately dropped, zero pending across52
+  milestones. The fresh branch contains three atomic task commits from
+  published M49 main654c222. Its own final checks precede rebase publication;
+  verify the published tree exactly. Raw draft PR #22 is superseded only
+  after that merge. All task changes are committed Git objects; Cloud failed,
+  local worktrees are preserved and no local clean-tree check is claimed.
+
+### Final assembly Markdown correction
+
+- PR #24 job136896968950 rejects two duplicate blank lines introduced when
+  assembling this journal (lines56/101, MD012). Normalize the journal in
+  each atomic task snapshot and retain that observed failed gate.
+- Rebuild the three task commits from published main654c222 without force
+  pushes. Product, fixture, private diagnostic guard, workflows and other
+  documents are identical to the previous final candidate. The fresh final
+  branch runs its own combined checks before publication.
+- A static inspection of every candidate Markdown file finds no multiple
+  blank-line runs. CODE-REVIEW-v4 approves the narrow formatting correction;
+  no runtime test is added for reversible prose formatting.
