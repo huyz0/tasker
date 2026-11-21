@@ -189,14 +189,16 @@ test('a personal Reports view saves its current window and reopens fresh project
     const fresh = await admin.views.getSavedView({ viewId: body.view.id });
     expect(fresh.view?.projectId).toBe(space.second.id);expect(fresh.definition?.reports?.windowDays).toBe(90);
     await expect(dialog.getByText('View saved.', { exact: true })).toBeVisible();await close(page);
+    await page.goto('/reports?org=' + space.orgId + '&project=' + space.first.id + '&days=7');
+    await expect(page.getByRole('button', { name: '7 days', exact: true })).toHaveAttribute('aria-pressed', 'true');
     const observed = new Set<string>();
     page.on('request', request => {
       if (request.method() !== 'POST' || !/\/(GetReportExceptions|GetReportTrends|GetUsageReport)$/.test(request.url())) return;
       const requestBody = request.postDataJSON() as { projectId?: string; windowDays?: number; days?: number };
       if (requestBody.projectId === space.second.id && (requestBody.windowDays ?? requestBody.days) === 90) observed.add(request.url().split('/').at(-1)!);
     });
-    await page.goto('/reports?org=' + space.orgId + '&project=' + space.first.id + '&days=7');
-    dialog = await open(page);await dialog.getByRole('button', { name: 'Open Quarterly operations', exact: true }).click();
+    dialog = await open(page);expect(observed.size).toBe(0);
+    await dialog.getByRole('button', { name: 'Open Quarterly operations', exact: true }).click();
     await expect(page.getByRole('button', { name: '90 days', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect.poll(() => new URL(page.url()).searchParams.get('project')).toBe(space.second.id);
     await expect.poll(() => observed.size).toBe(3);

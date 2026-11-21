@@ -2,7 +2,7 @@
 active_milestone: M58
 active_task: M58-T04
 last_updated: 2026-11-21
-last_commit: 8b132f2
+last_commit: ed1b323
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — Go repair published; T04 observer proof tightened.** PR #15 is on main ed1b323 after all eight final-head jobs passed, with identical tested/published tree d2349fc. M58-T04 candidate 9dd19509 passes strict browser types and the actual native intent-fault proof; other checks remain pending. CODE-v9 approves with a nonblocking Reports observer improvement, now applied before the next candidate run. This provider branch incorporates published main without force-push and preserves all local drafts while Cloud startup remains pending.399 total/389 done/nine pending; M58 remains4/5.
 
 **2026-11-21 — M58-T04 permanent checks in progress.** Preserve the original local draft while Cloud startup remains pending. The dependent provider branch now contains two real-browser journeys, strict browser types, a temporary intent fault with byte-for-byte restoration, and the public saved-view guide. Actual hosted results and independent review still gate closure. M49-T06 is verified on its source candidate and checked; PR #15 final-head CI/publication remain pending. The branch incorporates its completed ledger/review without losing T04 work.399 total/389 done/nine pending.
 

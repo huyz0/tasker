@@ -455,3 +455,16 @@
   its actual checks. It carries the reviewed PR #15 runtime patch as a dependency;
   publish that parent first and reconcile the branch comparison before merge.
   The original local T04 draft is preserved while Cloud startup remains pending.
+
+### Parent publication and source-review feedback
+
+- PR #15 final head 8b132f2 passes all eight CI44888465901 jobs, including the
+  exact full repository command, and publishes as main ed1b323. Its fetched
+  Git tree matches the tested d2349fc tree exactly. Preserve this parent in the
+  provider branch with a normal merge commit; no branch is force-pushed.
+- T04 candidate 9dd19509 passes strict browser typing and the actual native
+  intent-fault proof in job136800857500. Ordinary E2E/full results remain
+  pending. CODE-v9 approves source with no blockers and notes one useful proof
+  improvement: attach the Reports request observer after the seven-day
+  baseline. Apply that correction and assert its set is empty before Open,
+  excluding late initial-page traffic from the fresh source-read proof.
