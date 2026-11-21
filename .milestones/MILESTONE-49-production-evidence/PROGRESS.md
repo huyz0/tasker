@@ -241,3 +241,19 @@
 - **Next**: Implement this fixture correction after the observed red, retain
   rejected CODE-v8 and re-run required services/faults and final gates.
   Reopen T02/its criterion; M49 is2/6,399 total/391 done/one dropped/seven pending.
+
+### Recurring worker implementation after observed red
+
+- The ACK-pause worker now starts the existing production recurring runtime
+  and remains alive until the genuine publish-ACK callback pauses it. It
+  does not write the continuous-worker readiness sentinel into the ACK
+  checkpoint. Parent watchdogs, kill point and all identity/count assertions
+  remain unchanged.
+- This fixture deliberately defers its owned source eligibility by1000ms
+  immediately before starting that runtime, covering a valid empty initial
+  sweep. No production clock, backoff or lease is changed. Ordinary relay
+  result probes remain one-shot; broker-reconnect workers retain their
+  readiness checkpoint.
+- Preserve exit/signal diagnostics and add waiting-for-ack as a fixed stage.
+  Re-run both required dialect jobs and fault proofs before closure; no
+  successful result is inferred from the implementation.

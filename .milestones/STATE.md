@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T02
 last_updated: 2026-11-21
-last_commit: 52d4680
+last_commit: e5e6c4a
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T02 recurring ACK fixture under verification.** After final job136843138595's exit0/no-signal/ready failure, the ACK-pause worker uses the production recurring relay rather than finishing after one sweep. A1000ms deferred owned source exercises waiting. Its checkpoint still comes only from a real broker ACK; ordinary one-shot result probes and all parent watchdogs/oracles remain unchanged. T02/criterion stay unchecked, M49 is2/6,399 total/391 done/one dropped/seven pending. Keep CODE-v8 rejection and prior all-green source3410e39 evidence. T03 sourceaaf900c adds a late-SQL-commit checker test before any checker change; normal HTTP/core/fault checks pass. Cloud failed; hosted verification remains available.
 
 **2026-11-21 — M49-T02 reopened by final ACK-worker failure.** Final job136843138595 records exit0/signal none/stage ready at the ack-pause checkpoint. The fixture permits a one-shot sweep to finish without reaching an ACK. Use the production recurring relay for this pause scenario and a deliberately deferred owned source to exercise waiting, preserving the parent timeout and all real-ACK/outcome assertions. Retain rejected CODE-v8 and the earlier all-green source3410e39 evidence; no environmental/OOM cause is invented. T02/its criterion are reopened: M49 is2/6,399 total/391 done/one dropped/seven pending. T03 sourceaaf900c adds a late SQL-commit oracle test before any checker change; its ordinary four-caller smoke and core/fault proof pass. Cloud failed; hosted verification and original local drafts remain the working boundary.
 
