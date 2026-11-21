@@ -71,3 +71,43 @@
   MySQL8.4 Bun runtime crash is retained by T03 and is not a static-doc pass.
   Final combined-head checks precede publication. No local run/clean-tree
   or production restore is claimed.
+
+## M50-T02 — Roadmap and integration truth
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Plan**: Reconcile M30–M58 statuses against candidate task boxes; update
+  README and agent/webhook guidance for stable-key conflicts, unknown commits,
+  delivery identity, revalidation and per-request CLI deadlines. Generated
+  cli-reference.md remains governed by actual help/doc checks. Static-content
+  TDD exception applies; runtime behavior and dependencies are unchanged.
+
+### T02 integration and roadmap candidate
+
+- Reconcile M30–M58 statuses with the current candidate ledger; label the
+  dated original review sequence as history. M47/M53–M58 are delivered.
+- README distinguishes historical data volume, measured concurrent bursts
+  and unvalidated20000-client targets, links UI/UX evidence and operating
+  guidance, and explains the actual drift gates' limited scope.
+- Agent guidance now treats Retry-After as a minimum, explains per-request
+  CLI deadlines/partial NDJSON, unknown writes and stable-intent retries.
+  Current stream/replay/schedule guidance remains; webhooks link the common
+  runbook and distinguish broker/audit/receiver completion.
+- Generated cli-reference.md is unchanged because current help already
+  contains these flags; its real docs-check remains required. T03 will add
+  the referenced runbook before final verification. No runtime changes.
+
+### T02 verified documentation checkpoint
+
+- Source8ba3834 passes actual Markdown/spec/doc-drift job136891567169.
+  The duplicate README blank is corrected after job136888847389's MD012.
+  CLI job136891567201's completed Build & Test step runs format, vet,
+  tests, build, coverage and the real generated-reference docs-check.
+  docs/cli-reference.md remains byte-for-byte unchanged.
+- Reconcile M30–M58 against milestone status and the published M49 parent;
+  update the delivery-plan checkpoint while retaining dated history.
+  CODE-REVIEW-v2 approves source, protocol wording, architecture and security.
+- T02 is complete (M50 2/3):397 done/one dropped/one pending. T03 retains
+  restore/runbook and full/final-gate closure, including the recorded Bun
+  panic and one diagnostic retry. Final combined-head publication remains
+  required; no local execution/clean-tree or production restore is claimed.

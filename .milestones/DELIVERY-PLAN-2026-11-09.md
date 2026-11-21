@@ -31,6 +31,25 @@ M53 has7/7 tasks and5/5 criteria verified locally, including final217-story
 lifecycle matrices,42 browser journeys and35 source checks. PR #6 still requires
 all final-head remote jobs before merge. M54 design is next;31 tasks remain.
 
+### Current delivery checkpoint — 2026-11-21
+
+M46–M48 and M53–M58 are published with their recorded acceptance evidence.
+M49 adds required two-process MySQL/NATS recovery, actual loss/duplicate
+faults and reproducible staged HTTP measurements. Its severe1000-caller
+saturation remains a measured limit, not a healthy fleet claim.
+
+M50-T01/T02 reconcile implementation, architecture, standards, roadmap and
+integration guidance. M50-T03 owns the private SQLite/MySQL restore rehearsal
+and final closure. Exact counts and current task state are in
+[STATE.md](STATE.md); the dated updates above are historical checkpoints.
+No local clean-tree check is claimed while the Cloud executor is unavailable.
+
+The accepted implementation work maps to the task owners below. Future
+usability studies, Reports section navigation, incremental token adoption
+and representative sustained-capacity work remain explicit follow-ups in
+the linked UI review and performance evidence; they are not hidden claims
+of this program's completion.
+
 ## Recommendation-to-task mapping
 
 | Finding / accepted improvement | Task owner | Observable proof |

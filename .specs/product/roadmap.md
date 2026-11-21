@@ -105,18 +105,18 @@ milestone's `PROGRESS.md` rather than quietly fixed.
 | **M44** | [Authorization Lifecycle](../../.milestones/MILESTONE-44-authorization-lifecycle/MILESTONE.md) | done: Current permissions govern every cached response and every long-lived subscription. | [] |
 | **M45** | [Mutation Recovery](../../.milestones/MILESTONE-45-mutation-recovery/MILESTONE.md) | done: Concurrent and interrupted keyed mutations produce one committed outcome and a retry can recover that outcome. | [M44] |
 | **M46** | [Durable Domain Events](../../.milestones/MILESTONE-46-durable-domain-events/MILESTONE.md) | done: Domain changes and their emitted events commit together, and persisted events reach audit and matching webhooks despite process or broker failure. | [M45] |
-| **M47** | [Recoverable Schedules](../../.milestones/MILESTONE-47-recoverable-schedules/MILESTONE.md) | in-progress: Every claimed scheduled occurrence can be inspected and safely resumed after a crash without duplicating its work. | [M45, M46] |
+| **M47** | [Recoverable Schedules](../../.milestones/MILESTONE-47-recoverable-schedules/MILESTONE.md) | done: Every claimed scheduled occurrence can be inspected and safely resumed after a crash without duplicating its work. | [M45, M46] |
 | **M48** | [Client Recovery](../../.milestones/MILESTONE-48-client-recovery/MILESTONE.md) | done: Browsers reconcile missed changes and CLI calls terminate predictably when the server stalls. | [M44] |
-| **M49** | [Production Evidence](../../.milestones/MILESTONE-49-production-evidence/MILESTONE.md) | todo: CI exercises production dependencies and reproducible multi-instance measurements describe the capacity actually demonstrated. | [M46, M47, M48] |
-| **M50** | [Operational Truth](../../.milestones/MILESTONE-50-operational-truth/MILESTONE.md) | todo: Architecture, roadmap, agent guidance and operations documentation match verified behavior and recovery guarantees. | [M49] |
+| **M49** | [Production Evidence](../../.milestones/MILESTONE-49-production-evidence/MILESTONE.md) | done: CI exercises production dependencies and reproducible multi-instance measurements describe the capacity actually demonstrated. | [M46, M47, M48] |
+| **M50** | [Operational Truth](../../.milestones/MILESTONE-50-operational-truth/MILESTONE.md) | in-progress: Architecture, roadmap, agent guidance and operations documentation match verified behavior and recovery guarantees. | [M49] |
 | **M51** | [UI Navigation and Layout](../../.milestones/MILESTONE-51-ui-navigation-and-layout/MILESTONE.md) | done: People can navigate, read and supervise agent work through a coherent interface at mobile, tablet and desktop sizes. | [] |
 | **M52** | [Release Candidate Validation](../../.milestones/MILESTONE-52-session-release/MILESTONE.md) | done: The completed session fixes have reproducible release validation and pass local dependency and release checks. | [M44, M45, M51] |
-| **M53** | [Workflow Correctness](../../.milestones/MILESTONE-53-workflow-correctness/MILESTONE.md) | todo: Every existing question, approval, search result and task edit keeps the correct scope, exposes all pending work and preserves user intent. | [M28, M51] |
-| **M54** | [Completion Evidence](../../.milestones/MILESTONE-54-completion-evidence/MILESTONE.md) | todo: External workers can discover, attach and read bounded task evidence through MCP, and people can inspect that evidence with accurate provenance. | [M46, M53] |
-| **M55** | [Attention Center](../../.milestones/MILESTONE-55-attention-center/MILESTONE.md) | todo: A person can find and resolve current questions, approvals, reviews and stalled claims from one scoped screen without losing underlying source truth. | [M48, M53, M54] |
-| **M56** | [Agent Connection](../../.milestones/MILESTONE-56-agent-connection/MILESTONE.md) | todo: A person can register an agent, issue a least-privilege token, configure an external worker and verify that credential through an actual authenticated API request. | [M54] |
-| **M57** | [Attempt Correlation](../../.milestones/MILESTONE-57-attempt-correlation/MILESTONE.md) | todo: Claims leave durable generation receipts and workers can optionally associate notes, usage and artifacts with the correct claim after release. | [M46, M54] |
-| **M58** | [Operational Views](../../.milestones/MILESTONE-58-operational-views/MILESTONE.md) | todo: Task and report filters survive reload and browser history, and people can reopen named tenant-safe personal or explicitly shared query definitions. | [M53] |
+| **M53** | [Workflow Correctness](../../.milestones/MILESTONE-53-workflow-correctness/MILESTONE.md) | done: Every existing question, approval, search result and task edit keeps the correct scope, exposes all pending work and preserves user intent. | [M28, M51] |
+| **M54** | [Completion Evidence](../../.milestones/MILESTONE-54-completion-evidence/MILESTONE.md) | done: External workers can discover, attach and read bounded task evidence through MCP, and people can inspect that evidence with accurate provenance. | [M46, M53] |
+| **M55** | [Attention Center](../../.milestones/MILESTONE-55-attention-center/MILESTONE.md) | done: A person can find and resolve current questions, approvals, reviews and stalled claims from one scoped screen without losing underlying source truth. | [M48, M53, M54] |
+| **M56** | [Agent Connection](../../.milestones/MILESTONE-56-agent-connection/MILESTONE.md) | done: A person can register an agent, issue a least-privilege token, configure an external worker and verify that credential through an actual authenticated API request. | [M54] |
+| **M57** | [Attempt Correlation](../../.milestones/MILESTONE-57-attempt-correlation/MILESTONE.md) | done: Claims leave durable generation receipts and workers can optionally associate notes, usage and artifacts with the correct claim after release. | [M46, M54] |
+| **M58** | [Operational Views](../../.milestones/MILESTONE-58-operational-views/MILESTONE.md) | done: Task and report filters survive reload and browser history, and people can reopen named tenant-safe personal or explicitly shared query definitions. | [M53] |
 
 M21–M29 are sequenced by explicit user priority (like M13 before M10) and
 carry no dependency edge; every numbered milestone before M29 is done. M29
@@ -168,7 +168,11 @@ Milestones with no dependency edge between them may run on separate branches.
 M02 is deliberately unblocking and can run alongside anything. After M01, the
 M03→M04 chain and the M05→{M06, M07} chain are independent.
 
-## Review delivery sequence — 2026-11-09
+## Historical review sequence — 2026-11-09
+
+The dated sequence below records the original plan. Current status is the
+milestone table above and the committed ledger, including delivered M47 and
+M53–M58; it is not a second pending-work list.
 
 The detailed acceptance and recommendation mapping is in
 [the delivery plan](../../.milestones/DELIVERY-PLAN-2026-11-09.md).
