@@ -255,3 +255,19 @@
   the last fixed stage rather than discarding the useful partial record.
   Continue to reject timeout/bootstrap/cleanup as proof, and preserve all
   real source/audit assertions and their existing70-second bounds.
+
+### Control reaches killed consumer but nullable exit polling misses it
+
+- Async control job136907107285 reaches first-audit-ready, broker-restarted,
+  before-consumer-kill and after-consumer-kill, then its60-second watchdog
+  fires without entering either observer phase. The consumer's .exited
+  promise has resolved, yet polling its nullable exitCode has not observed
+  completion. Raw exit getters and awaited results have not yet been logged.
+- Track each owned child's authoritative .exited promise settlement/result
+  before any kill. Use that lifecycle for checkpoint/observer/teardown state,
+  and record the nullable getter/signal versus awaited result in a tiny real
+  signal probe. The existing real consumer-kill control must now fail its
+  intended checkpoint with source4/audit3 and complete safe observations.
+- This corrects fixture lifecycle observation, not an asserted root cause
+  of the original broker recovery. Original outcomes/time bounds and T03's
+  incomplete state remain intact.
