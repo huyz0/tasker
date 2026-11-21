@@ -1,170 +1,157 @@
-# API Architecture Standards
+# API architecture standards
 
-**This system does not serve a REST API.** It serves a contract-first RPC API:
-TypeSpec → protobuf → Connect-RPC, with generated clients in TypeScript and Go.
-Everything below describes that. An earlier revision of this file described
-REST resources, `/api/v1/` URI versioning and a `{ data, meta }` envelope, none
-of which exists — see the note at the end before reintroducing any of it.
+The shared edge is contract-first RPC: TypeSpec to protobuf/Connect, with
+generated TypeScript and Go clients. Auth, telemetry, probes, metrics and
+the MCP JSON-RPC bridge are explicit HTTP edges; they are not a generic REST
+resource API.
 
-## 1. Contract first, always
+## 1. Contract and compatibility
 
-The contract is `packages/shared-contract/main.tsp`. It is the source; the
-TypeScript and Go clients and the server stubs are generated from it.
+`packages/shared-contract/main.tsp` is the source of wire messages and
+services. Its current namespace is `Tasker.Health.V1`, generating
+`tasker.health.v1`. Do not invent a separate per-domain package as if it
+already existed. A namespace/version migration needs an explicit design.
 
-- **Never hand-write a type that crosses the wire.** Add it to the TypeSpec
-  contract and regenerate. A type declared in a handler is a type the CLI and
-  GUI cannot see.
-- One `namespace Tasker.<Domain>.V1` per bounded context, with a matching
-  `@package({ name: "tasker.<domain>.v1" })`.
-- Services are declared as interfaces of methods:
+Each RPC takes one request message and returns its declared response.
+Do not hand-write an alternative wire model in a handler. Add optional
+fields in the source and regenerate the existing TS/Go outputs.
 
-  ```tsp
-  interface TaskService {
-    listTasks(request: ListTasksRequest): ListTasksResponse;
-  }
-  ```
+Field numbers are permanent: never renumber/reuse them. Preserve JSON names
+as well as protobuf compatibility. A required-field/type/name removal can
+break clients even when a convenient local type still compiles. Run the
+existing generated-contract and breaking-change checks.
 
-- **Methods, not resources.** `listTasks`, `archiveAgent`, `purgeArtifact`. The
-  REST instinct to force every operation into five HTTP verbs against a noun
-  does not apply and produces worse names here.
-- **Every method takes exactly one request message and returns exactly one
-  response message**, both named after it. This is what keeps a new optional
-  field from being a signature change.
-- All RPCs are **unary**. No streaming method exists in the contract; adding the
-  first one is an architectural decision, not a routine change.
+Most RPCs are unary. `EventService.SubscribeEvents` is already
+server-streaming; there is no client-streaming or bidirectional RPC.
+Follow its cancellation/auth/recovery contract rather than describing a new
+stream as the first one. Source: `modules/events/events.handler.ts` and
+the shared contract.
 
-## 2. Field numbers are permanent
+Versioning lives in the protobuf namespace, not an invented `/api/v1`
+resource prefix. A genuinely breaking API needs an intentional compatible
+rollout, not a suppressed generated-code warning.
 
-Every field carries an explicit `@field(n)`. These are protobuf wire numbers.
+## 2. Errors and uncertain outcomes
 
-- **Never renumber a field, and never reuse a retired number.** The wire format
-  keys on the number, not the name; a reused number silently decodes old data
-  into the wrong field.
-- Adding a new **optional** field with a fresh number is backward compatible.
-  Adding a required one, removing a field, or changing its type is not.
-- `@bufbuild/buf` runs breaking-change detection. If it objects, the answer is a
-  new field, not a suppressed warning.
+Throw `ConnectError` with an explicit `Code`. Do not return a successful
+message containing an error string or expose raw driver/body/secret data.
+Ordinary auth/debug HTTP errors use `lib/problemDetails.ts`; MCP uses its
+declared JSON-RPC protocol.
 
-## 3. Errors are Connect codes
-
-Throw `ConnectError` from `@connectrpc/connect` with an explicit `Code`. Do not
-return a success message carrying an error string, and do not throw bare
-`Error` — that surfaces as `Code.Internal` and leaks the message.
-
-| Code | Use for |
+| Code | Meaning |
 |---|---|
-| `Code.InvalidArgument` | Zod validation failure, malformed id, bad enum |
-| `Code.NotFound` | The row does not exist, or the caller may not know it does |
-| `Code.PermissionDenied` | Authenticated, but not a member of the org or lacking the role |
-| `Code.Unauthenticated` | No session — `requireUserId` raises this |
-| `Code.AlreadyExists` | Uniqueness conflict |
-| `Code.FailedPrecondition` | The state machine forbids this transition right now |
+| InvalidArgument | Malformed input, invalid enum or changed request under an existing keyed intent |
+| NotFound | Resource absent, or its existence must not be disclosed |
+| PermissionDenied | Valid principal lacks current role/scope/policy access |
+| Unauthenticated | No currently valid credential |
+| AlreadyExists | Uniqueness conflict |
+| FailedPrecondition | Current state forbids the operation |
+| Aborted | A rolled-back lock/reservation conflict; retry the same request and stable key |
+| ResourceExhausted | Admission/rate budget exhausted; honor a supplied retry delay |
+| DeadlineExceeded | Request deadline elapsed; a mutation's commit outcome may still be unknown |
 
-Prefer `NotFound` over `PermissionDenied` when revealing existence is itself a
-leak across org boundaries.
+`db/errors.ts` maps transaction conflicts. `Aborted` is not evidence
+that a second mutation should be created. A timeout/transport loss also
+must not cause a caller to invent a new key. Internal error codes alone
+do not identify a database/pool root cause.
 
-The two Elysia route groups (`/api/auth/*`, `/api/debug/*`) are ordinary HTTP
-and **do** use status codes, with RFC 7807 bodies from `lib/problemDetails.ts`.
-That is the only place HTTP semantics apply.
+## 3. Authorization is per resource and principal
 
-## 4. Versioning lives in the namespace
+The interceptor resolves authentication. Handlers still authorize before
+reading/mutating tenant data (`lib/authz.ts`, `lib/scopes.ts`).
 
-Version is part of the protobuf package: `tasker.tasks.v1`. There is no
-`/api/v1/` URI segment, because there are no URI paths to put it in.
+- Use `requirePrincipal` and `authorizePrincipal` for agent-capable
+  operations, with the declared scope and human policy permission.
+- Human-only operations use the existing human/role helpers and explicitly
+  refuse agents. A valid agent token is not an unauthenticated user.
+- Derive tenant/project scope from the canonical target. Do not authorize an
+  arbitrary org supplied beside a resource from another tenant.
+- Current authorization governs cached keyed replies and long-lived feeds.
+  A cached success is not a cached access grant.
+- New agent-capable methods require the closed RPC/scope mapping. The
+  existing sweep tests verify that registered services are covered.
 
-A breaking change means a `v2` namespace running alongside `v1`, not an edit to
-`v1`. Optional-field additions are not breaking (see §2).
+Prefer NotFound when disclosing existence across a tenant boundary leaks
+information. Use the established operation/unit-of-work wrappers so
+authorization, replay and coordinated changes retain their transaction
+boundary; do not move them into an unverified gateway shortcut.
 
-## 5. Pagination
+## 4. Mutation and event boundary
 
-The contract defines the shapes once — `PageRequest { limit, cursor, filter,
-sort }` and `PageResponse { nextCursor, totalCount }` — and every list method
-uses them. Do not invent per-endpoint pagination parameters.
+`db/access.ts` provides `withUnitOfWork`; asynchronous callbacks do not
+belong in Bun SQLite's synchronous transaction primitive. Coordinated domain
+changes, captured SQL source events and matching webhook rows commit or
+roll back together. Broker publication is after commit and may lag/retry.
 
-- **Cursor-based, never offset.** Cursors are opaque base64 to the caller;
-  `db/query-builder.ts` encodes the sort column, its value and the id, so a
-  cursor minted under one sort cannot be replayed under another.
-- **The server caps the page size.** `query-builder.ts:183` clamps to
-  `min(max(limit || 50, 1), 100)`. A caller asking for 10,000 rows gets 100.
-  Never add a list method that returns unbounded data.
-- `totalCount` is optional and is computed against the same filter as the page.
+`lib/idempotency.ts` scopes keys by principal and method, hashes request
+content, and reserves/executes/caches in one transaction. Its placeholder
+is not a public processing response. New stored request digests reject
+changed reuse. Generic keys become eligible for hourly cleanup after
+24 hours; do not promise unlimited replay protection.
 
-## 6. Latency budgets
+Schedule occurrence receipts have their own stable creation identity and
+frozen inputs (`modules/schedules/occurrenceExecution.ts`). A new manual
+Run creates a new intent; it is not the recovery action for an accepted
+occurrence. Current actor/credential checks still apply on recovery.
 
-Every list endpoint has a stated budget, measured as **p95 of the handler's own
-answer time** — the query plus its serialisation, not the round trip. A number
-that includes the socket measures the machine's networking as much as the read
-path.
+## 5. Bounded collections and streams
 
-**Every list endpoint is 150 ms unless named below.** Stating it as a default
-rather than a table of 22 rows means an endpoint added next month has a budget
-the day it is written, instead of being absent from a list nobody remembered to
-update.
+Paginated collections use the shared `PageRequest`/`PageResponse`
+shapes. `db/query-builder.ts` implements opaque keyset cursors bound to
+the sort column/value/ID; clients must not parse them. Its common page
+default is 50 and cap is 100. Use each declared endpoint's bounded shape
+for specialized histories/graph relationships; do not claim every method
+with a List name has an identical page wrapper.
 
-| Endpoint | Budget (p95) | Why it differs |
-|---|---|---|
-| *every `list*` method* | 150 ms | the default |
-| `universalSearch` | 300 ms | ranks its whole match set on every page (ADR-0010) |
-| `getDashboard` | 300 ms | answers four questions in one round trip instead of four |
-| `getReportExceptions` | 300 ms | five exception panels plus the fleet scorecard in one round trip (M24) |
-| `getReportTrends` | 300 ms | the CFD aggregates the project's entire activity history, not just the window (M24) |
+Do not load all tenant rows to filter/page them in memory or add an
+unbounded collection response. Counts and pages must share canonical
+scope/filter semantics. CLI `--page-all` is for supported paged commands,
+emits NDJSON and can emit earlier items before a later page fails.
 
-The ten measured at the scale target are `listTasks` (both the project list
-and one board column), `listArtifacts`, `listProjects`, `listAgents`,
-`listOrgMembers`, `universalSearch`, `getDashboard` and both Report RPCs — the
-endpoints a user waits on before a screen paints. The rest inherit the default
-and are measured when they become hot enough to matter.
+The live feed is ephemeral. It has a bounded 1000-entry queue and coalesced
+`stream.resync` control, not a durable complete history. Clients refetch
+canonical state after recovery/resync. Defaults are a 25-second heartbeat
+and 30-second quiet credential/scope revalidation, with expiry/invalidation
+also checked. Do not promise instantaneous global revocation. Durable
+audit delivery is the separate SQL/JetStream path.
 
-150 ms is the default because the browser still has to render what it gets, and
-the bar it has to clear is a screen painted within a second.
+## 6. Handler latency budgets
 
-Budgets are measured against the product's scale targets — 2,000 projects,
-50,000 tasks in one project, 100,000 artifacts, 100,000 members in an org — not
-against a fixture small enough to be fast by accident:
+Measure handler query/serialization p95 separately from socket time,
+multi-RPC workflows, queue recovery and setup/cleanup.
 
-```bash
+| Read | Handler p95 budget |
+|---|---|
+| Ordinary paginated list | 150ms |
+| universalSearch | 300ms |
+| getDashboard | 300ms |
+| getReportExceptions | 300ms |
+| getReportTrends | 300ms |
+
+Historical M07 evidence uses large data fixtures, including 2000 projects,
+50000 tasks in one project and 100000-scale artifact/member collections.
+Those records and `apps/backend/scripts/measure-latency.ts` describe
+data volume, not simultaneous clients. Re-measure relevant large fixtures
+after a schema/query-plan change.
+
+For a disposable fixture only:
+
+```sh
 cd apps/backend
 bun run seed -- --scale large
 bun run measure:latency
 ```
 
-`measure:latency` exits non-zero if any endpoint is over budget, so this is a
-check rather than a report. Committed figures live in the milestone journal
-that produced them (`.milestones/MILESTONE-07-read-path-scale/PROGRESS.md`),
-because a number without the fixture it was measured against is an anecdote.
+The command enforces its handler budgets. Current M49 staged HTTP evidence
+is in `docs/performance.md`: 1000 callers saturate badly, despite stable
+committed identities. Do not compare a three-RPC network workflow's p95
+directly to a single read handler's budget or claim a 20000-client fleet.
 
-**A budget is not a target to sit against.** The measurement exists to catch
-the shape of failure that hides at small scale: `universalSearch` was
-**368 seconds** at the scale target while every unit test passed in
-milliseconds, because SQLite had inverted a join. Adding an index for one query
-changes the plan of every other, so re-measure after touching the schema —
-that regression was caused by an index added two tasks earlier in the same
-milestone.
+## 7. Validation
 
-## 7. Authorization is per handler
-
-There is no gateway that authorises requests. Every handler does it, in this
-order, before touching data:
-
-1. `requireUserId(contextValues)` — raises `Unauthenticated`.
-2. `assertOrgMember(db, userId, orgId)` or `getOrgMemberRole` for role-gated
-   operations — raises `PermissionDenied`.
-
-Omitting either in a new handler is a cross-tenant data leak, not a style
-issue. `lib/authz.ts` is the only place these rules live.
-
-## 8. Validation at the boundary
-
-Parse every request with Zod at the top of the handler and work with the parsed
-value. Protobuf guarantees the shape, not the meaning: it cannot express "this
-string is a uuid", "this range is non-empty", or "this status is reachable from
-that one".
-
----
-
-**On the REST standard this replaced.** The previous version of this file
-specified resource URIs, HTTP verb semantics, a `{ data, meta }` envelope and
-URI versioning. None of it was ever built, and this file is auto-injected for
-API work — so an agent asked to add an endpoint was reading instructions for a
-different architecture. If REST is ever wanted as a public edge in front of the
-RPC contract, that is a decision for an ADR and a milestone, not a standard.
+Validate semantic inputs with the handler's declared Zod schema before domain
+work. Protobuf shape does not establish meaningful identifiers, allowed
+scope, safe size/range or a valid state transition. Respect the endpoint's
+unknown-field/compatibility policy rather than inventing a global coercion
+rule. Keep diagnostics bounded and free of credentials, raw SQL/body content
+and arbitrary exception text.

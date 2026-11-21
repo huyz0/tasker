@@ -2,7 +2,7 @@
 active_milestone: M50
 active_task: M50-T01
 last_updated: 2026-11-21
-last_commit: d0f38d5
+last_commit: b0a1ba2
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M50-T01 source-truth candidate prepared.** Architecture, API/security guidance and the declared technology inventory are reconciled against current source; SOURCE-TRUTH-AUDIT records the obsolete claims and evidence. No dependency, production behavior or historical ADR changes. The measured saturation boundary and unknown earlier stalls remain explicit. T01 stays unchecked until hosted Markdown/drift/final gates and four-lens review. T02 roadmap/integration guidance and T03 private backup/restore rehearsal follow. PR #20's atomic M49 publication checks continue independently; no main merge is inferred.
 
 **2026-11-21 — M50-T01 in progress on verified M49 candidate.** Parent d0f38d5 contains completed M49 tasks and all 18 source checks pass; PR #20's final combined-head gate is still running, so no main publication is inferred. Begin source-backed architecture/API/security/technology corrections with an in-progress journal and acceptance plan before content changes. Roadmap/integration truth and an actually exercised private backup/restore/recovery runbook follow as T02/T03. Preserve historical ADRs and the severe measured 1000-caller saturation boundary. This branch has 395 done/one dropped/three pending; M50 is in progress with zero tasks checked. Cloud-local execution remains unavailable; hosted checks provide evidence.
 

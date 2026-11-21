@@ -1,392 +1,258 @@
-# Architecture & Principles
-
-This document has two halves and one rule.
-
-**Built** describes the system that exists. Every mechanism stated in the
-present tense cites the file that implements it. If you cannot cite a path, the
-statement does not belong in this half.
-
-**Planned Architecture** describes what is intended and not yet built. Every
-entry names the milestone that owns it. Nothing there may be imported, called,
-or assumed by code written today.
-
-> Libraries and versions: [tech-stack.md](./tech-stack.md). Decisions and their
-> reasons: [`.specs/adr/`](../adr/). Delivery order: [roadmap.md](./roadmap.md).
-
----
-
-## Built
-
-### System context
-
-Tasker is a task-management system whose clients are both humans and AI agents.
-It exposes one API contract, defined in TypeSpec and served over Connect-RPC,
-consumed by a React SPA (`apps/gui/`) and a Go CLI (`apps/cli/`).
-
-- **Human identity** is Google OAuth 2.1 — `apps/backend/src/modules/auth/auth.ts`
-  for the routes, `modules/auth/session.ts` for cookie/bearer session
-  resolution, `lib/sessionRevocation.ts` for revocation checks.
-- **Agent identity** is a first-class principal, separate from human identity.
-  An agent holds its own scoped, revocable, rate-limited M2M token
-  (`lib/agentToken.ts` issues and verifies; `lib/scopes.ts` declares the closed
-  scope vocabulary and the per-RPC scope map; `lib/authz.ts`'s
-  `authorizePrincipal` is the agent branch of every authorization check).
-  Absence from `AGENT_RPC_SCOPES` denies, and `lib/agent-scope-sweep.test.ts`
-  fails the build for any handler method that is neither mapped nor refusing
-  agents — including a check that its own handler map covers every service
-  registered in `index.ts`. Delivered by M04; ADR-0008.
-- **External runtimes** integrate by calling the same Connect-RPC contract. There
-  is no separate agent-execution protocol.
-
-### Process and transport
-
-One process serves everything (`apps/backend/src/index.ts`):
-
-- A `node:http` server on port 8080 is the listener (`index.ts:157`).
-- Connect-RPC handlers are mounted through `connectNodeAdapter` from
-  `@connectrpc/connect-node`. Twenty-three services are registered from the
-  generated contract (`index.ts:3`) — twenty through `router.service(...)`
-  plus `search`, `dashboard` and `reports`, which take the router and register
-  themselves.
-- **Elysia handles two route groups only**, not the whole surface:
-  `/api/auth/*` (`modules/auth/auth.ts`) and `/api/client-errors` + `/api/debug/*`
-  (`modules/telemetry/telemetry.ts`). `index.ts:113-145` dispatches to them by
-  URL prefix and caps request bodies at 256 KiB before any handler runs.
-- **All RPCs are unary except one.** `EventService.SubscribeEvents` is
-  server-streaming (`modules/events/events.handler.ts`); nothing is
-  bi-directionally streaming. Every client of one process shares a single
-  `domain.>` subscription: each event is decoded once and offered to every
-  client, which keeps what its scope allows in a 1,000-entry queue that drops
-  the oldest when the client falls behind (M30-T08).
-- **The agent work queue is three RPCs on `TaskService`** (M33):
-  `ClaimNextTask` (atomic take-the-next-ready-task), `ReleaseTask` (give back
-  your own claim, optionally with a handoff note) and `ListMyTasks` (what the
-  caller holds across the org). Release is limited to claims by
-  `task_assignments.source` (ADR-0027).
-- **Tasks form a graph** (M35, ADR-0028): `tasks.priority`,
-  `tasks.parent_task_id`, and `task_links` rows (`blocked_by`,
-  `discovered_from`). The rules live in `modules/tasks/taskGraph.ts`: a task is
-  *ready* when open, unassigned and with no unfinished, undeleted blocker;
-  `ClaimNextTask` takes ready work by priority rank, and finishing a task
-  publishes `domain.task.unblocked` for each dependent it freed.
-- **MCP is a translation, not a second API** (M36, ADR-0029): `POST /mcp`
-  (`modules/mcp/`) implements the protocol's lifecycle and tools statelessly,
-  and every tool is a declared mapping onto one existing RPC, called over
-  loopback with the caller's own `Authorization` header - so it passes through
-  the same interceptors, scopes and rate limit as a direct call. `tasker mcp`
-  relays stdio clients to it.
-- **Webhooks ride an in-process outbox** (M37, ADR-0030):
-  `publishDomainEvent` offers every event to one sink
-  (`modules/webhooks/outbox.ts`), which writes a `webhook_deliveries` row per
-  matching webhook in the publishing process - so webhooks work without NATS.
-  A 5-second sweep (`delivery.ts`) leases due rows, signs and POSTs them,
-  retries with backoff and disables a webhook after 20 consecutive failures;
-  target addresses are vetted inside the connection's DNS lookup
-  (`urlSafety.ts`).
-- **Agents show their plan and ask people** (M38, ADR-0031): `tasks.plan` is
-  one JSON column replaced whole by `SetTaskPlan`; `input_requests`
-  (`modules/tasks/inputRequests.ts`) holds questions an agent asks and only a
-  person answers - notification through the registry, `task.input_*` events
-  that the feed and webhooks carry, and `openInputRequestCount` on every task.
-
-Cross-cutting behaviour is implemented as Connect interceptors in `index.ts`:
-session resolution, request logging (`lib/requestLogging.ts`) and per-method
-latency capture (`lib/rpcMetrics.ts`).
-
-### Bounded contexts
-
-The backend is a **modular monolith**. Twenty-two modules under
-`apps/backend/src/modules/` own their own handlers and schema access:
-
-`agents`, `artifacts`, `audit`, `auth`, `comments`, `dashboard`, `events`,
-`health`, `labels`, `mcp`, `memory`, `notifications`, `orgs`, `projects`,
-`reports`, `repositories`, `roles`, `search`, `tasks`, `teams`, `telemetry`,
-`webhooks`.
-
-Each exports a `create*Handler(router, db, nc)` factory registered in
-`index.ts`. Modules do not import one another's handlers; shared behaviour lives
-in `src/lib/`.
-
-### Data
-
-- **Two dialects, two schemas**: `db/schema.mysql.ts` and `db/schema.sqlite.ts`.
-  `db/db.ts` selects one via `setupDatabase("sqlite" | "mysql")`, driven by the
-  `STANDALONE` environment variable (`index.ts:38`).
-- Handlers pick the matching schema module at call time rather than at import
-  time — see the comment in `lib/authz.ts:8-13` explaining why freezing it at
-  module load queried the wrong dialect under test.
-- **Multi-tenant access control is enforced in application code**, not by
-  database row-level security. `lib/authz.ts` provides `requireUserId`,
-  `assertOrgMember` and `getOrgMemberRole`; org roles are `owner`, `admin`,
-  `member`, `viewer`, with `owner` treated as a superset of `admin`
-  (`lib/authz.ts:38`).
-- `db/query-builder.ts` centralises pagination and filter construction.
-- **Retention**: `lib/retentionSweep.ts` runs hourly from `index.ts:162`.
-  `lib/cascadePurge.ts` implements hard deletion.
-
-### Search
-
-**Search is served by a real index**, not a scan. `modules/search/search.handler.ts`
-queries SQLite's contentless FTS5 table joined on `rowid` and ranks with
-`bm25()`; the MySQL dialect uses a `FULLTEXT` index over the same columns.
-Six entity kinds are searchable, beliefs among them (M21-T06).
-
-Delivered by M07, which supersedes
-[ADR-0002](../adr/ADR-0002-like-scanning-instead-of-full-text-search.md)'s
-choice of `LIKE` scanning — the ADR stands as the record of why that was
-right at the time and what changed.
-
-### Events
-
-The backend **publishes** domain events to NATS and consumes none.
-
-- Connection: `index.ts:51`, wrapped by `lib/natsCorrelation.ts` so every
-  `domain.*` payload carries the request correlation id.
-- `publishDomainEvent(nc, subject, payload)` (`lib/natsCorrelation.ts:43`) is a
-  no-op when NATS is unreachable, so a missing broker degrades rather than fails.
-- Publishers: `modules/{tasks,agents,comments,labels,repositories}` handlers,
-  plus `modules/tasks/task_notes.handler.ts`. Subjects follow
-  `domain.<entity>.<verb>` — e.g. `domain.task.status_updated`
-  (`modules/tasks/tasks.handler.ts:576`).
-- **Two consumers read these events**, deliberately different in kind. A
-  durable JetStream projector (`consumers/auditProjector.ts`, run as its own
-  entry point — see Deployment below) derives the audit trail and must never
-  lose an event. An ephemeral per-connection subscriber
-  (`modules/events/events.handler.ts`) feeds the live GUI and would rather
-  drop than block, because a browser tab that fell behind wants current state
-  rather than a backlog. Authorization for the feed lives in
-  `modules/events/eventScope.ts`: org membership is the ceiling for a human,
-  and an agent additionally receives only the subjects its token's scopes
-  could have read (ADR-0023). Delivered by M08.
-
-### In-app notifications
-
-A person's notifications are rows, not a projection of the event stream: read
-state is per recipient, so the same event reaching three people is three rows
-in `notifications` (M29).
-
-- **Written through a registry**, `lib/notificationRegistry.ts`. An event type
-  registers a renderer producing title, body, target path and a dedupe key;
-  `writeNotifications` persists one row per recipient and never learns what any
-  particular type means. `modules/notifications/notifications.handler.ts` and
-  the GUI's `NotificationBell` are equally type-agnostic — a new type reaches
-  the bell without either changing. `task.stalled` is the only type registered
-  today; the handoff and review-request types M25 named are unbuilt.
-- **Detection is independent of delivery** (ADR-0026). `runStalledClaimAlertSweep`
-  used to return before any query when SMTP was unconfigured, so a deployment
-  without a mailer did no stalled-claim detection at all. It now detects,
-  records and publishes on every sweep, and email is one channel gated below
-  that. Two consequences a deployment feels: an SMTP-less deployment now runs
-  the detector hourly where it ran nothing, and the email digest still caps
-  itemization at `DIGEST_TASK_LIMIT` but no longer itemizes the overflow in a
-  later sweep — the overflow is a count in the mail and a full list in the bell.
-- **Recipients are people, not addresses.** `resolveTaskAlertRecipients`
-  returns a `userId` with a nullable email; the email channel skips the ones it
-  cannot address. Before M29 it filtered on email throughout, which silently
-  excluded every M13 local account with no address from alerting.
-- Reads are predicated on the session's `userId` as well as org membership, and
-  `NotificationService` is refused to agent principals categorically — an agent
-  has the event feed for the same facts.
-
-### Configuration
-
-`apps/backend/src/config.ts` implements a hierarchical loader validated by Zod
-at startup, with `config.test.ts` covering it.
-
-- Production reads `process.env`, which satisfies 12-factor deployment.
-- Standalone reads a `.env` next to the binary, loaded by Bun from the CWD.
-- Parsing failure is fatal at boot rather than deferred to first use.
-
-### Observability
-
-**Telemetry is OpenTelemetry over Pino, with the in-process counters kept.**
-The SDK is always installed, but an exporter is created *only* when
-`OTEL_EXPORTER_OTLP_ENDPOINT` is set (`lib/telemetry/otel.ts`) — without one,
-spans still exist, `traceparent` still propagates and every log line still
-carries a trace id, all in process, with nothing reaching for a collector that
-is not there. That is what the standalone binary requires.
-
-- `lib/logger.ts` — structured JSON logging.
-- `lib/rpcMetrics.ts`, `lib/businessEvents.ts`, `lib/httpMetrics.ts` — counters
-  and latency summaries, flushed to the log stream every five minutes
-  (`index.ts:169-175`).
-- `lib/errorRingBuffer.ts` + `lib/errorReporter.ts` — recent errors in memory;
-  `index.ts:41-47` makes uncaught exceptions fatal and logs unhandled rejections.
-- `modules/telemetry/telemetry.ts` exposes these over `/api/debug/*`.
-- `lib/problemDetails.ts` shapes error responses as `application/problem+json`.
-
-The counters below are a *view* of the same data, not a parallel system;
-`/metrics` exposes them in Prometheus format (`lib/prometheus.ts`). Delivered
-by M11, which discharges rather than reverses
-[ADR-0004](../adr/ADR-0004-in-process-counters-instead-of-opentelemetry.md) —
-that ADR deferred OTLP on two grounds, and both were answered rather than
-overruled.
-
-### Frontend
-
-`apps/gui/` is a **client-rendered single-page app**. There is no server-side
-rendering and no React Flow; routes are declared in `apps/gui/src/App.tsx` and
-data is fetched through TanStack Query against the generated Connect-RPC
-clients. Design tokens live in `apps/gui/src/index.css` and are enforced by
-`apps/gui/scripts/design-lint.mjs`. UI primitives are hand-rolled rather than
-Shadcn/Radix — decision and the M06 revisit:
-[ADR-0005](../adr/ADR-0005-hand-rolled-ui-primitives-instead-of-shadcn-and-radix.md).
-
-### CLI
-
-`apps/cli/` is a Cobra command tree (`apps/cli/cmd/`) over a Connect-RPC client.
-Commands cover agents, artifacts, auth, comments, labels, orgs, projects,
-project templates, repositories, search, tasks and task types.
-
-Output is human-readable text or `--json`. **The following do not exist**:
-`--fields` masks, `--page-all` NDJSON pagination, a `schema` introspection
-command, an MCP server mode, and any TUI. Those are described under Planned.
-
-### Deployment
-
-What is actually buildable today:
-
-- `bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts`
-  (`apps/backend/package.json`, wired as `backend:build-standalone` in
-  `apps/backend/moon.yml`). This compiles **the backend only**.
-- **The SPA is embedded** (M09-T02/T03). `scripts/bundle-gui.ts` packs
-  `apps/gui/dist` into a path → base64 manifest that `bun build --compile`
-  carries, and `lib/staticServer.ts` serves it with content types, cache
-  headers and SPA history fallback. The migrations travel the same way
-  (`db/embeddedMigrations.ts`), so the binary creates and migrates its own
-  SQLite database from an empty directory.
-- **There is no in-process transport, deliberately** — see
-  **ADR-0019**. The former `localInProcessTransportRouter` stub is deleted. The
-  GUI is a browser application, so its calls cross a real socket regardless of
-  what the server does internally, and a second entry point into the handlers
-  would mean a second ordering of the session, rate-limit and logging
-  interceptors.
-- Standalone uses `bun:sqlite`; clustered deployment uses MySQL and an external
-  NATS server. No container images, Kubernetes manifests or CDN configuration
-  are committed.
-
-### Observability and deployment (M11)
-
-- **Tracing** is OpenTelemetry, exporting over OTLP **only** when an endpoint is
-  configured; otherwise spans, propagation and log correlation all still work in
-  process with no external dependency. See `observability-standard.md` §5 and
-  ADR-0004, whose "until M11" this discharges.
-- **Metrics** are the same in-process counters, rendered at `GET /metrics` in
-  Prometheus exposition format. No second measurement, no metrics library.
-- **Health** is three signals: `/healthz` (liveness, depends on nothing),
-  `/readyz` (readiness, false while draining) and `HealthService/Ping` (the
-  whole system, database and broker included).
-- **Shutdown** stops reporting ready, waits for the load balancer to notice,
-  drains in-flight requests, then closes NATS and flushes spans — in that
-  order, because closing the broker first makes an in-flight mutation succeed
-  while its event vanishes.
-- **Container image**: `apps/backend/Dockerfile`, two stages, non-root,
-  no interpreter or package manager in the runtime layer. The same image runs
-  the API and the projector, by entrypoint.
-- **Full stack**: `docker compose --profile full up` brings up MySQL, NATS, the
-  API, the projector and an OTLP collector.
-- **Deployment sample**: `deploy/kubernetes.yaml`, annotated — including the
-  proxy read-timeout that M08's streaming endpoint requires, and the
-  `terminationGracePeriodSeconds` that has to exceed the drain budget or a pod
-  is killed mid-drain.
-
-### Quality gates
-
-`moon check --all` runs 22 tasks, mirrored in `.github/workflows/ci.yml`:
-type-checking, `oxlint`, unit tests behind a 95% coverage threshold, `knip`,
-`tasker:skills-check`, `tasker:docs-lint` and `gui:design-lint`. Playwright
-end-to-end (`gui:e2e`) is `type: run` and executed explicitly in CI against a
-seeded backend. `oxlint` is the only TypeScript linter and no formatter runs —
-decision and its cost:
-[ADR-0001](../adr/ADR-0001-oxlint-instead-of-eslint-and-prettier.md).
-
-### Non-functional characteristics
-
-Stated honestly: the properties below are **designed for**, not measured. No
-load test, benchmark or profiling run is committed.
-
-| Property | What exists today |
-|---|---|
-| Type safety | End-to-end and real — TypeSpec → protobuf → generated TS/Go, Drizzle schema types, Zod at every boundary. |
-| Latency | `lib/rpcMetrics.ts` records per-method P50/P95 and logs a summary every five minutes. No target is asserted or enforced. |
-| Scalability | The backend is stateless apart from in-memory counters, so it can run behind a load balancer. This has never been run multi-instance. |
-| Reliability | NATS failure degrades to no-publish (`lib/natsCorrelation.ts:45`); config failure is fatal at boot. |
-| Security | Sessions with revocation, policy-based authorization on every handler, 256 KiB body cap. Rate limiting exists (`lib/rateLimit.ts`, `lib/loginRateLimiter.ts`) and is **per-instance**, so N replicas multiply the effective limit by N — a shared store is the fix and needs a decision about which store. |
-
-**What is measured, and what is not.** *Data* scale is measured:
-`scripts/measure-latency.ts` drives the hot read paths against a seeded
-fixture at the scale targets (2,000 projects, 50,000 tasks in one project,
-100,000 artifacts in one folder, 100,002 organization members) and every
-endpoint is inside the per-endpoint p95 budget declared in `api-standard.md`
-§6. *Concurrency* is not: there is no load test in this repository, nothing
-has been run multi-instance, and the cost of N simultaneous event-feed
-subscribers is unmeasured. The figures above describe data volume, not
-simultaneous callers.
-
----
-
-## Planned Architecture
-
-Not built. **Nothing here has an owning milestone**: every numbered milestone
-in the ledger is closed, so each entry below is genuinely unscheduled rather
-than waiting its turn. Do not write code against any of it.
-
-Entries that used to live here — event consumers and live updates, the single
-portable binary, OpenTelemetry, agent identity and quotas — were delivered by
-M08, M09, M11 and M04/M10 respectively and now appear under **Built**, with
-citations.
-
-### CQRS with a separate read store — unowned
-
-The intent is asymmetric handling: writes commit to MySQL and emit an event;
-reads serve from a materialised view so agent write bursts cannot degrade
-human dashboard queries.
-
-Today there is still **one path**: reads and writes both hit the transactional
-database. What has changed since this entry was written is that search is no
-longer the argument for it — M07 answered that with a real FTS5 / `FULLTEXT`
-index rather than a separate store.
-[ADR-0003](../adr/ADR-0003-no-separate-read-store-before-measurement.md)
-therefore stands unchanged, including its own honest caveat: it defers the
-decision pending measurement, and the measurement that would trigger it is
-concurrency, which nothing measures yet (see Non-functional characteristics).
-**OpenSearch is not installed and nothing commits to it** — one candidate,
-to be chosen against measured need.
-
-### Graphical state-machine editing — unowned
-
-Task state machines are configured through the API and from the Task Types
-screen (`apps/gui/src/features/TaskTypes/`), which is a list-and-detail
-editor. A *visual* editor — a canvas of statuses and transitions — is not
-built and the library is an open choice. React Flow was named in an earlier
-draft of this document and is not a commitment;
-[tech-stack.md](./tech-stack.md)'s Dropped table records why.
-
-### Agent-facing CLI ergonomics — unowned
-
-Field masks (`--fields`), NDJSON pagination (`--page-all`) and schema
-introspection (`cli schema <cmd>`) exist as intent only — none appears in
-`apps/cli/cmd/`. An MCP server mode and a TUI are named in no milestone; see
-the Dropped table in [tech-stack.md](./tech-stack.md).
-
-### Signed release binaries — unowned
-
-The release binaries are versioned and cross-platform and **not signed**.
-M09 and M12 both deferred this for the same reason: signing needs
-certificates this project does not have. Recorded here rather than left
-implied, because "portable single binary" otherwise reads as complete.
-
-### Measured concurrency — unowned
-
-The Mission Scale targets 20,000 concurrent agents and 20,000 concurrent
-users. Data scale is measured and within budget; **concurrency has never been
-simulated at all**, there is no load test in this repository, and nothing has
-run multi-instance. This is the largest gap between what the product claims
-and what it has evidence for, and it is nobody's milestone.
-
-### Not planned by anyone
-
-Server-side rendering and React Flow appeared in earlier revisions of this
-document as present-tense descriptions. Neither is built, and no milestone
-owns either. They are recorded in the Dropped table of
-[tech-stack.md](./tech-stack.md) so they are not reintroduced by accident.
+# Architecture and operating boundaries
+
+This document describes delivered behavior and cites its implementation.
+Historical ADRs explain earlier decisions; they do not override the current
+source. [Technology inventory](tech-stack.md), [roadmap](roadmap.md) and
+[measured limits](../../docs/performance.md) provide the related detail.
+
+## Product and contract
+
+Tasker is a modular task-management system for people and external workers.
+It records work, claims, evidence, questions, approvals, usage and schedules;
+it does not host an autonomous worker's model execution.
+
+The TypeSpec source is `packages/shared-contract/main.tsp`. Its current
+namespace is `Tasker.Health.V1`, generating the existing
+`tasker.health.v1` protobuf/Connect contract. React and Go clients consume
+that contract. Most RPCs are unary; `EventService.SubscribeEvents` is
+server-streaming. There is no client-streaming or bidirectional RPC.
+
+Human accounts support local username/password login and optional linked
+Google identity, not Google-only identity (`modules/auth/auth.ts`,
+`lib/credentials.ts`, the dialects' users/credentials/linked-identity tables).
+Sessions resolve through `lib/authenticate.ts` and
+`modules/auth/session.ts`, with current revocation checks.
+
+Agents are separate principals with opaque scoped credentials
+(`lib/agentToken.ts`, `lib/scopes.ts`, `lib/authz.ts`). Stored tokens are
+hashed; a token is not a human session. RPCs absent from the closed agent
+scope map are denied. The agent-scope sweep checks registered services.
+
+Unless prefixed otherwise, backend paths below are relative to
+`apps/backend/src/`.
+
+## Processes and transports
+
+`index.ts` hosts the Node-compatible HTTP listener and Connect adapter.
+Auth and telemetry use Elysia route groups, while health/readiness/metrics
+and MCP have explicit HTTP dispatch. MCP uses JSON-RPC lifecycle/tool
+messages at `POST /mcp`; its mappings call the existing RPCs over loopback
+with the caller's authorization, so it shares authentication, scopes and
+rate limiting (`modules/mcp/`). The Go CLI's `tasker mcp` is a stdio relay.
+
+A separate entrypoint, `consumers/index.ts`, runs the durable audit
+projector. The API also owns recoverable background event/webhook/schedule
+work. Saying that the backend publishes but consumes nothing is incorrect.
+
+The backend modules are `agents`, `artifacts`, `attention`, `audit`,
+`auth`, `comments`, `dashboard`, `events`, `health`, `labels`, `mcp`,
+`memory`, `notifications`, `orgs`, `projects`, `reports`,
+`repositories`, `roles`, `schedules`, `search`, `tasks`, `teams`,
+`telemetry`, `views`, `webhooks` and `workflows`. Handler factories
+register in `index.ts`; search/dashboard/reports take the router directly.
+This is one modular application, not a microservice split.
+
+Shared rules live in `lib/`, but there is no blanket prohibition on
+cross-module handler reuse: schedule execution deliberately invokes task and
+workflow behavior inside its authorized transaction
+(`modules/schedules/occurrenceExecution.ts`). It does not create another
+public API or bypass the original actor's permissions.
+
+## Authorization and persistence
+
+The session interceptor resolves a principal. Each handler then authorizes
+that principal against the canonical resource and tenant using
+`lib/authz.ts` and policy helpers. Authentication alone grants no resource
+access. Human role/policy checks and agent org/scope checks are distinct.
+
+MySQL serves the clustered configuration; `bun:sqlite` serves standalone.
+`db/db.ts` selects `schema.mysql.ts` or `schema.sqlite.ts` using the
+configured mode. Handlers select the matching schema at call time.
+Tenant isolation is application-enforced, not database row-level security.
+
+`db/access.ts` supplies the asynchronous unit-of-work boundary. Use that
+boundary for coordinated writes; do not pass an asynchronous callback to
+Bun SQLite's synchronous transaction primitive. Changes, captured source
+events and matching webhook deliveries commit or roll back together.
+
+Keyed mutations reserve, execute and store their result in one transaction
+(`lib/idempotency.ts`). The key is scoped to principal and method, and a
+request digest rejects changed reuse. A lock/reservation conflict becomes
+Connect `Aborted` (`db/errors.ts`); retry the same request/key. A client
+deadline does not establish that the write failed to commit. Replay remains
+subject to current authorization. Generic keys have a 24-hour retention
+threshold and hourly cleanup; that is not an unlimited retry guarantee.
+
+Tasks have priorities, parent/dependency links and claim-generation receipts.
+The task modules enforce readiness and ownership, and retain attempt
+correlation after release. Plans, human input/approval, completion evidence,
+usage and workflow creation are delivered surfaces, not proposed extensions.
+See `modules/tasks/`, `modules/artifacts/`, `modules/workflows/` and
+[agent integration](../../docs/agent-integration.md).
+
+## Durable events, audit and webhooks
+
+The production mutation path captures source events in SQL before commit
+(`lib/domainEventOutbox.ts`, `lib/natsCorrelation.ts`). Matching webhook
+delivery rows are created deterministically in the same transaction
+(`modules/webhooks/outbox.ts`). An in-memory publish callback is not the
+durability boundary.
+
+`lib/domainEventRuntime.ts` and `lib/domainEventRelay.ts` lease pending
+events with a fencing token. The default lease is 60 seconds; retries back
+off from five seconds to five minutes. Broker-required source rows are
+marked delivered only after a real JetStream publication acknowledgement.
+A missing broker retains SQL work for retry instead of silently dropping
+the event. Standalone without a configured broker projects locally; MySQL
+and explicitly broker-configured standalone use the broker path.
+
+Broker messages carry bounded references with stable producer IDs, not
+large artifact bodies. The audit projector loads the committed source,
+writes idempotently using its event identity, then acknowledges delivery
+(`consumers/auditProjector.ts`). A source row's `delivered_at` means broker
+acceptance, not that audit or an HTTP webhook receiver has finished.
+
+`consumers/stream.ts` defines stream `DOMAIN_EVENTS` over `domain.>`,
+seven-day broker retention, durable consumer `audit-projector`, explicit
+acknowledgement, a 30-second ACK wait and five delivery attempts. Delivered
+SQL source retention is 14 days. These are bounded recovery windows, not
+exactly-once delivery forever. Exhausted/expired work requires operator
+inspection; restarting a consumer does not promise unlimited redelivery.
+
+Webhook workers separately lease, sign, send and retry SQL deliveries
+(`modules/webhooks/delivery.ts`, `urlSafety.ts`). Stale owners cannot
+overwrite a successor. DNS/address validation is applied at connection
+time. Webhook identity and producer event identity have different roles;
+receivers must deduplicate the delivery chain. Details and inspection SQL
+are in [webhooks](../../docs/webhooks.md).
+
+## Live reconciliation
+
+The live feed is ephemeral and distinct from durable audit delivery.
+`modules/events/events.handler.ts` shares one broker subscription per
+API process. Each client has a bounded 1000-entry queue plus an out-of-band,
+coalesced resync flag. Overflow cannot silently impersonate a complete
+history: `stream.resync` tells the client to refetch canonical state.
+
+Defaults are a 25-second heartbeat and 30-second quiet credential/scope
+revalidation, with scope invalidation and credential expiry also checked.
+Revocation is bounded revalidation, not a promise of instantaneous global
+delivery suppression. Canonical reads and keyed-response replay always
+require current authorization. See `modules/events/eventScope.ts`.
+
+The GUI reconciles on reconnect/first-frame recovery and resync, cancelling
+stale reads before invalidation/refetch. Client backoff is bounded with
+jitter. Real browser and CLI journeys cover recovery; the recorded evidence
+is in the M48 milestone and `apps/gui/tests/e2e/`.
+
+## Recoverable schedules
+
+`modules/schedules/` admits durable creation receipts with frozen inputs.
+`occurrenceExecution.ts` fences a 60-second owner lease, rechecks the
+original actor and credential, and creates work/its terminal receipt in the
+same coordinated transaction. Interrupted work can resume after eligibility
+and lease expiry; a stale owner cannot replace a newer result.
+
+Editing a template or schedule does not rewrite already frozen inputs.
+Pausing prevents future admissions. A new manual Run is a new creation
+intent, not a retry of an accepted occurrence. Stable schedule receipt
+identity survives generic idempotency-key cleanup. History exposes outcome,
+attempts and recovery information; it must not be reduced to an invented
+fixed `created|skipped|failed` union.
+
+## Search and user interface
+
+`modules/search/search.handler.ts` uses SQLite FTS5 and MySQL FULLTEXT.
+Indexes and bounded filtering/pagination are real; the original LIKE
+scanning decision was superseded by M07. Reads and writes still use the
+transactional database. OpenSearch and a separate read store are absent.
+
+The GUI is a client-rendered React SPA with routes in
+`apps/gui/src/App.tsx` and generated Connect clients behind TanStack Query.
+Tokens live in `apps/gui/src/index.css` and are checked by
+`apps/gui/scripts/design-lint.mjs`. Dialog, dropdown-menu and tabs use
+Radix with local components; hand-rolled primitives are not a universal rule
+([ADR-0011](../adr/ADR-0011-adopt-radix-for-overlay-and-navigation-primitives.md)).
+
+The M51 navigation/layout review records the independently researched
+system-font/violet decision, grouped navigation and responsive fixes.
+Attention, agent connection, evidence, attempt correlation and saved views
+are delivered and recorded by M53–M58. A theme token or a passing screenshot
+is not evidence of unmeasured user-study outcomes.
+
+## CLI
+
+`apps/cli/cmd/` is a Cobra command tree over generated Go Connect clients.
+`--json` emits stable compact JSON; supported paged lists offer
+`--page-all` NDJSON, cursor-loop detection and a bounded page count
+(`cmd/output.go`). Earlier pages may already be written when a later one
+fails. Error output/exit status remain significant.
+
+The default `--timeout` is 30 seconds per backend request, including a page
+or forwarded MCP request, not the entire command/MCP session
+(`internal/backend/request_lifetime.go`, `cmd/root.go`). Earlier parent
+deadlines and cancellation still apply. Stdio MCP relay exists; a TUI,
+field masks and a schema-introspection command do not.
+
+## Deployment, telemetry and checks
+
+The standalone build embeds the SPA and migrations
+(`apps/backend/scripts/bundle-gui.ts`, `db/embeddedMigrations.ts`,
+`lib/staticServer.ts`). It is not a backend-only binary. There is one
+HTTP/RPC ordering; the rejected in-process transport is not a planned API.
+
+`apps/backend/Dockerfile` builds API and consumer binaries and runs as a
+non-root user. `docker-compose.yml`, `deploy/kubernetes.yaml` and
+`deploy/otel-collector.yaml` are committed deployment examples. Their
+presence is not evidence of a production deployment. Database, broker
+storage and encryption secrets require an operator's backup policy.
+
+Pino and OpenTelemetry provide logs/traces; OTLP export is created only
+when configured (`lib/telemetry/otel.ts`). In-process counters feed
+`GET /metrics` (`lib/prometheus.ts`). Liveness `/healthz` is independent
+of dependencies; `/readyz` reports lifecycle readiness and becomes false
+while draining. `HealthService.Ping` is a separate dependency check.
+Shutdown stops admission/leasing, drains work and closes resources.
+
+The exact repository gate is `moon check --all`, supplemented by explicit
+native-service, browser, rendered-story, standalone and packaging jobs in
+`.github/workflows/`. M49's verified source runs 37 repository checks;
+task declarations, rather than this snapshot count, define the current
+gate. GUI coverage enforces its configured 95% thresholds. Vulnerability
+CI includes the JavaScript high/critical ratchet and Go govulncheck.
+
+Toolchains come from `.prototools` through checked local setup actions:
+Node 24.22.3, Bun 1.3.11, Moon 2.4.6 and Go 1.26.11 at this revision.
+Cross-compiled packaging is tested on Linux; native execution of every
+target is not implied. No release or deployment is performed by a PR check.
+
+## What measurements establish
+
+Historical M07 data-volume fixtures and handler p95 budgets are distinct
+from M49's real HTTP, multi-process, concurrent-caller workload. A unit-test
+pass does not recertify every historical large fixture.
+
+[Performance evidence](../../docs/performance.md) retains hardware, runtime,
+dataset, defaults, latency samples, uncertain outcomes and recovery tails.
+Three short 100-caller observations complete without request errors.
+At 1000 callers the completed measurement has only 57/3000 complete
+workflows and 2943 errors, despite correct reconciliation of eventual
+commits. Two earlier larger commands have no completed result.
+
+This does not establish healthy 1000-caller service, steady-state queue
+stability, all endpoints, streaming, multiple hosts or 20000 concurrent
+agents/users. Rate limiting is per process; replicas multiply that budget
+(`lib/rateLimit.ts`). Durable SQL/ACKed retry is not unlimited retention.
+
+## Unscheduled decisions
+
+A separate read store/OpenSearch, representative sustained multi-project
+profiling, shared rate coordination and improved overload/admission policy
+need measured requirements and recorded decisions. The observed write
+burst alone does not select a CQRS architecture.
+
+A visual state-machine canvas, CLI field masks/schema inspection/TUI and
+signed release binaries remain unscheduled. Certificates/signing and native
+cross-platform validation are not implied by portable binaries. SSR and
+React Flow are not installed choices. Keep historical ADRs intact and
+record a new decision before introducing these technologies.

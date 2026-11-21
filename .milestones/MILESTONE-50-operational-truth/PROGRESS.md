@@ -26,3 +26,19 @@
   backup. No local executor, clean-tree or unrun rehearsal is claimed.
 - **Next**: Implement T01 corrections, review four lenses and record actual
   hosted verification before checking the task.
+
+### T01 source reconciliation candidate
+
+- Replace obsolete architecture with cited current boundaries: local/linked
+  identity, separate principals, real streaming/MCP, SQL capture/ACKed relay,
+  durable audit, resync, recoverable schedules, current GUI/CLI and deployment.
+- Correct API guidance for the actual namespace, stream, principal checks,
+  transactional replay/processing conflicts, bounded collections and distinct
+  handler/data-volume/concurrent-workflow measurements.
+- Correct security guidance for current gates, principal/protocol boundaries,
+  existing Markdown sanitization, secret-safe diagnostics and per-process
+  rate limits. Retry-After is a minimum wait, not guaranteed future capacity.
+- Reconcile the technology inventory with declared manifest ranges; remove
+  delivered work from the unbuilt list and restore actual MSW/CLI MCP facts.
+  Add a source-truth audit. No dependency, production behavior or historical
+  ADR changes. Hosted lint/drift/final verification remains pending.
