@@ -25,7 +25,8 @@
     "measure:concurrency": "bun run scripts/measure-concurrency.ts",
     "typecheck:measurement": "bunx tsc --project tsconfig.measurement.json --noEmit",
     "prove:measurement-core": "bun run scripts/prove-measurement-core.mjs",
-    "prove:measurement-quiescence": "bun run scripts/prove-measurement-quiescence.mjs"
+    "prove:measurement-quiescence": "bun run scripts/prove-measurement-quiescence.mjs",
+    "prove:measurement-transport": "bun run scripts/prove-measurement-transport.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

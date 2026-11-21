@@ -85,8 +85,9 @@ async function main(args: string[]) {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));return value;
   }
   function start(kind: Child['kind'], entry: string, args: string[], url: string) {
+    const runtimeEnv = { ...process.env };delete runtimeEnv.BUN_CONFIG_MAX_HTTP_REQUESTS;
     const childProcess = spawn({ cmd: [process.execPath, 'run', join(import.meta.dir, '../src', entry), ...args], cwd: directory,
-      env: { ...process.env, ...shared, DB_HOST: host, DB_NAME: database, STANDALONE: 'false', NATS_URL: url,
+      env: { ...runtimeEnv, ...shared, DB_HOST: host, DB_NAME: database, STANDALONE: 'false', NATS_URL: url,
         NODE_ENV: 'development', LOG_LEVEL: 'silent', SHUTDOWN_PRE_DRAIN_MS: '0',
         OTEL_EXPORTER_OTLP_ENDPOINT: '', OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: '' }, stdout: 'ignore', stderr: 'ignore' });
     const child = { process: childProcess, kind, stopped: false };children.push(child);return child;
@@ -283,7 +284,7 @@ async function main(args: string[]) {
     const finalConsumer = await jsm.consumers.info(STREAM_NAME, DURABLE_NAME);
     report = {
       kind: 'tasker-http-concurrency-v1', startedAt, commit: process.env.GITHUB_SHA || 'unrecorded',
-      workload: { ...config, mode: 'closed-loop create/replay/get; one shared project', actualPrincipals: actualAgents, apiPids: measured.map(child => child.process.pid),
+      workload: { ...config, transport: 'bun-native-fetch-connect', generatorMaxHttpRequests: Number(process.env.BUN_CONFIG_MAX_HTTP_REQUESTS) || 256, mode: 'closed-loop create/replay/get; one shared project', actualPrincipals: actualAgents, apiPids: measured.map(child => child.process.pid),
         peakActive, fixtureTasks: actualFixtureTasks, poolSizePerApi: Number(process.env.DB_POOL_SIZE) || 20, poolQueueLimitPerApi: Number(process.env.DB_POOL_QUEUE_LIMIT) || 200 },
       timing: { setupMs: started - launched, phaseMs, lastAdmissionOffsetMs, postObservationMs, apiDrainMs, recoveryMs, sqlDrainMs, oracleMs: performance.now() - oracleAt, cleanupMs: 0, totalMs: 0, observerIntervalMs: 500 },
       counts: { attemptedLogical: attempts.length, completedLogical: completed.length, acknowledgedWrites: acknowledged, persistedMeasuredTasks: sourceRows.length, persistedProducerEvents: producers.length, persistedAuditRows: audit.length, rpcCalls, errors },

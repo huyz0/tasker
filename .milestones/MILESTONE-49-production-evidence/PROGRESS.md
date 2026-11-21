@@ -746,3 +746,22 @@
   edits are committed separately and pause behind this dependency correction.
   Main remains d7e2e45; this repair candidate is 392 done/one dropped/six
   pending, M49 3/6. No local execution is claimed.
+
+### Actual stalled-RPC red before native transport correction
+
+- Job 136872346255 on source 1fab5a4 executes both real endpoint cases.
+  Deadline200ms passes with received true/settled true/Code4. Controller
+  cancellation fails with received true/settled false/code null, giving
+  exactly one pass/one intended failure. This is not a bootstrap failure.
+- The shared measurement transport now uses the already-installed Connect
+  Web transport over Bun native fetch. A whole-unary-call interceptor combines
+  the request, controller and explicit deadline signals and clears its timer.
+  Header/auth behavior and generated binary RPCs remain unchanged.
+- The larger staged profile explicitly configures/reports1024 generator fetch
+  requests. Owned API/consumer children omit that generator setting and keep
+  their defaults. Preserve pool/limiter/SQL/source/audit semantics.
+- Add a second identical1000-caller stage with a separate file. Keep the
+  existing external bound. Add actual disabled-deadline/disabled-cancellation
+  fault proofs against the accepted-but-unanswered endpoint, requiring the
+  intended assertion failure and byte restoration. Green remains pending;
+  no server/runtime root cause or healthy capacity is inferred.

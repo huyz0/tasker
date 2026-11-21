@@ -397,6 +397,9 @@ jobs:
       - name: Real stalled-RPC deadline and cancellation regressions
         working-directory: apps/backend
         run: bun test src/test/measurementTransport.test.ts
+      - name: Prove real stalled-RPC deadline and cancellation oracles
+        working-directory: apps/backend
+        run: bun run prove:measurement-transport
       - name: Measurement script types
         run: moon run backend:typecheck-measurement
       - name: Prepare owned broker image
