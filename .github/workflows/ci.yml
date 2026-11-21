@@ -348,6 +348,8 @@ jobs:
         run: moon run backend:test-recovery-mysql
       - name: Prove empty backup fails the restored identity oracle
         run: cd apps/backend && bun run test:recovery:backup-proof
+      - name: Prove killed consumer reaches the recovery observer
+        run: cd apps/backend && bun run test:recovery:observer-proof
       - name: Prove acknowledged audit loss and duplicates fail
         run: cd apps/backend && bun run test:recovery:audit-proof
 

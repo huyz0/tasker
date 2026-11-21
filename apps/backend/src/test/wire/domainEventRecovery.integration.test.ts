@@ -12,7 +12,7 @@ import { count, eq } from 'drizzle-orm';
 import { setupDatabase } from '../../db/db';
 import { transactionConflict } from '../../db/errors';
 import { brokerEventReference } from '../../lib/domainEventRelay';
-import { STREAM_NAME } from '../../consumers/stream';
+import { STREAM_NAME, DURABLE_NAME } from '../../consumers/stream';
 
 const WORKER = String.raw`
 const c = JSON.parse(process.env.TASKER_DOMAIN_RECOVERY_CASE);
@@ -162,7 +162,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       return track(spawn({ cmd: [process.execPath, '--eval', WORKER], cwd: join(sourceRoot, '..'), env: { ...childEnv(), TASKER_DOMAIN_RECOVERY_CASE: JSON.stringify({ sourceRoot, driver, path, mode, url, orgId, userId, projectId, ...extra }) }, stdout: 'pipe', stderr: 'pipe' }));
     }
     function consumer(url: string) {
-      return track(spawn({ cmd: [process.execPath, 'run', join(sourceRoot, 'consumers/index.ts')], cwd: directory, env: { ...childEnv(), NATS_URL: url }, stdout: 'pipe', stderr: 'pipe' }));
+      return track(spawn({ cmd: [process.execPath, 'run', join(sourceRoot, 'consumers/index.ts')], cwd: directory, env: { ...childEnv(), NATS_URL: url, LOG_LEVEL: 'error' }, stdout: 'pipe', stderr: 'pipe' }));
     }
     async function result(child: Child) {
       const timeout = setTimeout(() => child.process.kill('SIGKILL'), 20_000);
@@ -360,7 +360,62 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       await docker('start', container);
       await wait(async () => { try { const nc = await natsConnect({ servers: url, timeout: 250, maxReconnectAttempts: 0 }); await nc.drain(); return true; } catch { return false; } }, 'owned broker restart');
       const resumedProjector = consumer(url);
-      await wait(async () => (await auditCount()) === 4, 'broker/relay recovery and resumed audit', 70_000);
+      try {
+        await wait(async () => {
+          if (resumedProjector.process.exitCode !== null) throw new Error('owned audit consumer exited during broker recovery');
+          if (reconnecting.process.exitCode !== null) throw new Error('owned producer relay exited during broker recovery');
+          return (await auditCount()) === 4;
+        }, 'broker/relay recovery and resumed audit', 70_000);
+      } catch (error) {
+        const observed: Record<string, unknown> = {
+          kind: 'runbook-broker-recovery-observation', driver,
+          relayExitCode: reconnecting.process.exitCode, consumerExitCode: resumedProjector.process.exitCode,
+          relaySignal: reconnecting.process.signalCode ?? null, consumerSignal: resumedProjector.process.signalCode ?? null,
+          relayWasRunning: reconnecting.process.exitCode === null, consumerWasRunning: resumedProjector.process.exitCode === null,
+        };
+        try {
+          const rows = await sourceStates();
+          observed.sourceCount = rows.length;
+          observed.deliveredSources = rows.filter((row: any) => row.deliveredAt).length;
+          observed.attemptedSources = rows.filter((row: any) => row.attempts > 0).length;
+          observed.auditRows = await auditCount();
+        } catch { observed.sqlProbeFailed = true; }
+        let observer: Awaited<ReturnType<typeof natsConnect>> | undefined;
+        try {
+          observer = await natsConnect({ servers: url, timeout: 500, maxReconnectAttempts: 0 });
+          const manager = await observer.jetstreamManager({ timeout: 1500 });
+          const stream = await manager.streams.info(STREAM_NAME);
+          const info = await manager.consumers.info(STREAM_NAME, DURABLE_NAME);
+          observed.brokerMessages = stream.state.messages;
+          observed.consumerPending = info.num_pending;
+          observed.consumerUnacked = info.num_ack_pending;
+          observed.consumerAckFloor = info.ack_floor.stream_seq;
+          observed.consumerDelivered = info.delivered.stream_seq;
+        } catch { observed.brokerProbeFailed = true; }
+        finally { if (observer) await observer.close(); }
+        // Failure has already occurred. Stop only these owned workers before
+        // collecting their buffered diagnostics; never print bodies or SQL.
+        for (const child of [reconnecting, resumedProjector]) {
+          if (child.process.exitCode === null) child.process.kill('SIGKILL');
+        }
+        await Promise.all([reconnecting.process.exited, resumedProjector.process.exited]);
+        const classify = async (child: Child) => {
+          const output = (await child.output) + '\n' + (await child.errors);
+          const events = ['consumer.start_failed', 'consumer.event_failed', 'consumer.nats_connect_failed',
+            'consumer.uncaughtException', 'consumer.unhandledRejection', 'consumer.shutdown_failed'];
+          return {
+            events: events.filter(event => output.includes('"' + event + '"')),
+            sqliteBusy: /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i.test(output),
+            bunPanic: /panic\\(main thread\\)|Bun has crashed/.test(output),
+            connectionRefused: /CONNECTION_REFUSED|ECONNREFUSED/.test(output),
+            jetstreamUnavailable: /JetStream not enabled|jetstream.*not available/i.test(output),
+          };
+        };
+        observed.relayErrors = await classify(reconnecting);
+        observed.consumerErrors = await classify(resumedProjector);
+        console.error(JSON.stringify(observed));
+        throw error;
+      }
       await wait(async () => (await sourceStates()).every((event: any) => event.deliveredAt), 'source completion after broker recovery', 70_000);
       expect(await db.select().from(S.tasks)).toHaveLength(2);
       expect(await db.select().from(S.webhookDeliveries)).toHaveLength(2);

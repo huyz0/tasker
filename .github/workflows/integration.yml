@@ -124,6 +124,9 @@ jobs:
       - name: Prove empty SQLite backup fails identity recovery
         run: cd apps/backend && bun run test:recovery:backup-proof
 
+      - name: Prove killed consumer reaches recovery diagnostics
+        run: cd apps/backend && bun run test:recovery:observer-proof
+
       - name: Stop NATS
         if: always()
         run: docker rm -f nats
