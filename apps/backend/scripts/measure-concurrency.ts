@@ -50,8 +50,14 @@ async function main(args: string[]) {
   let admin: mysql.Connection | undefined, nc: NatsConnection | undefined, created = false, brokerAttempted = false;
   let timer: ReturnType<typeof setInterval> | undefined, sampling: Promise<void> | undefined;
   let report: any, primary: unknown, failed = false, phase = 'bootstrap';
+  function reportPhase(stage: string) {
+    console.error(JSON.stringify({ kind: 'tasker-load-phase', stage, elapsedMs: performance.now() - launched,
+      attemptedLogical: attempts.length, completedLogical: attempts.filter(attempt => attempt.success).length, reportReady: Boolean(report) }));
+  }
+  function markPhase(stage: string) { phase = stage;reportPhase(stage); }
+  reportPhase(phase);
   const interrupted = new AbortController();
-  const onInterrupt = () => { phase = 'cancelled';interrupted.abort(); };
+  const onInterrupt = () => { markPhase('cancelled');interrupted.abort(); };
   process.on('SIGINT', onInterrupt);process.on('SIGTERM', onInterrupt);
   let apiPeakRssBytes = 0, generatorPeakRssBytes = process.memoryUsage().rss, memoryReadFailures = 0;
   let queueSamples = 0, queueReadFailures = 0, maxProducerPending = 0, maxConsumerPending = 0, maxConsumerUnacked = 0;
@@ -124,7 +130,7 @@ async function main(args: string[]) {
     await wait(async () => {
       try { nc = await natsConnect({ servers: url, timeout: 500, maxReconnectAttempts: 0 });return true; } catch { return false; }
     }, 'Owned broker was not ready.');
-    phase = 'api-startup';
+    markPhase('api-startup');
     const endpoints: string[] = [];
     for (let index = 0; index < config.instances; index++) endpoints.push(await api('measured', url));
     const projector = start('consumer', 'consumers/index.ts', [], url), jsm = await nc!.jetstreamManager({ timeout: 5000 });
@@ -132,7 +138,7 @@ async function main(args: string[]) {
       if (projector.process.exitCode !== null) throw new Error('Owned audit consumer exited.');
       try { await jsm.consumers.info(STREAM_NAME, DURABLE_NAME);return true; } catch { return false; }
     }, 'Owned audit consumer was not ready.');
-    phase = 'identity';
+    markPhase('identity');
     const registration = await fetch(endpoints[0]! + '/api/auth/password/register', {
       method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(5000),
       body: JSON.stringify({ username: 'load-owner-' + suffix, password: crypto.randomUUID() + 'Load9!' }),
@@ -145,7 +151,7 @@ async function main(args: string[]) {
     const templateId = (await createClient(ProjectTemplateService, owner).createTemplate({ orgId, name: 'Load template' })).template!.id;
     const projectId = (await createClient(ProjectService, owner).createProject({ orgId, templateId, ownerId, name: 'Load project' })).project!.id;
     const roleId = (await createClient(AgentService, owner).createAgentRole({ orgId, name: 'Load worker', systemPrompt: 'Use authorized work.', capabilities: '[]' })).role!.id;
-    phase = 'fixtures';
+    markPhase('fixtures');
     for (let offset = 0; offset < config.fixture; offset += 200) {
       const rows = Array.from({ length: Math.min(200, config.fixture - offset) }, (_, index) => [
         'tsk-' + crypto.randomUUID(), projectId, 'FIX-' + (offset + index), 'fixture-' + config.seed + '-' + (offset + index), 'todo', (offset + index) % 5,
@@ -176,6 +182,7 @@ async function main(args: string[]) {
       const stream = await jsm.streams.info(STREAM_NAME), consumer = await jsm.consumers.info(STREAM_NAME, DURABLE_NAME);
       return consumer.ack_floor.stream_seq >= stream.state.last_seq;
     }
+    markPhase('setup-drain');
     await wait(drained, 'Setup events did not drain.');
     const measured = children.filter(child => child.kind === 'measured');
     const sample = async () => {
@@ -191,7 +198,7 @@ async function main(args: string[]) {
     };
     await sample();
     timer = setInterval(() => { if (!sampling) sampling = sample().finally(() => { sampling = undefined; }); }, 500);
-    phase = 'measurement';
+    markPhase('measurement');
     let next = 0, active = 0, peakActive = 0, rpcCalls = 0, responseIdentityMismatch = 0, lastAdmissionOffsetMs = 0;
     const firstWriteLatencies: number[] = [], startedAt = new Date().toISOString(), started = performance.now();
     const deadline = started + config.duration * 1000;
@@ -220,28 +227,31 @@ async function main(args: string[]) {
     }));
     if (interrupted.signal.aborted) throw new Error('Measurement cancelled.');
     const phaseMs = performance.now() - started;
+    markPhase('request-settled');
     clearInterval(timer);timer = undefined;if (sampling) await sampling;
     await sample();
     const postObservationMs = performance.now() - started - phaseMs;
     if (measured.some(child => child.process.exitCode !== null) || projector.process.exitCode !== null) throw new Error('Owned process exited during measurement.');
-    phase = 'drain';
+    markPhase('api-drain');
     const apiDrainAt = performance.now();
     await stopAll(measured);
     const apiDrainMs = performance.now() - apiDrainAt;
+    markPhase('event-recovery');
     const tailStart = performance.now(), pendingAfterApiDrain = await pending();
     let recoveryApiStarted = false;
     if (pendingAfterApiDrain) { await api('recovery', url);recoveryApiStarted = true; }
     await wait(drained, 'Measured source or acknowledged audit did not drain.', 60_000);
     await stopAll(children.filter(child => child.kind === 'recovery'));
     const recoveryMs = performance.now() - tailStart;
-    phase = 'sql-drain';
+    markPhase('projector-drain');
     const sqlDrainAt = performance.now();
     await stop(projector);
+    markPhase('sql-drain');
     await wait(async () => Number((await query('SELECT COUNT(*) AS n FROM INFORMATION_SCHEMA.PROCESSLIST WHERE DB = ? AND ID <> CONNECTION_ID()', [database]))[0].n) === 0,
       'Owned SQL sessions did not quiesce.', 15_000);
     const sqlDrainMs = performance.now() - sqlDrainAt;
     const pendingAfterSqlDrain = await pending();
-    phase = 'oracle';
+    markPhase('oracle');
     const oracleAt = performance.now();
     const sourceRows = await query('SELECT id, title FROM tasks WHERE project_id = ? AND title LIKE ?', [projectId, prefix + '%']);
     const outcomes = reconcileOutcomes(attempts, sourceRows.map((row: any) => ({ key: row.title, id: row.id })));
@@ -290,6 +300,7 @@ async function main(args: string[]) {
   } catch (error) { failed = true;primary = error; }
   finally {
     const cleanupAt = performance.now();
+    reportPhase('cleanup');
     if (timer) clearInterval(timer);if (sampling) await sampling;
     const failures = await settleOwnedCleanup([
       ...[...children].reverse().map(child => () => stop(child)),
@@ -314,6 +325,7 @@ async function main(args: string[]) {
       console.log(JSON.stringify(report));
       if (!report.correctness.ok) process.exitCode = 1;else if (!report.evidenceValid) process.exitCode = 2;
     }
+    reportPhase('cleanup-finished');
     if (failed || failures.length) throw new MeasurementFailure(failed ? phase : 'cleanup', safeCode(primary));
   }
 }

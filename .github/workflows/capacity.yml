@@ -74,7 +74,7 @@ jobs:
               operations=20
             fi
             report="$RUNNER_TEMP/tasker-capacity/callers-$callers.json"
-            bun run measure:concurrency --concurrency "$callers" --duration "$duration" --fixture "$fixture" --instances 2 --seed 42 --max-operations "$operations" > "$report"
+            timeout --signal=TERM --kill-after=45s 240s bun run scripts/measure-concurrency.ts --concurrency "$callers" --duration "$duration" --fixture "$fixture" --instances 2 --seed 42 --max-operations "$operations" > "$report"
             TASKER_STAGE_CALLERS="$callers" TASKER_STAGE_FIXTURE="$fixture" TASKER_STAGE_REPORT="$report" bun -e '
               const r = JSON.parse(await Bun.file(process.env.TASKER_STAGE_REPORT).text());
               if (!r.correctness?.checked || !r.correctness.ok || !r.evidenceValid || r.cleanupFailures !== 0 ||

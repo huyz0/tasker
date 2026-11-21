@@ -107,3 +107,16 @@ configured caller count does not imply an acceptable service level.
 M49-T04 records the separate 100 and 1000 caller experiments, their hardware,
 dataset, saturation, recovery behavior and limitations. Until those artifacts
 exist and are reviewed, those caller counts remain planned experiments.
+
+## Bounded staged-run diagnostics
+
+The staged workflow gives each controller command a 240-second external
+watchdog, followed by up to 45 seconds for graceful termination. This bounds
+setup, request settlement and recovery as well as admission. A forced kill
+cannot guarantee controller cleanup and never establishes valid measurement.
+The job still stops escalation on a failed stage and retains completed reports.
+
+Fixed JSON phase markers on stderr identify bootstrap, API/identity/fixture
+setup, request settlement, API/event/projector/SQL drain, final oracle and
+cleanup. They contain elapsed time and aggregate attempt/completion counts,
+without credentials, task bodies or generated resource names.
