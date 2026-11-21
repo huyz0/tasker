@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T05
 last_updated: 2026-11-21
-last_commit: 727569e
+last_commit: 738c1f5
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49 actual staged saturation evidence retained.** Job 136860547110 passes 4/100/1000-caller measurement reconciliation, all ten separate recovery cases and both audit faults. At 100 callers all 1701 workflows complete; at 1000 only 57/3000 complete with 2943 errors, 822 acknowledged writes and 194 additional confirmed commits. All 1016 final task/source/audit rows reconcile with no lost/duplicate/changed outcome and cleanup zero. Exact JSON and earlier 100-caller host observations are committed. This is severe saturation, not healthy 1000-caller capacity. Source 2e8b14b remains under final full/native/browser checks; do not cancel it for evidence-only edits. Remove the one-off branch trigger and give every main SHA a distinct capacity concurrency group before publication. Main and unfinished task counts remain unchanged.
 
 **2026-11-21 — M49 100-caller result and stalled 1000-caller diagnosis.** Interrupted job 136854961314 retains a complete 100-caller result: 1508/1508 workflows, 4524 RPCs, matching SQL/source/audit rows, no errors/uncertain/correctness/cleanup failures, 15.42s request phase, 97.78 workflows/s and p95 1.45s. Recovery adds 19.60s. The 1000-caller command has no completed report; no cause is established. Before changing runtime behavior, add fixed phase diagnostics and a 240s external stage watchdog plus 45s graceful allowance. Initial run 44906822995 remains active. The actual MD034 errors are corrected on source 727569e, whose new gates are pending. Keep T03/T04 unchecked and preserve all observed results; main remains d7e2e45.
 

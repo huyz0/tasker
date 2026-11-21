@@ -586,3 +586,16 @@
   incomplete 1000-caller run is assigned a root cause; the diagnostic change
   does not claim a production fix. Final full/native/browser gates and
   four-lens task closure remain required before main publication.
+
+### Final workflow scope and handoff
+
+- The staged experiment is actual green evidence, including the severe
+  saturation result and separate failure experiments. Keep source 2e8b14b's
+  remaining checks running while preparing evidence-only publication edits.
+- Remove the initial feature-branch push trigger. The permanent workflow is
+  available manually and on main/PR changes to the harness or pinned toolchain;
+  ordinary backend changes retain their existing real-service/native gates.
+- Use the tested CI/integration concurrency pattern here too: each main SHA
+  gets a distinct group, so an older pending main proof cannot be replaced by
+  a newer pending one. PR checks alone cancel superseded work. The final
+  combined-head workflow still gates publication; no test rule is disabled.

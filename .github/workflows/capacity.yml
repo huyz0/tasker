@@ -2,20 +2,23 @@ name: Staged Capacity Evidence
 
 on:
   push:
-    branches: ["main", "feature/m49-staged-capacity"]
+    branches: ["main"]
     paths:
       - ".github/workflows/capacity.yml"
       - "apps/backend/scripts/*concurrency*"
-      - "apps/backend/src/**"
+      - ".prototools"
+      - ".github/actions/**"
   pull_request:
     branches: ["main"]
     paths:
       - ".github/workflows/capacity.yml"
       - "apps/backend/scripts/*concurrency*"
+      - ".prototools"
+      - ".github/actions/**"
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
