@@ -24,7 +24,7 @@ Documents repeatedly inject obsolete assumptions into development, and new relia
 
 - [x] Architecture no longer contradicts delivered consumers, MCP, pagination or deployment artifacts.
 - [ ] Operators can inspect and recover pending events and interrupted scheduled work.
-- [ ] Roadmap and milestone ledger agree with task checkboxes and verification evidence.
+- [x] Roadmap and milestone ledger agree with task checkboxes and verification evidence.
 - [ ] Documentation states the actual tested reliability and capacity boundaries.
 
 ## 4. Scope
@@ -39,7 +39,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: .specs/product/architecture.md; .specs/standards/api-standard.md; .specs/standards/security-standard.md.
   - **Verify**: Check all present-tense claims against source: consumers, streams, MCP, CLI pagination, Radix, deployment manifests, measured scale and remaining gaps; doc-drift passes.
 
-- [ ] **M50-T02** — Update roadmap, delivery index and integration documentation.
+- [x] **M50-T02** — Update roadmap, delivery index and integration documentation.
   - **Files**: .specs/product/roadmap.md; README.md; docs/agent-integration.md; docs/webhooks.md; docs/cli-reference.md.
   - **Verify**: Roadmap includes M30–M58 with truthful status; retry/processing errors, event duplicates, stream revalidation, CLI timeout and schedule recovery are documented.
 

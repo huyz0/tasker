@@ -25,17 +25,17 @@ These are the design targets the architecture is aimed at:
 - **20,000 teams** (up to 100 members each), delivering **2,000 projects**
   concurrently.
 
-**How much of that is measured, precisely.** *Data* scale is: a seeded
-fixture of 2,000 projects, 50,000 tasks in one project, 100,000 artifacts in
-one folder and 100,002 organization members is measured by
-`apps/backend/scripts/measure-latency.ts` against per-endpoint p95 budgets
-declared in `api-standard.md` §6, and every endpoint is inside its budget.
-*Concurrency* has a [bounded HTTP measurement command](docs/performance.md)
-for isolated MySQL/NATS fixtures. Its smoke and staged results are published
-only after actual verification; configured caller counts are not capacity
-claims. 20,000 simultaneous callers have never been validated. The 100,002-row
-principal fixture above describes stored data, rather than 100,002 active
-clients.
+**Measured boundaries.** Historical M07 data-volume fixtures cover 2000
+projects,50000 tasks in one project and 100000-scale artifact/member
+collections against handler p95 budgets. Those historical results are
+separate from concurrent callers and do not recertify every current read.
+
+The [real HTTP profiles](docs/performance.md) exercise separate API processes,
+MySQL/NATS and repeated 1000-caller bursts. The measured larger bursts
+saturate severely even when eventual committed identities reconcile.
+Generator transport/budget, hardware, request errors, unacknowledged writes
+and recovery tails remain explicit. **20000 simultaneous clients have not
+been validated.**
 
 ---
 
@@ -45,9 +45,10 @@ This codebase represents a multi-component system (housing a Backend, CLI, GUI, 
 
 Instead of hiding tribal knowledge in developer heads, the architectural rules,
 coding conventions and product goals are written down as Markdown that agents
-read directly. Where a document and the code disagree, the document is the bug:
-`moon run :spec-drift` fails the build when `tech-stack.md` and the manifests
-diverge.
+read directly. Verify disagreements against source and correct present-tense
+guidance. `moon run :spec-drift` checks dependency identifiers;
+`moon run :doc-drift` checks milestone/ledger promises. Neither mechanically
+proves every prose claim.
 
 ---
 
@@ -71,9 +72,13 @@ committed to git, so a brand-new agent session can resume with no prior context.
 With no milestone id, both read `active_milestone` from `STATE.md`.
 
 The roadmap in [`.specs/product/roadmap.md`](.specs/product/roadmap.md) maps
-every remaining capability to the milestone that owns it.
+delivered/planned work; the architecture marks genuine unscheduled decisions.
 
 ### Supervising current work
+
+The [UI/UX review](.milestones/MILESTONE-51-ui-navigation-and-layout/design/UI-UX-REVIEW.md)
+records navigation, responsive layouts, palette/tokens and typography decisions
+with independent references and rendered evidence.
 
 [**Attention**](docs/attention.md) brings current questions, move approvals, your
 review responsibilities and quiet agent-held tasks into one scoped screen. Open
@@ -96,6 +101,13 @@ memory.
 
 [**Webhooks**](docs/webhooks.md) — an organization's task events, POSTed to an
 HTTPS endpoint and signed, so an external runner starts when work appears.
+
+### Operating and recovering
+
+[Recovery runbook](docs/recovery.md) covers pending events, interrupted
+occurrences, safe backup/restore and an actual disposable rehearsal.
+[Architecture](.specs/product/architecture.md) describes current boundaries;
+[performance evidence](docs/performance.md) states what was measured.
 
 ### Foundational context
 
