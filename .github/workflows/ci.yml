@@ -341,7 +341,11 @@ jobs:
       - name: Prepare owned recovery broker image
         run: docker pull nats:2.10-alpine
       - name: Required MySQL cross-process recovery
+        env:
+          TASKER_MYSQL_SERVICE_CONTAINER: ${{ job.services.mysql.id }}
         run: moon run backend:test-recovery-mysql
+      - name: Prove empty backup fails the restored identity oracle
+        run: cd apps/backend && bun run test:recovery:backup-proof
       - name: Prove acknowledged audit loss and duplicates fail
         run: cd apps/backend && bun run test:recovery:audit-proof
 
