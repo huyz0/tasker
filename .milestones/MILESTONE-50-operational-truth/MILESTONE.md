@@ -1,13 +1,13 @@
 ---
 id: M50
 title: Operational Truth
-status: in-progress
+status: done
 goal: Architecture, roadmap, agent guidance and operations documentation match verified behavior and recovery guarantees.
 depends_on: [M49]
 surfaces: [specs, backend]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-21
-completed_at: null
+completed_at: 2026-11-21
 ---
 
 # M50 — Operational Truth
@@ -23,9 +23,9 @@ Documents repeatedly inject obsolete assumptions into development, and new relia
 ## 3. Exit Criteria
 
 - [x] Architecture no longer contradicts delivered consumers, MCP, pagination or deployment artifacts.
-- [ ] Operators can inspect and recover pending events and interrupted scheduled work.
+- [x] Operators can inspect and recover pending events and interrupted scheduled work.
 - [x] Roadmap and milestone ledger agree with task checkboxes and verification evidence.
-- [ ] Documentation states the actual tested reliability and capacity boundaries.
+- [x] Documentation states the actual tested reliability and capacity boundaries.
 
 ## 4. Scope
 
@@ -43,7 +43,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: .specs/product/roadmap.md; README.md; docs/agent-integration.md; docs/webhooks.md; docs/cli-reference.md.
   - **Verify**: Roadmap includes M30–M58 with truthful status; retry/processing errors, event duplicates, stream revalidation, CLI timeout and schedule recovery are documented.
 
-- [ ] **M50-T03** — Add a recovery runbook and close with an evidence-backed review.
+- [x] **M50-T03** — Add a recovery runbook and close with an evidence-backed review.
   - **Files**: docs/recovery.md; .milestones/STATE.md; .milestones/MILESTONE-50-operational-truth/reviews/.
   - **Verify**: Exercise documented procedures for pending events, expired leases, interrupted occurrences, backup/restore and broker recovery against a disposable deployment; final gates and clean working tree.
 

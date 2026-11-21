@@ -121,6 +121,25 @@ jobs:
           STANDALONE: "true"
         run: moon run backend:test-recovery
 
+      - name: Prove empty SQLite backup fails identity recovery
+        run: cd apps/backend && bun run test:recovery:backup-proof
+
+      - name: Prove killed consumer reaches recovery diagnostics
+        run: cd apps/backend && bun run test:recovery:observer-proof
+
+      - name: Five isolated SQLite broker recovery checks
+        env:
+          TASKER_REAL_INTEGRATION: '1'
+          TASKER_MYSQL_INTEGRATION: '0'
+          STANDALONE: 'true'
+        run: |
+          set -euo pipefail
+          cd apps/backend
+          for recovery_attempt in 1 2 3 4 5; do
+            echo "Owned SQLite broker recovery ${recovery_attempt}/5"
+            bun test src/test/wire/domainEventRecovery.integration.test.ts --test-name-pattern 'domain recovery.*sqlite'
+          done
+
       - name: Stop NATS
         if: always()
         run: docker rm -f nats

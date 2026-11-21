@@ -26,7 +26,9 @@
     "typecheck:measurement": "bunx tsc --project tsconfig.measurement.json --noEmit",
     "prove:measurement-core": "bun run scripts/prove-measurement-core.mjs",
     "prove:measurement-quiescence": "bun run scripts/prove-measurement-quiescence.mjs",
-    "prove:measurement-transport": "bun run scripts/prove-measurement-transport.mjs"
+    "prove:measurement-transport": "bun run scripts/prove-measurement-transport.mjs",
+    "test:recovery:backup-proof": "bun run scripts/prove-recovery-backup.mjs",
+    "test:recovery:observer-proof": "bun run scripts/prove-recovery-observer.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

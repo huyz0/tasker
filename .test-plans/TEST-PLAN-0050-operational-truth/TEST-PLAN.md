@@ -45,3 +45,24 @@ Document operator prerequisites, encryption-secret preservation, coordinated
 database/broker snapshots, retry/retention/dead-letter limits and safe rollback
 boundaries. Final exact repository/native/browser/standalone gates and
 four-lens reviews precede task closure and main publication.
+
+## Observed recovery follow-up and real failure controls
+
+The T03 journal records the original70-second SQLite checkpoint failure and
+plans these controls before their implementation. Preserve that failure and
+the observer controls that initially hit their watchdog; none counts as a
+passing intended failure. Do not retroactively invent their root cause.
+
+A real owned consumer kill must fail its original checkpoint with four source
+rows/three audit rows, a settled nonzero exit, complete bounded observations,
+no watchdog/cleanup failure and byte-for-byte source restoration. Observe
+initial and resumed audit projectors. Track the .exited promise's settlement
+rather than treating the nullable exitCode getter as a running-state flag.
+The separate real signal probe records getter, signal and awaited result.
+
+Keep consumer logs private and read bounded content; emit fixed categories,
+SQL counts and broker ACK state only. Five isolated real SQLite broker
+recovery commands stop at the first failure. Required MySQL8.0/8.4 runs,
+real fault proofs, full repository/UI gates and final combined-head checks
+remain mandatory. A green current source does not prove an unobserved cause
+for the historical timeout or a permanent exactly-once/fleet guarantee.
