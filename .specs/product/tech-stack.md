@@ -230,5 +230,5 @@ Go's module minimum and proto pin are 1.26.11. The earlier publication scan foun
 
 CI and release packaging read exact Node/Bun/Moon versions from `.prototools`
 through local setup actions. Node24.22.3 is the official2026-11-11 security
-release (https://github.com/nodejs/node/releases/tag/v24.22.3). The Node action
+release (<https://github.com/nodejs/node/releases/tag/v24.22.3>). The Node action
 compares the selected executable version; Go reads its exact module minimum.

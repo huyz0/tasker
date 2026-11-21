@@ -459,7 +459,7 @@
   go.mod selection. Broaden full-gate detection to all workflow configuration.
 - **Research**: Official Node releasev24.22.3, published2026-11-11, is a
   security release in the already-selected24 line:
-  https://github.com/nodejs/node/releases/tag/v24.22.3 .
+  <https://github.com/nodejs/node/releases/tag/v24.22.3> .
   Update the old24.12.0 pin and tech-stack record to24.22.3 rather than freezing
   an obsolete patch. No new dependency, runtime family or advisory suppression.
 - **Verify**: Actual setup must print and compare the selected version.
@@ -503,3 +503,17 @@
   offline SQLite and disposable MySQL backup/restore rehearsal that checks
   exact restored identities and rejects a deliberately broken backup.
   Do not start M50 implementation before M49's dependency is satisfied.
+
+### Observed documentation gate and link correction
+
+- Workspace job 136856196396 on source 35b8d33 fails the real Markdown
+  gate on exactly two MD034 bare-URL findings: the official Node release
+  reference here and in tech-stack.md. All 24 harness-contract tests pass;
+  this is a documentation-format defect, not a Node/runtime failure.
+- Wrap those primary-source references in valid Markdown autolinks. No lint
+  rule or runtime/source assertion changes. Advance draft PR #19 normally
+  with this correction and the committed handoff; standard per-PR concurrency
+  replaces superseded checks and preserves their completed/interrupted logs.
+- Inspect interrupted staged evidence for the observed long runtime before
+  attributing it to a controller, service or resource cause. Initial staged
+  push run 44906822995 remains unaffected and retains its external watchdog.

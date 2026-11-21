@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T05
 last_updated: 2026-11-21
-last_commit: 35b8d33
+last_commit: b88a91f
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49 actual Markdown gate correction.** Job 136856196396 rejects exactly two bare official Node-release URLs (MD034). Format both as Markdown autolinks, retain the actual failure and advance the draft review branch without changing runtime behavior or lint rules. Standard per-PR concurrency replaces old checks; inspect interrupted staged output to diagnose the long caller step. The initial push-based stage run remains active. Other current-source smoke/core/integration/packaging checks pass, but exact full/native/browser completion remains required. No new task closure or main publication is claimed.
 
 **2026-11-21 — M49 staged evidence and pinned gates in flight.** Source 35b8d33 passes all three packaging targets (including real Linux smoke), both integration jobs, audits, contract, core/input fault and normal/late-SQL smoke. Remaining exact-37/native/browser/rendered gates are running or queued in CI 44907118504. Sequential stage runs 44906822995 and 44907118491 are still active; the initial caller step began 13:06:36 UTC, and no final logs/capacity figure exist yet. T02 source e321baae is fully green and assembled as atomic candidate 9f0eba8 on feature/m49-production-final, with CODE-v9 and source-blob identity verified. Main is still d7e2e45 (391 done/one dropped/seven pending); that unpublished candidate is 392 done/six pending. This WIP note does not move PR #19's tested source or cancel its checks. Cloud remains failed; no local execution/clean-tree claim. Finish actual staged/full results and atomic M49 publication before M50 implementation.
 
