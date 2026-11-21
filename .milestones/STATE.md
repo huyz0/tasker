@@ -2,7 +2,7 @@
 active_milestone: M50
 active_task: M50-T01
 last_updated: 2026-11-21
-last_commit: b634b07
+last_commit: d0f38d5
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M50-T01 in progress on verified M49 candidate.** Parent d0f38d5 contains completed M49 tasks and all 18 source checks pass; PR #20's final combined-head gate is still running, so no main publication is inferred. Begin source-backed architecture/API/security/technology corrections with an in-progress journal and acceptance plan before content changes. Roadmap/integration truth and an actually exercised private backup/restore/recovery runbook follow as T02/T03. Preserve historical ADRs and the severe measured 1000-caller saturation boundary. This branch has 395 done/one dropped/three pending; M50 is in progress with zero tasks checked. Cloud-local execution remains unavailable; hosted checks provide evidence.
 
 **2026-11-21 — M49 complete candidate; final publication next.** T02/T03/T04/T05 are assembled as four atomic completed-task commits from main d7e2e45. Source 2e8b14b passes all 18 non-skipped checks: exact 37 in 7m23.324s, both real MySQL versions/recovery/faults, GitHub/NATS integration, browser/rendered UI, standalone smoke, packaging and measured stages. CODE-v9 through v12 approve their respective tasks. Node/Bun/Moon selection and report retention match repository pins. Staged results explicitly show severe 1000-caller saturation (57/3000 complete, 2943 errors) while preserving all committed identities. M49 is 6/6 and all four criteria; program 395 done/one dropped/three pending. Run final combined-head gates before merging this candidate; no main merge or Cloud-local execution is claimed yet. M50-T01 can continue from this verified dependency, followed by roadmap/integration truth and an actually exercised backup/recovery runbook.
 
@@ -2055,7 +2057,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
 | M49 | Production Evidence | done | M46, M47, M48 | 6 | 6 |
-| M50 | Operational Truth | todo | M49 | 3 | 0 |
+| M50 | Operational Truth | in-progress | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |

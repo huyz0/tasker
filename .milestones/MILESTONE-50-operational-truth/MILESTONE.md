@@ -1,12 +1,12 @@
 ---
 id: M50
 title: Operational Truth
-status: todo
+status: in-progress
 goal: Architecture, roadmap, agent guidance and operations documentation match verified behavior and recovery guarantees.
 depends_on: [M49]
 surfaces: [specs, backend]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-21
 completed_at: null
 ---
 
