@@ -554,3 +554,14 @@
   The incomplete 1000-caller stage and unrun later failure steps remain open.
 - Preserve uncertainty and all limitations. A zero-error short stage does
   not establish steady-state queue stability or maximum supported capacity.
+
+### Preserve the initial host observation too
+
+- Initial job 136854082350 reaches its external job deadline after the later
+  1000-caller command produces no completed report. Its already-completed
+  100-caller stage is valid evidence: 1174 workflows, 3522 RPCs, zero request/
+  correctness/cleanup failures, 75.042356 workflows/s and p95 1979.019ms.
+- Retain that exact JSON beside the faster AMD-host observation, name its
+  Intel Xeon 8573C hardware and separate 13.689327s recovery tail. Do not
+  cherry-pick the faster host or infer a controlled comparison. The active
+  diagnostic run, T03/T04 closure and final publication remain pending.

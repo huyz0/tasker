@@ -158,3 +158,29 @@ Fixed JSON phase markers on stderr identify bootstrap, API/identity/fixture
 setup, request settlement, API/event/projector/SQL drain, final oracle and
 cleanup. They contain elapsed time and aggregate attempt/completion counts,
 without credentials, task bodies or generated resource names.
+
+## Second completed 100-caller observation
+
+The [initial-run JSON](performance/2026-11-21-initial-100-callers.json) is also
+retained so the faster result above is not presented as the only observation.
+[Initial job 136854082350](https://github.com/huyz0/tasker/actions/runs/44906822995/job/136854082350)
+completed its four- and 100-caller stages, then reached its external job
+deadline while the following 1000-caller command had no completed report.
+
+| Dimension | Initial completed 100-caller stage |
+|---|---|
+| Hardware | Intel Xeon Platinum 8573C; four logical CPUs; host RAM 16758394880 bytes; cgroup limits unknown |
+| Workload | 100 actual/peak callers, two API PIDs, 1000 fixture tasks; same production defaults |
+| Outcomes | 1174/1174 complete workflows, 3522 RPCs, matching task/source/audit rows; zero request/correctness/cleanup failures |
+| Request phase / throughput | 15.644498s / 75.042356 workflows/s |
+| Workflow latency | p50 1236.234ms; p95 1979.019ms; p99 2619.681ms |
+| Recovery / total | 13.689327s separate tail / 37.893618s overall |
+| Sampled RSS | APIs 532037632 bytes; generator 173121536 bytes; service memory excluded |
+| Queue | producer pending peak 741; consumer unacked peak four; final pending zero |
+| Source | checkout 6665750eced3e84be1d15df2b61e6d895b7a5fa9 |
+
+Bun/MySQL/NATS versions match the first observation. Different hosted hardware
+and uncontrolled timing mean these two runs are not a controlled performance
+comparison. Both short stages demonstrate correct outcomes for their recorded
+workload; neither establishes a maximum fleet, stable long-duration tails or
+successful 1000-caller operation.
