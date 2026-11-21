@@ -20,8 +20,13 @@ const { setupDatabase } = await import(c.sourceRoot + '/db/db.ts');
 const { withUnitOfWork } = await import(c.sourceRoot + '/db/access.ts');
 const { safeErrorSerializer } = await import(c.sourceRoot + '/lib/databaseErrorDetails.ts');
 let db;
+async function stage(value) {
+  if (c.checkpoint) await Bun.write(c.checkpoint + '.stage', value);
+}
 try {
+  await stage('database');
   db = await setupDatabase(c.driver, c.path);
+  await stage('ready');
   if (c.mode === 'capture') {
     const { createContextValues } = await import('@connectrpc/connect');
     const { currentPrincipalKey } = await import(c.sourceRoot + '/modules/auth/session.ts');
@@ -36,10 +41,13 @@ try {
     const ctx = { values };
     const task = await runWithRequestContext({ requestId: c.key, actor: { kind: 'user', userId: c.userId }, orgId: c.orgId, projectId: c.projectId }, async () => {
       const result = await createTaskManagementHandler(db).createTask({ projectId: c.projectId, title: 'Recover ' + c.key, status: 'todo', idempotencyKey: c.key }, ctx);
+      await stage('task-committed');
       if (c.large) {
         const artifacts = createArtifactsHandler(db);
         const { folder } = await withUnitOfWork(db, () => artifacts.createFolder({ projectId: c.projectId, name: 'Evidence ' + c.key }, ctx));
+        await stage('folder-committed');
         await withUnitOfWork(db, () => artifacts.createArtifact({ folderId: folder.id, name: 'Large evidence', content: 'x'.repeat(1_100_000), contentType: 'text/markdown' }, ctx));
+        await stage('artifact-committed');
       }
       return result.task;
     });
@@ -167,7 +175,12 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
     async function checkpoint(child: Child, name: string) {
       await wait(async () => {
         if (existsSync(name)) return true;
-        if (child.process.exitCode !== null) throw new Error(`worker exited before checkpoint: ${await child.errors}`);
+        if (child.process.exitCode !== null) {
+          const exitCode = await child.process.exited;
+          const recorded = existsSync(name + '.stage') ? await Bun.file(name + '.stage').text() : 'not-reported';
+          const stage = ['database', 'ready', 'task-committed', 'folder-committed', 'artifact-committed'].includes(recorded) ? recorded : 'not-reported';
+          throw new Error(`worker exited before checkpoint (exit ${exitCode}, signal ${child.process.signalCode ?? 'none'}, stage ${stage}): ${await child.errors}`);
+        }
         return false;
       }, name);
       return Bun.file(name).json();

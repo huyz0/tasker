@@ -171,6 +171,30 @@
   results. Re-run the corrected source and record a new four-lens review;
   T02 remains in progress until the actual final gates pass.
 
+### Corrected-source results and unresolved worker exit
+
+- Source1d47090 passes both Integration44895096573 jobs, the dependency audit
+  and workspace checks. MySQL8.4 job136823295126 executes all12 native files/
+  19 cases, the claim-fault proof and the new two-API case successfully.
+- Recovery remains9 pass/1 fail: the older MySQL domain-event capture worker
+  exits before its first checkpoint with empty stderr. No runtime or resource
+  cause is established. GitHub rejects a single unchanged retry request with
+ 403, workflow run already running; no retry started. Add fixed-label worker
+  stage, numeric exit and signal diagnostics without changing any oracle or
+  timeout. Preserve the observed failure and re-run the corrected candidate.
+- Backend job136823295114 also reproduces TS2769: TypeScript retains the
+  earlier explicit environment assignment as string across the callback.
+  The object-wrapper matcher still inferred string and did not fix that
+  mismatch. Compare exact value identity as a boolean, preserving undefined
+  and string outcomes without a cast or broader expectation.
+- Preserve rejected CODE-v6 for these observed issues. T02 stays unchecked.
+  Dependent draft PR #19 has only T03 acceptance/tests and a typed empty
+  scaffold; its independent Bun core job must produce an actual red before
+  implementation. No load or capacity result is claimed.
+- Cloud startup is now explicitly failed (executor configuration capabilities
+  could not be queried). Continue through connected GitHub and hosted Actions;
+  no local command, clean-tree check or service execution is claimed.
+
 ## M49-T03 — Bounded HTTP concurrency evidence
 
 - **Status**: in-progress
@@ -198,3 +222,14 @@
   all ordinary backend, native SQL, browser and full repository gates.
 - This is still the failing-test checkpoint. No measurement implementation or
   passing red/green evidence is inferred from the job configuration.
+
+### Actual core red before implementation
+
+- Independent job136823008841 on source9f036827 executes the intended scaffold:
+  one invalid-input case passes and six public configuration/latency/source-
+  reconciliation cases fail with their specific not-implemented errors. No
+  package, contract or service error accounts for this red.
+- Implement only bounded option parsing, observed nearest-rank quantiles and
+  independent source reconciliation. The real HTTP harness and smoke remain
+  in progress. Merge corrected T02 parent3410e39 normally; preserve its
+  observed failures/review and all T03 preparation. No branch is force-pushed.
