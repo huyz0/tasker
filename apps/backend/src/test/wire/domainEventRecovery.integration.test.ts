@@ -1,9 +1,9 @@
 import { expect, it } from 'bun:test';
 import { spawn, type Subprocess } from 'bun';
-import { createHmac } from 'node:crypto';
+import { createHmac, createHash } from 'node:crypto';
 import * as http from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import mysql from 'mysql2/promise';
@@ -131,24 +131,28 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
     const path = join(directory, 'source.sqlite');
     const suffix = crypto.randomUUID().replaceAll('-', '');
     const databaseName = `tasker_recovery_${suffix}`;
+    const restoredDatabaseName = databaseName + '_restore';
     const container = `tasker-domain-proof-${suffix}`;
     const sourceRoot = join(import.meta.dir, '../..');
     const orgId = `org-${suffix}`, userId = `user-${suffix}`, projectId = `project-${suffix}`;
     const children: Child[] = [];
     const sockets = new Set<Socket>();
     const teardownErrors: string[] = [];
-    let db: any, admin: mysql.Connection | undefined, receiver: http.Server | undefined, containerAttempted = false;
+    let db: any, admin: mysql.Connection | undefined, receiver: http.Server | undefined, containerAttempted = false, sourceCreated = false, restoreCreated = false;
     const dockerEnv = { ...process.env };
     for (const key of ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_TLS', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete dockerEnv[key];
-    async function docker(...args: string[]) {
-      const child = spawn({ cmd: ['docker', '--host=unix:///var/run/docker.sock', ...args], env: dockerEnv, stdout: 'pipe', stderr: 'pipe' });
+    async function dockerInput(args: string[], inputPath?: string, privateOutput = false) {
+      const child = spawn({ cmd: ['docker', '--host=unix:///var/run/docker.sock', ...args], env: dockerEnv, stdin: inputPath ? Bun.file(inputPath) : 'ignore', stdout: 'pipe', stderr: 'pipe' });
       const timeout = setTimeout(() => child.kill('SIGKILL'), 15_000);
       try {
         const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
-        if (code !== 0) throw new Error(`owned Docker command failed (${code}): ${stderr}`);
-        return stdout.trim();
+        if (code !== 0) throw new Error(privateOutput || inputPath
+          ? `owned private MySQL backup command failed (${code}).`
+          : `owned Docker command failed (${code}): ${stderr}`);
+        return stdout;
       } finally { clearTimeout(timeout); }
     }
+    async function docker(...args: string[]) { return (await dockerInput(args)).trim(); }
     const childEnv = () => ({ ...process.env, STANDALONE: driver === 'sqlite' ? 'true' : 'false', DB_PATH: path, NODE_ENV: 'test', LOG_LEVEL: 'silent', OTEL_EXPORTER_OTLP_ENDPOINT: '', OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: '' });
     function track(process: Subprocess): Child {
       const child = { process, output: new Response(process.stdout as ReadableStream).text(), errors: new Response(process.stderr as ReadableStream).text() };
@@ -199,6 +203,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       if (driver === 'mysql') {
         admin = await mysql.createConnection({ host: process.env.DB_HOST || '127.0.0.1', user: process.env.DB_USER || 'root', password: process.env.DB_PASSWORD || 'password' });
         await admin.query(`CREATE DATABASE \`${databaseName}\` CHARACTER SET utf8mb4`);
+        sourceCreated = true;
         process.env.DB_NAME = databaseName;
       }
       db = await setupDatabase(driver, path);
@@ -249,6 +254,56 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       expect(await db.select().from(S.tasks)).toHaveLength(1);
       expect(await db.select().from(S.webhookDeliveries)).toHaveLength(1);
       expect(captured.taskId).toBeTruthy();
+
+      // All producer writers are stopped. Restore private SQL before relay work.
+      async function backupIdentities() {
+        const taskRows: { id: string }[] = await db.select({ id: S.tasks.id }).from(S.tasks);
+        const eventRows: { id: string; payload: string }[] = await sourceEvents();
+        const deliveryRows: { id: string }[] = await db.select({ id: S.webhookDeliveries.id }).from(S.webhookDeliveries);
+        const hookRows: { id: string; encrypted: string }[] = await db.select({ id: S.webhooks.id, encrypted: S.webhooks.secretEncrypted }).from(S.webhooks);
+        const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+        return {
+          tasks: taskRows.map(row => row.id).sort(),
+          events: eventRows.map(row => [row.id, digest(row.payload)]).sort((left, right) => left[0]!.localeCompare(right[0]!)),
+          deliveries: deliveryRows.map(row => row.id).sort(),
+          secrets: hookRows.map(row => [row.id, digest(row.encrypted)]).sort((left, right) => left[0]!.localeCompare(right[0]!)),
+        };
+      }
+      const expectedBackup = await backupIdentities();
+      const backupPath = join(directory, driver === 'sqlite' ? 'private-backup.sqlite' : 'private-backup.sql');
+      if (driver === 'sqlite') {
+        const checkpoint = db.$client.query('PRAGMA wal_checkpoint(TRUNCATE)').get();
+        expect(Number(checkpoint.busy)).toBe(0);
+        db.$client.close();db = undefined;
+        copyFileSync(path, backupPath);
+        rmSync(path);
+        copyFileSync(backupPath, path);
+      } else {
+        await db.$client.end();db = undefined;
+        const service = process.env.TASKER_MYSQL_SERVICE_CONTAINER || '';
+        if (!/^[a-f0-9]{12,64}$/i.test(service)) throw new Error('Owned MySQL service container ID is required for backup rehearsal.');
+        const image = await docker('inspect', '--format', '{{.Config.Image}}', service);
+        expect(/^mysql:8\.(0|4)(?:$|[.@-])/.test(image)).toBe(true);
+        const dump = await dockerInput(['exec', service, 'sh', '-c',
+          'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --routines --events --triggers --no-tablespaces --set-gtid-purged=OFF "$1"',
+          'sh', databaseName], undefined, true);
+        await Bun.write(backupPath, dump);
+        await admin!.query('CREATE DATABASE ' + restoredDatabaseName + ' CHARACTER SET utf8mb4');
+        restoreCreated = true;
+        await dockerInput(['exec', '-i', service, 'sh', '-c',
+          'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot "$1"', 'sh', restoredDatabaseName], backupPath);
+        process.env.DB_NAME = restoredDatabaseName;
+      }
+      db = await setupDatabase(driver, path);
+      const restoredBackup = await backupIdentities();
+      console.log(JSON.stringify({ kind: 'runbook-backup-observation', driver, tasks: restoredBackup.tasks.length,
+        events: restoredBackup.events.length, deliveries: restoredBackup.deliveries.length,
+        matched: JSON.stringify(restoredBackup) === JSON.stringify(expectedBackup) }));
+      expect(restoredBackup.tasks).toEqual(expectedBackup.tasks);
+      expect(restoredBackup.events).toEqual(expectedBackup.events);
+      expect(restoredBackup.deliveries).toEqual(expectedBackup.deliveries);
+      expect(restoredBackup.secrets).toEqual(expectedBackup.secrets);
+
 
       const ackPoint = join(directory, 'accepted-before-bookkeeping');
       const interruptedRelay = worker('ack-pause', url, { checkpoint: ackPoint, deferMs: 1000 });
@@ -331,9 +386,12 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       ]);
       for (const outcome of cleanup) if (outcome.status === 'rejected') teardownErrors.push(String(outcome.reason));
       if (admin) {
-        try { await admin.query(`DROP DATABASE IF EXISTS \`${databaseName}\``); }
-        catch (error) { teardownErrors.push(String(error)); }
-        finally { try { await admin.end(); } catch (error) { teardownErrors.push(String(error)); } }
+        for (const name of [restoreCreated ? restoredDatabaseName : null, sourceCreated ? databaseName : null]) {
+          if (!name) continue;
+          try { await admin.query('DROP DATABASE ' + name); }
+          catch (error) { teardownErrors.push(String(error)); }
+        }
+        try { await admin.end(); } catch (error) { teardownErrors.push(String(error)); }
       }
       try { rmSync(directory, { recursive: true, force: true }); } catch (error) { teardownErrors.push(String(error)); }
       if (teardownErrors.length) await Bun.write(Bun.stderr, JSON.stringify({ cleanupErrors: teardownErrors }) + '\n');

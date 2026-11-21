@@ -39,8 +39,9 @@ faults and reproducible staged HTTP measurements. Its severe1000-caller
 saturation remains a measured limit, not a healthy fleet claim.
 
 M50-T01/T02 reconcile implementation, architecture, standards, roadmap and
-integration guidance. M50-T03 owns the private SQLite/MySQL restore rehearsal
-and final closure. Exact counts and current task state are in
+integration guidance. M50-T03 delivers the private SQLite/MySQL restore rehearsal
+and final closure. All accepted task owners below are complete; current
+publication and verification evidence lives in the ledger and linked PRs. Exact counts and current task state are in
 [STATE.md](STATE.md); the dated updates above are historical checkpoints.
 No local clean-tree check is claimed while the Cloud executor is unavailable.
 
