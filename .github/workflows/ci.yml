@@ -248,3 +248,25 @@ jobs:
         run: cd packages/shared-contract && bun install
       - name: Build & Test (Cached)
         run: moon run cli:format cli:vet cli:test cli:build cli:coverage-gate cli:docs-check
+
+      # Runtime/configuration changes must exercise the exact repository gate,
+      # in addition to the independently executed browser and integration jobs.
+      - name: Detect runtime or CI configuration changes
+        id: runtime-pins
+        env:
+          TASKER_PIN_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ ! "$TASKER_PIN_BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || ! git cat-file -e "$TASKER_PIN_BASE_SHA^{commit}"; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$TASKER_PIN_BASE_SHA" HEAD -- .prototools apps/cli/go.mod .github/actions .github/workflows/ci.yml; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Full repository checks for runtime changes
+        if: steps.runtime-pins.outputs.changed == 'true'
+        env:
+          VITEST_MAX_WORKERS: '1'
+          MOON_CONCURRENCY: '1'
+          GOMAXPROCS: '2'
+        run: moon check --all
