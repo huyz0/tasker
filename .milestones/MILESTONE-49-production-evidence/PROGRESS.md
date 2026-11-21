@@ -233,3 +233,30 @@
   independent source reconciliation. The real HTTP harness and smoke remain
   in progress. Merge corrected T02 parent3410e39 normally; preserve its
   observed failures/review and all T03 preparation. No branch is force-pushed.
+
+### Real HTTP harness implementation candidate
+
+- Add the bounded Linux/loopback command with one actual scoped principal per
+  caller, requested independent API PIDs, stable create/replay/get operations
+  and preserved production rate/pool limits. Timed parent SQL queries own a
+  generated schema; each fixture broker carries a generated ownership label.
+- Setup is outside measurement. Record actual actor/fixture counts, all/success/
+  first-write quantiles, stage error codes, throughput, sampled own-PID memory,
+  hardware/cgroup/runtime versions, queue observations and uncertain outcomes.
+  Credentials and raw driver/event data never enter the JSON or diagnostics.
+- Settle calls and drain measured APIs before independent SQL/source/audit
+  oracles. Any needed recovery API is separately reported and excluded from
+  throughput. Normal/error/graceful-signal cleanup attempts every owned
+  resource and restores ambient state. Force-kill remains outside graceful
+  cleanup guarantees.
+- Add strict script typechecking to Moon/full CI and affected input hashes.
+  Keep the pure core job independent and prove that bypassed input validation
+  fails its actual assertion with byte-for-byte restoration. Add a real
+  four-caller/two-API smoke with positive report-contract checks and retained/
+  logged aggregate JSON. These checks are configured, not yet claimed passed.
+- Document the command and limits in docs/performance.md; link it from README
+  and remove the now-obsolete statement that no load command exists. No
+ 100/1000/20000 caller capacity result is claimed; T04 owns staged evidence.
+- Source3410e39 (T02) passes both integration jobs, audit and contract; its
+  corrected normal/fault/type/full gates remain queued. T03 core sourcef6aa796
+  also awaits hosted green. Both tasks remain unchecked.

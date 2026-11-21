@@ -164,7 +164,7 @@ jobs:
       - name: Owned fixture cleanup regressions
         run: cd apps/backend && bun test src/test/ownedCleanup.test.ts
       - name: Build & Test (Cached)
-        run: moon run backend:typecheck backend:test
+        run: moon run backend:typecheck backend:typecheck-measurement backend:test
 
   audit:
     name: Dependency vulnerabilities
@@ -343,3 +343,65 @@ jobs:
       # Keep their feedback independent of the contract/service job queues.
       - name: Bounded measurement core regressions
         run: cd apps/backend && bun test src/test/concurrencyMeasurement.test.ts
+      - name: Prove unchecked inputs fail
+        run: cd apps/backend && bun run prove:measurement-core
+
+  measurement-smoke:
+    name: Bounded HTTP measurement (smoke)
+    runs-on: ubuntu-latest
+    needs: contract
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: tasker-native-ci
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --password=tasker-native-ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_USER: root
+      DB_PASSWORD: tasker-native-ci
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+      - name: Setup Moon
+        uses: ./.github/actions/setup-moon
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Measurement script types
+        run: moon run backend:typecheck-measurement
+      - name: Prepare owned broker image
+        run: docker pull nats:2.10-alpine
+      - name: Real HTTP smoke and observed-report contract
+        working-directory: apps/backend
+        run: |
+          mkdir -p "$RUNNER_TEMP/tasker-load"
+          bun run measure:concurrency --concurrency 4 --duration 3 --fixture 20 --instances 2 --seed 42 --max-operations 20 > "$RUNNER_TEMP/tasker-load/smoke.json"
+          bun -e 'const r = JSON.parse(await Bun.file(process.env.RUNNER_TEMP + "/tasker-load/smoke.json").text()); if (!r.correctness?.ok || !r.evidenceValid || r.cleanupFailures !== 0 || new Set(r.workload?.apiPids).size !== 2 || r.workload?.actualPrincipals !== 4 || r.workload?.fixtureTasks !== 20 || r.counts?.completedLogical < 1 || Object.values(r.counts.errors).some(n => n !== 0) || r.queue?.samples < 1 || r.memory?.apiPeakRssBytes <= 0 || !r.versions?.mysql || !r.versions?.nats) throw new Error("The smoke report lacks required positive observations.");'
+      - name: Show aggregate measurement evidence
+        if: always()
+        run: |
+          if [ -s "$RUNNER_TEMP/tasker-load/smoke.json" ]; then
+            cat "$RUNNER_TEMP/tasker-load/smoke.json"
+          fi
+      - name: Retain machine-readable measurement evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-smoke-${{ github.sha }}
+          path: ${{ runner.temp }}/tasker-load/*.json
+          retention-days: 14
+          if-no-files-found: error
