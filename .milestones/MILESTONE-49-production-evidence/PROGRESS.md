@@ -692,3 +692,57 @@
   final combined-head CI and publication; no local clean-tree claim.
 - Next is M50-T01 on this verified dependency candidate: architecture,
   standards, roadmap/integration truth and an exercised recovery runbook.
+
+## M49-T03 — Repair the reproduced large-caller controller stall
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Observed**: Final-head staged job 136866898054 completes its four/100
+  stages, then remains in measurement at 1000 callers. Its 240-second
+  watchdog plus 45-second allowance ends with exit 137. Neither request
+  settlement nor graceful cancellation/cleanup markers are reached.
+  Earlier source 2e8b14b did complete one valid saturated run; that does not
+  establish a reliable final controller. No production server/driver cause
+  is inferred from this diagnostic boundary alone.
+- **Plan**: Replace the harness's Node-compatible HTTP transport with the
+  already-installed Connect Web transport over Bun native fetch. Keep the
+  same generated RPCs, binary protocol, scoped identities and exact SQL/
+  source/audit oracle. Combine the existing five-second deadline with the
+  controller cancellation signal at the actual fetch boundary.
+- **Runtime research**: Bun documents native fetch's default 256-request
+  limit and BUN_CONFIG_MAX_HTTP_REQUESTS:
+  <https://bun.sh/docs/runtime/environment-variables> and
+  <https://bun.sh/docs/runtime/networking/fetch>.
+  Configure/report 1024 generator requests for the larger experiment,
+  while owned API/consumer children retain their original/default setting.
+  Record this as a different generator profile, not a production capacity fix.
+- **Next**: The observed final-head red precedes this correction. Retain
+  rejected CODE-v13, run actual stalled-request cancellation proof and
+  repeated 1000-caller stages before closure. No new package or server
+  limiter/pool change is authorized or needed.
+
+## M49-T04 — Reopen repeated large-caller verification
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Plan**: Keep the 240-second/45-second watchdog and add a second identical
+  1000-caller stage with its own report. Require real settlement, oracle and
+  cleanup on both. Preserve prior valid saturation and incomplete results;
+  new generator transport/budget must be explicit in reports and docs.
+- **Verified**: The final gate correctly blocks publication. Do not replace
+  this failure with a bootstrap error, loosen deadlines, hide request errors
+  or repeatedly rerun unchanged source until green.
+
+## M49-T05 — Reopen final combined release gates
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Changed**: Runtime pins and packaging checks remain valid, but the final
+  combined evidence gate is red. Reopen T03/T04/T05 and the reproducible
+  command criterion; retain previous source approvals as historical evidence.
+- **Next**: Draft PR #20 becomes the repair work branch. After actual green
+  verification, rebuild a fresh four-commit publication chain without force
+  pushes, so each completed task remains atomic on main. M50 source-truth
+  edits are committed separately and pause behind this dependency correction.
+  Main remains d7e2e45; this repair candidate is 392 done/one dropped/six
+  pending, M49 3/6. No local execution is claimed.

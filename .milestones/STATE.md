@@ -1,8 +1,8 @@
 ---
-active_milestone: M50
-active_task: M50-T01
+active_milestone: M49
+active_task: M49-T03
 last_updated: 2026-11-21
-last_commit: b634b07
+last_commit: d0f38d5
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49 final caller regression reopened.** Job 136866898054 stalls inside the 1000-caller measurement phase; the unchanged 240s/45s external bound ends in exit137 without settlement/cancellation/cleanup markers. Main is unchanged. Preserve rejected CODE-v13 and prior valid saturation evidence; do not attribute a server/runtime cause. Reopen T03/T04/T05 and the reproducible-command criterion: M49 3/6, candidate 392 done/one dropped/six pending. Draft PR #20 now carries the repair; after real stalled-endpoint proof and repeated native-fetch 1000-caller verification, rebuild a fresh atomic publication chain without force pushes. M50 source-truth edits remain committed on their own branch and pause behind this dependency. No local execution/clean-tree claim.
 
 **2026-11-21 — M49 complete candidate; final publication next.** T02/T03/T04/T05 are assembled as four atomic completed-task commits from main d7e2e45. Source 2e8b14b passes all 18 non-skipped checks: exact 37 in 7m23.324s, both real MySQL versions/recovery/faults, GitHub/NATS integration, browser/rendered UI, standalone smoke, packaging and measured stages. CODE-v9 through v12 approve their respective tasks. Node/Bun/Moon selection and report retention match repository pins. Staged results explicitly show severe 1000-caller saturation (57/3000 complete, 2943 errors) while preserving all committed identities. M49 is 6/6 and all four criteria; program 395 done/one dropped/three pending. Run final combined-head gates before merging this candidate; no main merge or Cloud-local execution is claimed yet. M50-T01 can continue from this verified dependency, followed by roadmap/integration truth and an actually exercised backup/recovery runbook.
 
@@ -2054,7 +2056,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | done | M46, M47, M48 | 6 | 6 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 3 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2065,7 +2067,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 395 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 392 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

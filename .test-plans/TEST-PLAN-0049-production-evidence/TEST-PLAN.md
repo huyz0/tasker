@@ -129,3 +129,22 @@ measurement execution into a service-capacity claim. Preserve all raw aggregate
 records and prior incomplete runs. The 240-second external stage watchdog plus
 45-second graceful allowance bounds fixture execution; force-kill never counts
 as valid cleanup. Separate recovery/fault experiments follow the load phases.
+
+## Reproduced large-caller transport regression
+
+Final job 136866898054 reaches the controller's measurement phase at1000
+callers and never reaches request settlement or cancellation/cleanup markers.
+The external watchdog force-kills it with exit137. Treat this as a real
+controller regression, not an accepted capacity result or attributed server
+root cause.
+
+Before closure, use an actual loopback RPC endpoint that accepts a request
+but never responds. The measurement transport must honor its deadline and
+caller cancellation, close owned sockets and settle the child process. Test
+this behavior through the same transport used by the harness.
+
+Run the real1000-caller stage twice with separate aggregate records. Configure
+and report the generator's native fetch limit, preserve production API/pool
+defaults, and retain all request errors, uncertain commits and earlier
+observations. Both full outcome oracles and cleanup must finish within the
+unchanged external bound.
