@@ -234,10 +234,11 @@ pass does not recertify every historical large fixture.
 
 [Performance evidence](../../docs/performance.md) retains hardware, runtime,
 dataset, defaults, latency samples, uncertain outcomes and recovery tails.
-Three short 100-caller observations complete without request errors.
-At 1000 callers the completed measurement has only 57/3000 complete
-workflows and 2943 errors, despite correct reconciliation of eventual
-commits. Two earlier larger commands have no completed result.
+Retained short 100-caller observations complete without request errors.
+Original and repaired 1000-caller bursts remain severely saturated despite
+correct reconciliation of eventual commits. Generator profiles, hardware,
+errors and unacknowledged commits are distinct in the linked records.
+Earlier incomplete commands and the final-head reproduction remain recorded.
 
 This does not establish healthy 1000-caller service, steady-state queue
 stability, all endpoints, streaming, multiple hosts or 20000 concurrent

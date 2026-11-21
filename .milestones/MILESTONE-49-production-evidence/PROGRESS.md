@@ -692,3 +692,142 @@
   final combined-head CI and publication; no local clean-tree claim.
 - Next is M50-T01 on this verified dependency candidate: architecture,
   standards, roadmap/integration truth and an exercised recovery runbook.
+
+## M49-T03 — Repair the reproduced large-caller controller stall
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Observed**: Final-head staged job 136866898054 completes its four/100
+  stages, then remains in measurement at 1000 callers. Its 240-second
+  watchdog plus 45-second allowance ends with exit 137. Neither request
+  settlement nor graceful cancellation/cleanup markers are reached.
+  Earlier source 2e8b14b did complete one valid saturated run; that does not
+  establish a reliable final controller. No production server/driver cause
+  is inferred from this diagnostic boundary alone.
+- **Plan**: Replace the harness's Node-compatible HTTP transport with the
+  already-installed Connect Web transport over Bun native fetch. Keep the
+  same generated RPCs, binary protocol, scoped identities and exact SQL/
+  source/audit oracle. Combine the existing five-second deadline with the
+  controller cancellation signal at the actual fetch boundary.
+- **Runtime research**: Bun documents native fetch's default 256-request
+  limit and BUN_CONFIG_MAX_HTTP_REQUESTS:
+  <https://bun.sh/docs/runtime/environment-variables> and
+  <https://bun.sh/docs/runtime/networking/fetch>.
+  Configure/report 1024 generator requests for the larger experiment,
+  while owned API/consumer children retain their original/default setting.
+  Record this as a different generator profile, not a production capacity fix.
+- **Next**: The observed final-head red precedes this correction. Retain
+  rejected CODE-v13, run actual stalled-request cancellation proof and
+  repeated 1000-caller stages before closure. No new package or server
+  limiter/pool change is authorized or needed.
+
+## M49-T04 — Reopen repeated large-caller verification
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Plan**: Keep the 240-second/45-second watchdog and add a second identical
+  1000-caller stage with its own report. Require real settlement, oracle and
+  cleanup on both. Preserve prior valid saturation and incomplete results;
+  new generator transport/budget must be explicit in reports and docs.
+- **Verified**: The final gate correctly blocks publication. Do not replace
+  this failure with a bootstrap error, loosen deadlines, hide request errors
+  or repeatedly rerun unchanged source until green.
+
+## M49-T05 — Reopen final combined release gates
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Changed**: Runtime pins and packaging checks remain valid, but the final
+  combined evidence gate is red. Reopen T03/T04/T05 and the reproducible
+  command criterion; retain previous source approvals as historical evidence.
+- **Next**: Draft PR #20 becomes the repair work branch. After actual green
+  verification, rebuild a fresh four-commit publication chain without force
+  pushes, so each completed task remains atomic on main. M50 source-truth
+  edits are committed separately and pause behind this dependency correction.
+  Main remains d7e2e45; this repair candidate is 392 done/one dropped/six
+  pending, M49 3/6. No local execution is claimed.
+
+### Actual stalled-RPC red before native transport correction
+
+- Job 136872346255 on source 1fab5a4 executes both real endpoint cases.
+  Deadline200ms passes with received true/settled true/Code4. Controller
+  cancellation fails with received true/settled false/code null, giving
+  exactly one pass/one intended failure. This is not a bootstrap failure.
+- The shared measurement transport now uses the already-installed Connect
+  Web transport over Bun native fetch. A whole-unary-call interceptor combines
+  the request, controller and explicit deadline signals and clears its timer.
+  Header/auth behavior and generated binary RPCs remain unchanged.
+- The larger staged profile explicitly configures/reports1024 generator fetch
+  requests. Owned API/consumer children omit that generator setting and keep
+  their defaults. Preserve pool/limiter/SQL/source/audit semantics.
+- Add a second identical1000-caller stage with a separate file. Keep the
+  existing external bound. Add actual disabled-deadline/disabled-cancellation
+  fault proofs against the accepted-but-unanswered endpoint, requiring the
+  intended assertion failure and byte restoration. Green remains pending;
+  no server/runtime root cause or healthy capacity is inferred.
+
+### Repaired T03 source verified and atomic publication rebuilt
+
+- Source e94372e / actual checkout 220a9ba passes all 18 non-skipped checks:
+  CI 44913418653, integration 44913418726, packaging 44913418685 and
+  repeated staged/recovery 44913418605. Exact moon check --all completes
+  37 checks (7 cached) in 4m18.434s; backend 2432/GUI 1764/contract 1158.
+- The actual stalled endpoint first proves missing controller cancellation
+  (one pass/one intended failure), then both cases settle with Code4/Code1.
+  Disabled deadline and cancellation faults each fail the intended real
+  assertion and restore source. The ordinary HTTP smoke and late-SQL fault
+  remain positive/negative as intended.
+- Both separate 1000-caller native-fetch stages finish full reconciliation
+  and cleanup. They retain severe saturation: 269/3000 and 213/3000 complete,
+  2731/2787 errors and 47/56 unacknowledged committed intents. No production
+  capacity improvement or underlying runtime/server cause is inferred.
+- CODE-v14 approves the corrected controller; rejected CODE-v13 and earlier
+  source approvals remain historical evidence. Rebuild a fresh publication
+  branch from atomic T02 commit 9f0eba8 without force pushes. This task's
+  code/tests/checkbox/journal/ledger are one atomic commit again.
+- Candidate M49 is 4/6: 393 done/one dropped/five pending. T04/T05 and final
+  combined-head gates follow. Main is still d7e2e45.
+
+### Repeated native stages and complete retained evidence
+
+- Job 136873835775 runs4/100/1000/1000-repeat on source e94372e,
+  checkout220a9ba. The two larger commands finish in24.178468s and
+ 22.351016s overall, with full oracle/cleanup and severe request saturation.
+  First269/3000 and second213/3000 workflows complete;2731/2787 errors
+  remain. Acknowledged393/384 plus unacknowledged committed47/56 equal
+ 440 task/source/audit rows each. No lost/duplicate/changed identity.
+- Publish exact native-profile JSON alongside all five original records
+  and the completed100-caller cohort from the failed final v1 publication.
+  docs/performance.md distinguishes generator profile/hardware, logical
+  versus socket concurrency, early operation-cap exhaustion and separate
+  recovery tails. No retrospective claim repairs earlier incomplete runs.
+- Both real stalled-RPC cases and disabled-control faults pass/fail as
+  intended; all ten separate recovery cases and both audit faults pass.
+  All18 source checks and exact37 in4m18.434s are green. CODE-v15 approves.
+- This fresh atomic T04 commit includes workflow/reports/docs/checkbox/
+  journal/state. M49 is5/6;394 done/one dropped/four pending. Final runtime
+  closure and combined-head publication remain required.
+
+### Repaired final gate verified and fresh M49 publication candidate
+
+- Source e94372e passes all 18 non-skipped checks after the actual stalled
+  cancellation red and native-fetch correction. Exact 37 checks (7 cached)
+  finish in 4m18.434s, with backend2432/GUI1764/contract1158 and retained
+  repository report artifact14711097018. Real browser/rendered UI, both
+  native MySQL versions/recovery/faults, integration, standalone and
+  three packaging targets pass. Tag-only publishing remains skipped.
+- Both repeated native-fetch1000-caller commands finish their complete
+  oracle and cleanup. Severe request saturation remains explicit. The
+  original measurements, incomplete runs, CODE-v13 and actual unit/fault
+  evidence are retained; no healthy fleet or server/root-cause claim.
+- CODE-v16 approves the unchanged exact Node/Bun/Moon/Go selection, reports
+  and corrected combined verification. Restore the pinned selectors after
+  the self-contained intermediate task commits.
+- A fresh branch now contains atomic T02/T03/T04/T05 commits only; no force
+  push or work-history merge is used. M49 is6/6 and all four criteria;
+  program395 done/one dropped/three pending. Run this candidate's own final
+  combined checks before its rebase merge. PR #20 remains the archived
+  repair work branch until successful publication.
+- Resume the committed M50 source-truth work from this verified dependency;
+  main remains unchanged until publication. Local execution remains
+  unavailable and no local clean-tree check is claimed.

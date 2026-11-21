@@ -1,79 +1,87 @@
 # Reproduce concurrency evidence
 
-## Measured boundary — 21 November 2026
+## Current measured boundary — 21 November 2026
 
-A hosted staged experiment exercised 4, 100 and 1000 actual callers. **The
-1000-caller measurement is valid but its service outcome is poor:** only
-57 of 3000 logical create/replay/read workflows completed, with 2943 errors.
-Do not describe this as healthy 1000-caller capacity or as 20000-client
-validation. Final repository/publication gates remain in progress.
+The repaired controller completes two separate 1000-caller experiments with
+correct reconciliation and cleanup. **Service saturation remains severe**:
+only 269/3000 and 213/3000 logical create/replay/read workflows complete.
+A valid measurement is not evidence of a healthy 1000-caller service level.
 
-[Staged and separate recovery job](https://github.com/huyz0/tasker/actions/runs/44908965538/job/136860547110)
-passes its measurement-correctness checks. Exact reports:
+[Repeated native-fetch stages and recovery](https://github.com/huyz0/tasker/actions/runs/44913418605/job/136873835775)
+use source e94372e and actual checkout 220a9ba46c34d107c6ee524642c07fd3f482b2d9.
+Exact records:
 
-- [Four-caller correctness baseline](performance/2026-11-21-verified-4-callers.json)
-- [100 callers](performance/2026-11-21-verified-100-callers.json)
-- [1000 callers and saturation](performance/2026-11-21-verified-1000-callers.json)
+- [Four-caller baseline](performance/2026-11-21-native-fetch-4-callers.json)
+- [100 callers](performance/2026-11-21-native-fetch-100-callers.json)
+- [1000 callers, first run](performance/2026-11-21-native-fetch-1000-callers-1.json)
+- [1000 callers, second run](performance/2026-11-21-native-fetch-1000-callers-2.json)
 
-Both larger stages use one project with 1000 existing tasks, two API processes,
-seed 42, a 15-second admission window and a 3000-operation cap. Defaults remain
-pool 20/queue 200 per API and the production rate limiters. The same hosted
-machine reports Intel Xeon 6973P-C, four logical CPUs and 16758390784 bytes
-host RAM. Cgroup CPU/memory limits are unknown. Bun 1.3.11, MySQL 8.4.13 and
-NATS 2.10.29 are observed; source is 2e8b14b, tested pull-request checkout
-18ae2c6117bbd1c76dbfc3a606e33594537033c1.
+The generator uses the already-installed Connect Web transport over Bun native
+fetch. Whole-unary-call deadline/controller signals are combined, including
+response reading. The staged generator explicitly configures 1024 concurrent
+fetch requests; owned API/consumer children omit that setting and retain
+their defaults. [Bun documents this runtime budget](https://bun.sh/docs/runtime/environment-variables).
+Logical caller concurrency is observed; open-socket concurrency is not
+instrumented.
 
-| Observation | 100 callers | 1000 callers |
+Both larger runs use 1000 distinct principals/peak active logical operations,
+two API PIDs,1000 existing tasks, one shared project, seed42 and unchanged
+API database pools 20/queue 200 and production limiters. They admit up to 15s
+or 3000 operations; rapid failures exhaust the cap after about one second.
+The measured request phase includes all request settlement.
+
+| Observation | First 1000-caller run | Repeated 1000-caller run |
 |---|---|---|
-| Actual principals / peak active | 100 / 100 | 1000 / 1000 |
-| Attempted logical workflows | 1701 | 3000 |
-| Complete create/replay/read | 1701 | 57 (1.9%) |
-| Acknowledged first writes | 1701 | 822 |
-| Final task/source/audit rows | 1701 each | 1016 each |
-| Request errors | 0 | 2943 |
-| Successful workflow p50 | 855.052ms | 7071.840ms |
-| Successful workflow p95 / p99 | 1293.429 / 1615.375ms | 7081.129 / 7082.326ms |
-| All-attempt p95 / p99 | 1293.429 / 1615.375ms | 5983.095 / 7070.956ms |
-| Acknowledged first-write p95 | 589.888ms | 4713.452ms |
-| Request phase including settlement | 15.363392s | 7.260110s |
-| Complete logical workflows/s | 110.717737 | 7.851121 |
-| Acknowledged first writes/s | 110.717737 | 113.221425 |
-| Separate recovery tail | 22.585613s | 19.457361s |
-| Total including setup and cleanup | 46.033678s | 34.156371s |
-| Peak sampled API RSS, both PIDs | 579469312 bytes | 527568896 bytes |
-| Peak generator RSS | 175116288 bytes | 240422912 bytes |
-| Peak pending producer rows | 1153 | 990 |
-| Pending after API drain / final | 1144 / 0 | 966 / 0 |
-| Unacknowledged intent later committed | 0 | 194 |
-| Unacknowledged intent absent from SQL | 0 | 1984 |
+| Attempted / complete workflows | 3000 /269 | 3000 /213 |
+| Request errors | 2731 | 2787 |
+| Acknowledged first writes | 393 | 384 |
+| Unacknowledged intent later committed | 47 | 56 |
+| Unacknowledged intent absent | 2560 | 2560 |
+| Final task/source/audit rows | 440 each | 440 each |
+| Successful workflow p50 | 7225.231ms | 6910.023ms |
+| Successful p95 /p99 | 7480.396 /7483.689ms | 7635.889 /7651.801ms |
+| Request phase | 7.518529s | 7.674886s |
+| Complete workflows/s | 35.778277 | 27.752856 |
+| Acknowledged first writes/s | 52.270865 | 50.033318 |
+| Separate recovery tail | 7.882415s | 6.857256s |
+| Total with setup/cleanup | 24.178468s | 22.351016s |
+| Peak sampled API RSS, both PIDs | 539705344 bytes | 526725120 bytes |
+| Peak generator RSS | 185913344 bytes | 184745984 bytes |
+| Peak producer pending | 416 | 402 |
+| Pending after API drain /final | 399 /0 | 339 /0 |
 | Lost, duplicate or changed committed identity | 0 | 0 |
 | Cleanup, queue-read and memory-read failures | 0 | 0 |
 
-The 1000-caller stage exhausts its operation cap before the admission window
-ends. Its errors are 1984 create/Internal, 194 create/DeadlineExceeded,
-551 replay/Internal and 214 replay/DeadlineExceeded. The error codes alone do
-not establish a driver/pool root cause. Fast failures make the all-attempt
-median look better than the successful-workflow distribution; use both.
+The first run has 2560 create/Internal,24 replay/Internal,47
+create/DeadlineExceeded and 100 read/Internal errors. The second has 2560
+create/Internal,24 replay/Internal,56 create/DeadlineExceeded and 147
+read/Internal errors. Error codes alone do not prove a pool/server root
+cause. Fast failures bias the all-attempt latency distribution; exact JSON
+also retains successful and acknowledged-first-write distributions.
 
-The checker independently reconciles every attempted key and acknowledged
-identity. In the saturated stage, 822 acknowledged writes plus 194 later
-confirmed commits account for all 1016 task/source/audit records. A measurement
-with correct reconciliation can still have unacceptable availability and
-latency. A separate recovery API drains pending events outside request
-throughput; sustained queue stability is not established.
+On the same host,100 callers complete987/987 workflows without errors:
+15.866240s request phase,62.207556 workflows/s, p95 2814.729ms,10.767483s
+separate recovery and 34.423965s total. This is a short observation, not a
+steady-state capacity guarantee.
 
-### Separate failure experiments on the same host
+Hardware is Intel Xeon Platinum 8370C at 2.80GHz, four logical CPUs and
+16758394880 bytes host RAM; cgroup CPU/memory limits are unknown. Observed
+runtimes are Bun 1.3.11, MySQL 8.4.13 and NATS 2.10.29. Sampled memory excludes
+MySQL, NATS and OS caches. Changing host and generator profile prevents a
+controlled comparison with older figures.
 
-After the three stages, the required MySQL/NATS recovery command executes
-all ten cases without required skips: competing/retried writes, killed
-transactions, acknowledged-before-bookkeeping relay recovery, broker restart,
-stable audit identity, revoked reconnect access and interrupted/stale-owner
-schedule recovery. Both actual acknowledged audit-loss and duplicate faults
-fail their intended assertions and restore source bytes.
+### Real controller and recovery verification
 
-These experiments happen after the load phases. They do not demonstrate
-failure recovery while 1000 callers remain active. Controlled fixture clocks
-exercise lease recovery; they are not instructions to change production clocks.
+A real loopback endpoint accepts an RPC and never replies. Before correction,
+the deadline case passes but controller cancellation does not settle the
+request (job 136872346255). The repaired transport settles both cases.
+Temporarily disabling deadline/cancellation handling makes each intended
+assertion fail; source bytes are restored (job 136873914578).
+
+The repeated staged job then executes all ten required real MySQL/NATS
+recovery cases and acknowledged audit-loss/duplicate fault proofs. They pass
+after the load stages, not while 1000 callers remain active. Controlled
+fixture clocks exercise lease logic; operators must not change live clocks.
 
 ## Prerequisites and command
 
@@ -91,7 +99,7 @@ moon run shared-contract:compile
 docker pull nats:2.10-alpine
 cd apps/backend
 bun run typecheck:measurement
-bun run measure:concurrency --concurrency 4 --duration 3 --fixture 20 --instances 2 --seed 42 --max-operations 20 > smoke.json
+BUN_CONFIG_MAX_HTTP_REQUESTS=1024 bun run measure:concurrency --concurrency 4 --duration 3 --fixture 20 --instances 2 --seed 42 --max-operations 20 > smoke.json
 ```
 
 The command generates its own schema, broker ownership label, temporary directory,
@@ -164,46 +172,61 @@ It retains JSON as a GitHub Actions artifact and shows aggregate results in its
 log. The pure core tests run separately without services; an unchecked-input
 fault must fail its actual assertion and restore source before ordinary checks.
 
-## Capacity boundaries
+## Capacity and runtime boundaries
 
-This is one Linux host and one shared project, including serialization of that
-project's display-number allocation. It does not measure all endpoints, multiple
-hosts, sustained long-duration load or streaming connections. Generator and
-observer overhead are included; sampled RSS excludes MySQL, NATS and caches.
-Short samples do not establish stable tails, and no service-level target is
-inferred. Configured caller count does not imply an acceptable service level.
+One Linux host, one project and short closed-loop bursts do not establish
+sustained queue stability, all endpoints, streaming, multiple hosts or
+20000 concurrent clients. The two repeated1000-caller runs retain many
+request failures even though eventual committed identities reconcile.
 
-At 100 callers, three short runs complete without request or correctness
-failures, with different hosted hardware producing different throughput and
-latency. At 1000 callers, the completed run preserves data correctness but
-saturates severely; two earlier commands never produce a completed report.
-No maximum supported fleet or 20000-caller validation is established.
+Each RPC has a five-second whole-call bound and controller cancellation.
+The staged command also has a 240-second external watchdog and 45-second
+graceful termination allowance covering setup/drain/recovery. Forced kill
+cannot guarantee cleanup and never establishes valid measurement. Fixed
+stderr phase markers contain only labels, time and aggregate counts.
 
-## Bounded staged-run diagnostics
+The ordinary package command and staged direct-script command execute the
+same controller. To reproduce a larger profile from apps/backend, with
+the prerequisites above:
 
-The staged workflow gives each controller command a 240-second external
-watchdog, followed by up to 45 seconds for graceful termination. It invokes
-the same script as the package command directly. This bounds setup, request
-settlement and recovery as well as admission. A forced kill cannot guarantee
-controller cleanup and never establishes valid measurement.
+```sh
+BUN_CONFIG_MAX_HTTP_REQUESTS=1024 timeout --signal=TERM --kill-after=45s 240s bun run scripts/measure-concurrency.ts --concurrency 1000 --duration 15 --fixture 1000 --instances 2 --seed 42 --max-operations 3000 > callers-1000.json
+```
 
-Fixed JSON phase markers on stderr identify setup, request settlement,
-API/event/projector/SQL drain, final oracle and cleanup. They contain elapsed
-time and aggregate counts, without credentials, bodies or generated resource
-names. The verified stages finish within this bound. The earlier incomplete
-runs are retained; no root cause or production fix is attributed to the
-diagnostic/configuration change.
+Run it twice into distinct files. Record git revision and machine limits
+alongside manual JSON; hosted reports name their actual checkout. Native
+fetch defaults to 256 requests when the budget is unset; that is a different
+generator profile. API/consumer children retain default fetch configuration.
 
-## Earlier observations retained
+## Earlier profiles and failures retained
 
-| Report | Host | Complete 100-caller workflows | Workflows/s | Successful p95 | Separate recovery |
-|---|---|---|---|---|---|
-| [Initial JSON](performance/2026-11-21-initial-100-callers.json) | Xeon Platinum 8573C, four CPUs, 16758394880 bytes RAM | 1174 | 75.042356 | 1979.019ms | 13.689327s |
-| [Pinned-run JSON](performance/2026-11-21-pinned-100-callers.json) | AMD EPYC 9V74, four CPUs, 16759431168 bytes RAM | 1508 | 97.783247 | 1445.677ms | 19.604031s |
+These observations use the original Node-compatible HTTP transport, with
+different hosted hardware. They remain evidence for those exact profiles:
 
-Each has 100 actual/peak callers, two API PIDs, 1000 fixture tasks and zero
-request/correctness/cleanup failures. Their following 1000-caller commands
-have no completed report. The [initial job](https://github.com/huyz0/tasker/actions/runs/44906822995/job/136854082350)
-is cancelled at its configured external job deadline; the [pinned job](https://github.com/huyz0/tasker/actions/runs/44907118491/job/136854961314)
-is cancelled when superseded. Different hardware and timing prevent a
-controlled comparison. Retaining both avoids presenting only the faster host.
+| Report | Host | Complete 100-caller workflows | Workflows/s | Successful p95 |
+|---|---|---|---|---|
+| [Initial 100](performance/2026-11-21-initial-100-callers.json) | Xeon 8573C | 1174 | 75.042356 | 1979.019ms |
+| [Pinned 100](performance/2026-11-21-pinned-100-callers.json) | EPYC 9V74 | 1508 | 97.783247 | 1445.677ms |
+| [Original verified 100](performance/2026-11-21-verified-100-callers.json) | Xeon 6973P-C | 1701 | 110.717737 | 1293.429ms |
+| [Failed-publication cohort 100](performance/2026-11-21-publication-failure-100-callers.json) | See exact JSON | 1261 | See exact JSON | See exact JSON |
+
+The [original four-caller baseline](performance/2026-11-21-verified-4-callers.json)
+and [original completed 1000-caller saturation](performance/2026-11-21-verified-1000-callers.json)
+are retained. That larger observation completes only 57/3000 workflows with
+2943 errors and 194 additional unacknowledged commits. The newer client
+repair does not retrospectively change it.
+
+Three relevant incomplete 1000-caller runs remain explicitly recorded:
+the [initial run](https://github.com/huyz0/tasker/actions/runs/44906822995/job/136854082350),
+a [superseded run](https://github.com/huyz0/tasker/actions/runs/44907118491/job/136854961314),
+and the [final-head reproduction](https://github.com/huyz0/tasker/actions/runs/44911102729/job/136866898054).
+The latter stalls in request generation/settlement and requires exit 137
+after the external 240s/45s bound. It has no completed 1000-caller oracle,
+so no zero-loss or cleanup claim is made for it. Rejected CODE-v13 is
+preserved. The exact underlying runtime/server cause is not inferred.
+
+The repair establishes observed deadline/cancellation behavior and repeated
+completed measurements. Capacity remains limited in the recorded bursts.
+Representative sustained mixed-project/read/write/streaming work, explicit
+overload/admission behavior and shared rate coordination need separate
+requirements and measurement.

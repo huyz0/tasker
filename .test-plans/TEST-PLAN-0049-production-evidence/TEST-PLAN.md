@@ -120,12 +120,46 @@ from the load phases. Retain each aggregate JSON and sanitized recovery logs;
 name actual hardware, runtime versions, timings, sample sizes, sampled memory,
 queue observations and limitations. No20000 or steady-state claim is accepted.
 
-## Recorded staged interpretation
+## Recorded staged interpretation — original transport
 
-The actual 1000-caller measurement is valid only as a complete, reconciled
+The original-transport 1000-caller measurement is valid only as a complete, reconciled
 experiment: 57 of 3000 workflows complete, with 2943 request errors and 194
 unacknowledged intents later confirmed committed. Do not convert successful
 measurement execution into a service-capacity claim. Preserve all raw aggregate
 records and prior incomplete runs. The 240-second external stage watchdog plus
 45-second graceful allowance bounds fixture execution; force-kill never counts
 as valid cleanup. Separate recovery/fault experiments follow the load phases.
+
+## Reproduced large-caller transport regression
+
+Final job 136866898054 reaches the controller's measurement phase at1000
+callers and never reaches request settlement or cancellation/cleanup markers.
+The external watchdog force-kills it with exit137. Treat this as a real
+controller regression, not an accepted capacity result or attributed server
+root cause.
+
+Before closure, use an actual loopback RPC endpoint that accepts a request
+but never responds. The measurement transport must honor its deadline and
+caller cancellation, close owned sockets and settle the child process. Test
+this behavior through the same transport used by the harness.
+
+Run the real1000-caller stage twice with separate aggregate records. Configure
+and report the generator's native fetch limit, preserve production API/pool
+defaults, and retain all request errors, uncertain commits and earlier
+observations. Both full outcome oracles and cleanup must finish within the
+unchanged external bound.
+
+## Repaired native-fetch profile
+
+The staged controller records its transport and configured1024-request
+generator budget; API/consumer children retain defaults. Logical caller
+concurrency is not an instrumented socket count. Two separate1000-caller
+commands must finish all source/audit reconciliation and cleanup within
+the unchanged external bound.
+
+Actual sourcee94372e finishes both with269/3000 and213/3000 complete
+workflows,2731/2787 errors and47/56 unacknowledged committed intents.
+All440 final task/source/audit rows in each run reconcile without lost,
+duplicate or changed identity; cleanup is zero. Treat this as bounded,
+valid measurement of severe saturation. Retain earlier profiles/failures
+and do not infer a controlled performance improvement or server root cause.

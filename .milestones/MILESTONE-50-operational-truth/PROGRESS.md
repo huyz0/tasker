@@ -42,3 +42,23 @@
   delivered work from the unbuilt list and restore actual MSW/CLI MCP facts.
   Add a source-truth audit. No dependency, production behavior or historical
   ADR changes. Hosted lint/drift/final verification remains pending.
+
+### Resume on repaired verified dependency
+
+- Source e94372e passes all18 checks and repeated native-fetch stages after
+  the actual controller regression. Fresh atomic candidate e011834 is in
+  PR #21's final publication gate. Merge only M50-owned documents onto that
+  candidate; no old M49 implementation is overlaid.
+- Keep current versus original generator profiles distinct in architecture
+  and retain the measured saturation boundary. T01 stays unchecked pending
+  actual documentation/final checks.
+
+## M50-T02 — Roadmap and integration truth
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Plan**: Reconcile M30–M58 statuses against candidate task boxes; update
+  README and agent/webhook guidance for stable-key conflicts, unknown commits,
+  delivery identity, revalidation and per-request CLI deadlines. Generated
+  cli-reference.md remains governed by actual help/doc checks. Static-content
+  TDD exception applies; runtime behavior and dependencies are unchanged.

@@ -31,3 +31,7 @@ all-endpoint/streaming, multi-host or 20000-client result is invented.
 Remaining M50 work is roadmap/integration reconciliation and an actually
 exercised private backup/restore/recovery runbook. These are not claimed
 complete by this audit. Markdown/spec/doc-drift and final gates still apply.
+
+The quoted57/3000 measurement is the retained original transport profile.
+The repaired native-fetch profile also remains saturated; current and
+historical records are distinguished in docs/performance.md.

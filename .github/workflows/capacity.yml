@@ -67,7 +67,8 @@ jobs:
         working-directory: apps/backend
         run: |
           mkdir -p "$RUNNER_TEMP/tasker-capacity"
-          for callers in 4 100 1000; do
+          for stage in 4 100 1000 1000-repeat; do
+            callers="${stage%-repeat}"
             fixture=1000
             duration=15
             operations=3000
@@ -76,11 +77,11 @@ jobs:
               duration=3
               operations=20
             fi
-            report="$RUNNER_TEMP/tasker-capacity/callers-$callers.json"
-            timeout --signal=TERM --kill-after=45s 240s bun run scripts/measure-concurrency.ts --concurrency "$callers" --duration "$duration" --fixture "$fixture" --instances 2 --seed 42 --max-operations "$operations" > "$report"
+            report="$RUNNER_TEMP/tasker-capacity/callers-$stage.json"
+            BUN_CONFIG_MAX_HTTP_REQUESTS=1024 timeout --signal=TERM --kill-after=45s 240s bun run scripts/measure-concurrency.ts --concurrency "$callers" --duration "$duration" --fixture "$fixture" --instances 2 --seed 42 --max-operations "$operations" > "$report"
             TASKER_STAGE_CALLERS="$callers" TASKER_STAGE_FIXTURE="$fixture" TASKER_STAGE_REPORT="$report" bun -e '
               const r = JSON.parse(await Bun.file(process.env.TASKER_STAGE_REPORT).text());
-              if (!r.correctness?.checked || !r.correctness.ok || !r.evidenceValid || r.cleanupFailures !== 0 ||
+              if (r.workload?.transport !== "bun-native-fetch-connect" || r.workload?.generatorMaxHttpRequests !== 1024 || !r.correctness?.checked || !r.correctness.ok || !r.evidenceValid || r.cleanupFailures !== 0 ||
                 r.workload?.concurrency !== Number(process.env.TASKER_STAGE_CALLERS) ||
                 r.workload?.actualPrincipals !== Number(process.env.TASKER_STAGE_CALLERS) ||
                 r.workload?.fixtureTasks !== Number(process.env.TASKER_STAGE_FIXTURE) ||
