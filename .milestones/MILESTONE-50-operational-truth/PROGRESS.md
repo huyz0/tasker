@@ -201,3 +201,28 @@
 - A static inspection of every candidate Markdown file finds no multiple
   blank-line runs. CODE-REVIEW-v4 approves the narrow formatting correction;
   no runtime test is added for reversible prose formatting.
+
+## M50-T03 — Diagnose final restored-SQLite broker recovery failure
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Observed**: Final PR #25 job136898577466 restores SQLite/MySQL identities
+  and passes nine required cases, but its restored SQLite broker-restart
+  case times out at auditCount===4 after70000ms. The MySQL counterpart
+  passes. Final8.4 job136898577483 passes all recovery/fault cases normally.
+- **Evidence gap**: The fixture captures child output but sets LOG_LEVEL
+  silent and never reports worker state at this failure. No consumer exit,
+  SQL-lock, broker-readiness or product root cause is established.
+- **Plan before code**: Enable only owned consumer error logs; on failure
+  capture bounded SQL/broker/ACK counts and numeric worker exit/signal
+  state. Kill owned workers only after failure to collect their safe fixed
+  error classifications. Preserve the exact audit oracle and70-second bound.
+- **Proof**: A temporary real consumer kill must reach the new observer,
+  report the stopped consumer plus four source/three audit rows, fail the
+  intended checkpoint and restore source bytes. Do not count bootstrap,
+  timeout or cleanup failure as that proof. Use actual diagnostics to decide
+  the correction; do not rerun unchanged assertions until green.
+- **State**: Reopen T03/operator criterion only. Candidate M50 is2/3,
+ 397 done/one dropped/one pending; published main remains654c222 with its
+  own15 checks green. CODE-v5 rejects the final candidate's unresolved
+  recovery. The prior Bun panic/retry and Markdown correction stay recorded.
