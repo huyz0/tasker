@@ -1,8 +1,8 @@
 ---
-active_milestone: M49
-active_task: M49-T06
+active_milestone: M58
+active_task: M58-T04
 last_updated: 2026-11-21
-last_commit: 9be092b
+last_commit: debb00ba
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M58-T04 hosted verification in progress.** PR #14 is published as main9be092b; the interface is delivered. Preserve the existing local T04 draft while Cloud startup remains pending. This dependent provider branch adds permanent actual-browser privacy/history/shared-access/obsolete-resource checks and a public guide, with strict browser types and a temporary restored intent fault. M49-T06/draft PR #15 owns the observed new Go audit failure; its reviewed Go1.26.11 candidate is the branch base and its actual full gate is running. Neither task is complete yet.399 total/388 done/10 pending. Original worktrees/WIP/services remain preserved.
 
 **2026-11-21 — M49-T06 urgent Go audit follow-up in progress.** M58-T03 is published as main9be092b via PR #14 after all8 exact-head CI jobs passed. Nine of10 post-main jobs pass, including both integration jobs; Dependency vulnerabilities fails GO-2026-6859 on the existing Go1.26.10 pin. The official advisory fixes the maintained1.26 line in1.26.11. Prepare an isolated configuration patch through the connected provider while the Cloud workspace starts; the actual audit is the observed regression, and no runtime TDD applies to version/static-document changes. Local/full and final-head checks still gate completion/publication. Preserve unfinished M58-T04 test/guide work in tasker-saved-view-ui.399 total/388 done/10 pending. Original worktrees/WIP/services remain preserved.
 

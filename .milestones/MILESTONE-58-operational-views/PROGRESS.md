@@ -435,3 +435,12 @@
 - Explicit repository pre-commit passes all36 checks (33 cached) in7.840s after
   closure and ledger updates. No hook is skipped; the repository script is run
   explicitly because core.hooksPath is not installed in this checkout.
+
+## M58-T04 — Permanent named-view browser proof and guide
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Changed**: Promote the saved-view privacy, history, shared-access recovery and obsolete-resource journeys into permanent browser coverage; publish the Tasks/Reports saved-view guide.
+- **Verified**: PR #14 is merged as main9be092b after all8 original-head checks passed. Nine post-main jobs pass; the newly published Go advisory is isolated in M49-T06/draft PR #15. This dependent branch starts from its reviewed candidate debb00ba. The Cloud workspace remains starting; unfinished local T04 edits in tasker-saved-view-ui are preserved.
+- **Notes**: Testing/security plus TDD apply to this task. Static documentation has no runtime TDD cycle. Use real generated RPC clients and owned synthetic identities, with credential recordings disabled. Execute permanent native checks in the existing hosted browser job; a temporary intent-guard fault must fail the intended browser assertion and restore source byte-for-byte before the ordinary suite. The hosted exact repository gate is separately required; it is not described as a local pass.
+- **Next**: Add the permanent cases, strict browser types, restored fault proof and guide, run actual hosted checks and independent review, then reconcile parent completion and close/publish M58. Original M49-T01–T05 and M50 remain outstanding.
