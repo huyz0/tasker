@@ -1,13 +1,13 @@
 ---
 id: M49
 title: Production Evidence
-status: in-progress
+status: done
 goal: CI exercises production dependencies and reproducible multi-instance measurements describe the capacity actually demonstrated.
 depends_on: [M46, M47, M48]
 surfaces: [backend, infra, specs]
 exit_criteria_met: true
 started_at: 2026-11-21
-completed_at: null
+completed_at: 2026-11-21
 ---
 
 # M49 — Production Evidence
@@ -51,7 +51,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: .milestones/MILESTONE-49-production-evidence/PROGRESS.md; docs/performance.md.
   - **Verify**: Run small correctness smoke then 100 and 1000 callers where resources permit; report saturation and resource limits explicitly; no claim of 20000-client validation without such a run.
 
-- [ ] **M49-T05** — Pin CI runtime selection and verify all release gates.
+- [x] **M49-T05** — Pin CI runtime selection and verify all release gates.
   - **Files**: .github/workflows/ci.yml; .prototools; .milestones/MILESTONE-49-production-evidence/reviews/.
   - **Verify**: CI uses repository-pinned toolchains; run moon check --all, integration jobs, E2E and standalone smoke; retain reports as artifacts.
 

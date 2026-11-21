@@ -1,0 +1,24 @@
+name: Setup pinned Node
+description: Install and verify the exact Node version in .prototools.
+runs:
+  using: composite
+  steps:
+    - name: Read repository Node pin
+      id: pin
+      shell: bash
+      run: |
+        tasker_node_version=$(sed -nE 's/^node[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$GITHUB_WORKSPACE/.prototools")
+        [[ "$tasker_node_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+        printf 'version=%s\n' "$tasker_node_version" >> "$GITHUB_OUTPUT"
+    - name: Install pinned Node
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ steps.pin.outputs.version }}
+    - name: Verify selected Node
+      shell: bash
+      env:
+        TASKER_EXPECTED_NODE: ${{ steps.pin.outputs.version }}
+      run: |
+        tasker_actual_node=$(node --version)
+        printf 'Selected Node %s\n' "$tasker_actual_node"
+        [[ "$tasker_actual_node" == "v$TASKER_EXPECTED_NODE" ]]

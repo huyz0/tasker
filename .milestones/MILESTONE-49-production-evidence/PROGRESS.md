@@ -494,7 +494,7 @@
 
 ## M49-T05 — Repository-pinned CI and packaging toolchains
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-21
 - **Observed**: CI selects a floating Node24 while .prototools still names
  24.12.0; release.yml selects latest Bun and a floating Moon setup action.
@@ -665,3 +665,30 @@
 - This completed task is atomic with its workflow, data, docs, checked box,
   journal and ledger. M49 is 5/6; program 394 done/one dropped/four pending.
   T05 and final combined-head publication remain required.
+
+### T05 final runtime/release gates and M49 closure candidate
+
+- Official Node 24.22.3 security-release evidence and the actual version
+  comparison align CI, integration, staged measurement and packaging with
+  .prototools. Existing exact Bun/Moon actions are reused; Go continues to
+  read the exact module minimum. No advisory or required gate is suppressed.
+- All 18 non-skipped source checks pass on 2e8b14b/checkout 18ae2c6:
+  CI 44908965532, Integration 44908965496, Release 44908965509 and
+  staged/recovery 44908965538. Exact moon check --all completes 37 checks
+  (7 cached) in 7m23.324s. Report artifact 14709696689 is retained.
+- Each MySQL version runs native 19/recovery ten and actual claim/audit fault
+  proofs without required skips. E2E 103/three existing skips, strict browser
+  types/native-intent fault, 388-story accessibility/375px overflow, standalone
+  smoke and all three cross-compiled packaging targets pass. Only Linux
+  artifacts execute here; native Windows/macOS execution is not claimed.
+  Tag-only release publication jobs are intentionally skipped.
+- Actual Markdown gate job 136856196396 first rejects two bare official
+  release URLs. Valid autolinks fix those findings; the unchanged Markdown,
+  harness and specification/doc-drift gates pass on the verified source.
+- CODE-v12 approves correctness, coverage, architecture and security. Four
+  completed-task commits now contain T02/T03/T04/T05 code/tests/evidence and
+  their own checked boxes/journal/ledger. M49 is 6/6 with all four criteria;
+  program 395 done/one dropped/three pending. Main remains unchanged until
+  final combined-head CI and publication; no local clean-tree claim.
+- Next is M50-T01 on this verified dependency candidate: architecture,
+  standards, roadmap/integration truth and an exercised recovery runbook.

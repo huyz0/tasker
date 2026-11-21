@@ -10,9 +10,15 @@ on:
   # Buildable on demand without cutting a release, so a packaging change can be
   # proven before it is tagged rather than after.
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.prototools'
+      - '.github/actions/**'
+      - '.github/workflows/release.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -41,16 +47,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
 
       - name: Install dependencies
         run: |
@@ -68,14 +70,13 @@ jobs:
           # report the tag rather than "dev".
           GIT_SHA: ${{ github.ref_name }}
         run: |
+          trap 'bun run scripts/bundle-gui.ts --reset' EXIT
           bun run scripts/bundle-gui.ts
           bun build --compile --minify --sourcemap \
             --target ${{ matrix.target }} \
             --outfile "dist/${{ matrix.artifact }}" \
             src/index.ts
-          # Always, even if the compile failed: the manifest is committed empty
-          # and a filled-in one must never survive the job.
-          bun run scripts/bundle-gui.ts --reset
+          # The EXIT trap restores the committed empty manifest on failure too.
 
       # The same smoke test CI runs on every pull request, against the release
       # artifact itself — but only where it can execute. A cross-compiled
@@ -97,6 +98,8 @@ jobs:
   # backend artifacts are uploaded and appends to the same release rather than
   # replacing it.
   cli:
+    permissions:
+      contents: write
     name: CLI binaries
     needs: build
     runs-on: ubuntu-latest
@@ -121,6 +124,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release:
+    permissions:
+      contents: write
     name: Attach to the release
     needs: build
     runs-on: ubuntu-latest
