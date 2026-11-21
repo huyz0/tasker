@@ -1,8 +1,8 @@
 ---
 active_milestone: M49
-active_task: M49-T03
+active_task: M49-T04
 last_updated: 2026-11-21
-last_commit: e321baa
+last_commit: 9f0eba8
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T03 verified bounded HTTP harness.** Source 2e8b14b passes all 18 non-skipped checks, including exact 37 checks in 7m23.324s, both native MySQL versions, actual core/late-SQL fault proofs, browser/rendered UI and packaging. The owned command reconciles acknowledged and uncertain writes after real SQL/broker drain and cleans generated resources. CODE-v10 approves. T04 separately publishes staged saturation/limits; T05 consolidates pinned release configuration. This atomic publication candidate is 393 done/one dropped/five pending, M49 4/6. Main publication still requires the final combined-head gate; Cloud-local execution remains unavailable.
 
 **2026-11-21 — M49-T02 recurring-worker source verified.** All10 CI44904756478 and both Integration44904756494 jobs pass one321baae. Each required MySQL version runs native19/recovery10, the claim proof and both acknowledged audit faults. Exact36 passes in5m8.386s; real E2E/standalone and388-story accessibility/mobile checks pass with zero rendered findings. CODE-v9 approves the deferred-source/recurring-ACK correction. This atomic task candidate contains its code/tests/checkbox/journal/ledger together; final combined-head checks and main publication remain required. M49 is3/6;399 total/392 done/one dropped/six pending. T03–T05 continue separately; no capacity result is inferred.
 
@@ -2048,7 +2050,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 3 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 4 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2059,7 +2061,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 392 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 393 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

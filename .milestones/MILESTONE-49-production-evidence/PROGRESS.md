@@ -282,3 +282,180 @@
   CI still gates publication; this entry does not claim a main merge.
   M49 is3/6;399 tasks/392 done/one dropped/six pending. T03–T05 continue on
   the reviewable work branch with their independent evidence/gates.
+
+## M49-T03 — Bounded HTTP concurrency evidence
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Changed**: Prepare a standalone bounded workload against disposable MySQL and
+  an owned broker, with actual independent API processes and distinct scoped
+  agent principals. The recovery candidate remains separately gated in PR #18.
+- **Verified**: No load implementation or capacity result is claimed. The test
+  plan precedes code; core configuration, observed latency and source-outcome
+  reconciliation tests will first run against a typed empty scaffold.
+- **Notes**: Testing/security plus TDD apply. Existing HTTP adapters, SQL, NATS,
+  token generation and owned cleanup suffice; no new dependency or runtime
+  protocol is introduced, so a product ADR and UX artifact are unnecessary.
+  Concurrency/duration/fixture/instance/seed/operation bounds are explicit.
+  Credentials stay in memory; only internally generated resources are removed.
+- **Next**: Establish the actual failing core tests, implement the minimal
+  harness and exercise a small correctness smoke. Separate T04 stages and
+  published capacity claims require their own measured artifacts.
+
+### Independent core-test feedback
+
+- The core scaffold/tests import only Bun built-ins and the local helper.
+  Their dedicated job therefore needs no package install, generated contract
+  or service. Run it independently of the shared-contract queue, retaining
+  all ordinary backend, native SQL, browser and full repository gates.
+- This is still the failing-test checkpoint. No measurement implementation or
+  passing red/green evidence is inferred from the job configuration.
+
+### Actual core red before implementation
+
+- Independent job136823008841 on source9f036827 executes the intended scaffold:
+  one invalid-input case passes and six public configuration/latency/source-
+  reconciliation cases fail with their specific not-implemented errors. No
+  package, contract or service error accounts for this red.
+- Implement only bounded option parsing, observed nearest-rank quantiles and
+  independent source reconciliation. The real HTTP harness and smoke remain
+  in progress. Merge corrected T02 parent3410e39 normally; preserve its
+  observed failures/review and all T03 preparation. No branch is force-pushed.
+
+### Real HTTP harness implementation candidate
+
+- Add the bounded Linux/loopback command with one actual scoped principal per
+  caller, requested independent API PIDs, stable create/replay/get operations
+  and preserved production rate/pool limits. Timed parent SQL queries own a
+  generated schema; each fixture broker carries a generated ownership label.
+- Setup is outside measurement. Record actual actor/fixture counts, all/success/
+  first-write quantiles, stage error codes, throughput, sampled own-PID memory,
+  hardware/cgroup/runtime versions, queue observations and uncertain outcomes.
+  Credentials and raw driver/event data never enter the JSON or diagnostics.
+- Settle calls and drain measured APIs before independent SQL/source/audit
+  oracles. Any needed recovery API is separately reported and excluded from
+  throughput. Normal/error/graceful-signal cleanup attempts every owned
+  resource and restores ambient state. Force-kill remains outside graceful
+  cleanup guarantees.
+- Add strict script typechecking to Moon/full CI and affected input hashes.
+  Keep the pure core job independent and prove that bypassed input validation
+  fails its actual assertion with byte-for-byte restoration. Add a real
+  four-caller/two-API smoke with positive report-contract checks and retained/
+  logged aggregate JSON. These checks are configured, not yet claimed passed.
+- Document the command and limits in docs/performance.md; link it from README
+  and remove the now-obsolete statement that no load command exists. No
+ 100/1000/20000 caller capacity result is claimed; T04 owns staged evidence.
+- Source3410e39 (T02) passes both integration jobs, audit and contract; its
+  corrected normal/fault/type/full gates remain queued. T03 core sourcef6aa796
+  also awaits hosted green. Both tasks remain unchecked.
+
+### Independent smoke feedback and complete timing
+
+- The smoke provisions/installs its own tools, dependencies and services and
+  consumes the committed contract. Run it independently; the contract and all
+  existing repository gates still separately gate publication. This removes
+  an ordering dependency, not a verification requirement.
+- Report setup, request settlement, post-measurement observation, API drain,
+  recovery, SQL/audit reconciliation and cleanup separately, with total time
+  through cleanup. Keep request throughput tied to its measured phase.
+  The smoke requires actual positive setup/total timing as well as its other
+  independent observations.
+- Clarify that teardown attempts every owned resource and a cleanup failure
+  fails the run; force-kill cannot guarantee graceful cleanup. Results remain
+  pending, not inferred.
+
+### Superseded CI backlog
+
+- The actual read-only preview verifies the fixed run IDs, branch/head identity,
+  PR ownership and workflow paths. Completed runs are excluded. Current PR #18
+  head3410e39 and PR #19 headf3a6988 are protected by current-head checks; main
+  is outside the allowlist. A new maintenance head makes the old PR #19 source
+  replaceable while preserving current source3410e39 on PR #18.
+- GitHub's public status reports operational Actions/no open incident, so no
+  global outage or billing cause is inferred. This task has several obsolete
+  queued runs; remove that known backlog, not unrelated account work.
+- The connected GitHub tools have no cancel action, browser control is not
+  exposed, and the Cloud executor failed. Add a temporary same-repository/
+  PR19-only Bun maintenance job with actions-write and read-only content/PR
+  access. It revalidates every fixed candidate and current head before cancel,
+  preserves completed evidence, and stops if its own head is superseded.
+  No token, response body or credential is printed.
+- Permanent per-PR concurrency prevents future superseded check accumulation;
+  each main SHA has its own group and main checks are never cancelled.
+- Remove both temporary maintenance files before final publication. Actual
+  cancellation results and ordinary final-head checks remain required.
+
+### Verified core/fault and backlog cleanup; smoke setup correction
+
+- Job136834841208 passes all seven core cases and the actual bypassed-input
+  assertion proof, with source restored byte-for-byte. The earlier source's
+  pure core job136826871810 also passes all seven with100% lines/functions.
+- Maintenance job136834841091 requests four cancellations and skips eight
+  completed/current candidates. Fresh API reads confirm all four selected
+  runs are completed/cancelled. Current PR #18/source3410e39 and main are
+  preserved. Remove both temporary maintenance files; no actions-write token
+  permission or maintenance code is retained in the final implementation.
+- First smoke job136834841212 fails before typechecking or workload execution:
+  Moon cannot resolve main in a shallow checkout (git128). No load result or
+  artifact exists. Give only this Moon-using job the same fetch-depth0 as the
+  repository's other Moon jobs. Keep every smoke oracle and budget.
+- Source3410e39 now passes the exact36-task gate (8m1.445s), backend2423,
+  MySQL8.4 native19/recovery10/both audit faults, native8.0 and the real E2E/
+  standalone checks; its final rendered GUI job is still running. T02 remains
+  unchecked until that actual final result. T03 also remains in progress.
+
+### Real smoke and late-commit oracle test before correction
+
+- Actual job136838106023 on sourcebb90cb8 completes20/20 logical operations,
+ 60 RPCs and20 acknowledged/persisted task/producer/audit records, with no
+  request or correctness errors and no cleanup failures. Four actual callers
+  use two API PIDs. The355.819ms request phase is a tiny correctness smoke,
+  not sustained capacity evidence; its624.150ms recovery tail is separate.
+- Review asks whether API-process exit alone proves that server SQL commits
+  have settled before the final outcome snapshot. Add a controlled late SQL
+  transaction at the final-oracle boundary, require a real commit marker and
+  require the checker to reject the unattempted persisted task. Restore the
+  harness bytes in finally. Run this test against the current checker before
+  changing its implementation; no missed-write defect is inferred yet.
+- Incorporate T02 final candidate52d4680 as a normal merge parent, preserving
+  its completed task/review and392-done ledger. PR #18 publication still has
+  its own final-head gates. T03 remains unchecked and staged load stays T04.
+
+### Actual late-commit red and SQL-session barrier
+
+- Job136844676136 executes the deliberate late transaction and records:
+  exitCode0, committed true, checked true, unexpected0, valid true and
+  cleanupFailures0. The final oracle incorrectly reports success from its
+  earlier snapshot. This is a real checker defect, observed before correction.
+- After API/recovery drain and genuine broker acknowledgement, stop the
+  projector and wait for every other SQL session in this generated schema to
+  close. Only the controller's observer connection remains. Then read the
+  source/audit snapshots and include any remaining pending producer count in
+  correctness. Record SQL drain separately from API/recovery/oracle timing.
+- Keep the same late-commit fault, real commit marker, unexpected-row assertion
+  and byte restoration. Re-run ordinary smoke plus the negative proof; no
+  green result is inferred. No production handler or transaction is changed.
+- Merge T02 correctione321baa normally and preserve its reopened391-done/
+  seven-pending ledger, CODE-v8 rejection and recurring ACK-worker regression.
+
+### T03 final verified command and atomic publication candidate
+
+- Source 2e8b14b passes all 18 non-skipped hosted checks: CI 44908965532,
+  Integration 44908965496, packaging 44908965509 and staged/recovery
+  44908965538. Tag-only release jobs are intentionally skipped.
+- Exact moon check --all completes 37 checks (7 cached) in 7m23.324s;
+  backend 2430, GUI 1764 and contract 1158 pass. Native MySQL 8.0.46/8.4.13
+  each execute 19 native and ten recovery cases plus actual failure proofs.
+  E2E is 103 passes/three existing skips; 388 rendered stories have no
+  accessibility or 375px overflow findings.
+- Seven core tests and the bypassed-input fault pass. Actual late-SQL red
+  job 136844676136 first returned valid after an unattempted commit; the
+  corrected SQL-session barrier now rejects it with unexpected 1/exit 1
+  and cleanup zero, restoring bytes. The ordinary smoke remains positive.
+- Retain fixed phase diagnostics after the observed uncompleted larger runs;
+  no underlying service/runtime cause is invented. T04 publishes every
+  measured stage and its external watchdog, including severe saturation.
+- CODE-v10 approves correctness, coverage, architecture and security.
+  This atomic task commit contains implementation, tests, checkbox, journal
+  and ledger together. M49 is 4/6; program 393 done/one dropped/five pending.
+  Final combined-head gates still precede main publication.

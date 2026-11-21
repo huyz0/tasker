@@ -21,7 +21,11 @@
     "test:mysql-claim-proof": "bun run scripts/prove-mysql-claim.mjs",
     "test:recovery": "bun test src/test/wire/atomicRecovery.integration.test.ts src/test/wire/domainEventRecovery.integration.test.ts src/test/wire/scheduleRecovery.integration.test.ts src/test/wire/durableEvents.integration.test.ts",
     "test:recovery:mysql": "bun run scripts/verify-mysql-recovery.mjs",
-    "test:recovery:audit-proof": "bun run scripts/prove-two-instance-audit.mjs"
+    "test:recovery:audit-proof": "bun run scripts/prove-two-instance-audit.mjs",
+    "measure:concurrency": "bun run scripts/measure-concurrency.ts",
+    "typecheck:measurement": "bunx tsc --project tsconfig.measurement.json --noEmit",
+    "prove:measurement-core": "bun run scripts/prove-measurement-core.mjs",
+    "prove:measurement-quiescence": "bun run scripts/prove-measurement-quiescence.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",
