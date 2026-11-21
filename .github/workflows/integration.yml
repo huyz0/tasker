@@ -5,13 +5,8 @@ on:
     branches:
       - main
   pull_request:
+    branches: [main]
     types: [opened, synchronize, reopened]
-    paths:
-      - 'apps/backend/src/modules/repositories/**'
-      - 'apps/backend/src/modules/events/**'
-      - 'apps/backend/src/consumers/**'
-      - 'apps/backend/src/lib/natsCorrelation.ts'
-      - '.github/workflows/integration.yml'
 
 jobs:
   integration:
@@ -107,6 +102,13 @@ jobs:
           # authz.ts picks its schema off this variable.
           STANDALONE: "true"
         run: moon run backend:test-integration-realtime
+
+      - name: Run committed recovery cases
+        env:
+          TASKER_REAL_INTEGRATION: "1"
+          NATS_URL: "nats://localhost:4222"
+          STANDALONE: "true"
+        run: moon run backend:test-recovery
 
       - name: Stop NATS
         if: always()

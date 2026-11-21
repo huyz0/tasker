@@ -1,8 +1,8 @@
 ---
 active_milestone: M49
-active_task: M49-T01
+active_task: M49-T02
 last_updated: 2026-11-21
-last_commit: 99ff7c3
+last_commit: f502365
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T01 verified; combined final publication next.** Candidatef5023657 passes all10 CI44890697502 jobs and both Integration44890697419 jobs. Each MySQL8.0.46/8.4.13 job executes12 files/19 native cases with zero skips and a restored failing claim proof. Real NATS passes live feed/audit plus five committed recovery cases; four explicit MySQL recovery counterparts remain T02. The exact hosted36-task gate passes in6m38.838s, with GUI1764/backend2421/contract1158/builds. CODE-v2 approves. PR #16 has published M58 as main2ebfc34 with identical tree; carry that published tree and all saved-view gates into this final T01 candidate. PR #17 still requires final-head CI/integration before merge. M49 is2/6; next T02, then bounded load, measured limits and operations docs.399 total/391 done/seven pending. Cloud startup is still pending and original local drafts remain preserved.
 
 **2026-11-21 — M58 complete on its verified candidate; publication next.** All5 tasks and4 criteria pass. Candidate99ff7c37 passes all eight CI44889512496 jobs, strict browser types, the intended native history-fault proof with byte restoration, all102 ordinary browser cases, rendered checks and the exact hosted36-task repository command (7m37.852s; GUI1764/backend2421/contract1158 and builds). CODE-v10 approves the corrected Reports observer. The public guide is linked. PR #16 still needs actual final-head checks and main publication. Next M49-T01/draft PR #17 owns newly required real MySQL/NATS gates and their exposed fixture assumptions; M49-T02–T05 and M50 remain open. Go repair mained1b323 passes all10 post-main jobs.399 total/390 done/eight pending. Cloud startup remains pending; original local drafts/WIP/services are preserved.
 
@@ -2030,7 +2032,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 1 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 2 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2041,7 +2043,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 390 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 391 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

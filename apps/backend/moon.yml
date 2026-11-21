@@ -84,3 +84,27 @@ tasks:
       - 'src/**/*'
       - 'tsconfig.json'
       - '/packages/shared-contract/gen/**/*'
+
+  # Explicit real-service commands never reuse a cached prerequisite skip.
+  test-mysql:
+    type: 'run'
+    deps:
+      - 'shared-contract:install-deps'
+    command: 'bun run test:mysql'
+    inputs:
+      - 'src/**/*'
+      - 'scripts/verify-mysql.mjs'
+    options:
+      cache: false
+      runInCI: true
+
+  test-recovery:
+    type: 'run'
+    deps:
+      - 'shared-contract:install-deps'
+    command: 'bun run test:recovery'
+    inputs:
+      - 'src/**/*'
+    options:
+      cache: false
+      runInCI: true

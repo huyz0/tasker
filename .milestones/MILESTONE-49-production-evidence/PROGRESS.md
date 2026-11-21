@@ -41,3 +41,54 @@
   Final-head hosted CI and publication still gate the merge of PR #15.
   Resume preserved M58-T04 after publication; its dependent provider branch
   retains its own in-progress journal.
+
+## M49-T01 — Required production-dependency checks
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Changed**: Add an explicit isolated MySQL gate and extend the existing real JetStream job to committed recovery cases.
+- **Verified**: M46/M47/M48 dependencies are published. M49-T06 publishes the patched runtime as main ed1b323 after all eight final-head checks, with identical tested/published tree. Permanent M58-T04 browser coverage proceeds separately in PR #16; preserve its remote and local drafts. Cloud startup remains pending, so use actual hosted dependency services and the exact repository gate.
+- **Notes**: Testing/security plus TDD apply. Existing unit prerequisites remain explicit; the new required command must create only unique owned schemas, fail on unavailable services or skipped native files, and clean those schemas. Real tests precede any completion claim, and a restored MySQL claim-assertion fault must fail the required command. CI configuration/static comments need no artificial runtime unit test; the new orchestration is verified against real services.
+- **Next**: Wire owned MySQL readiness/isolation and broker recovery, prove ordinary/fault paths on actual services, review source and run final hosted gates before completion/publication. M49-T02 still owns complete two-instance recovery, and T03/T04 still own measured load; no capacity claim is added here.
+
+### First required service results
+
+- The actual8.4 job136803571754 passes every native file and the restored
+  claim-assertion proof. The8.0 job136803571688 reaches real MySQL but its fresh
+  migration test hits Bun's implicit five-second default. Give this cold
+  complete-schema bootstrap the existing wire-readiness30-second bound and
+  close its pool in finally; keep all table assertions and native operational
+  query latency budgets unchanged.
+- Real NATS/recovery job136803474859 exposes an expired-key fixture assumption:
+  the deterministic schedule clock is in early November, while generic keys
+  use the actual current creation time. Its November13 purge cannot expire
+  November21 keys, so the unchanged positive purge assertion correctly fails.
+  Select actual stored creation timestamps, prove keys exist and the clock is
+  finite, then advance beyond the declared TTL. Preserve the positive purge
+  and exact same-task replay assertions; do not change production expiry.
+- Both observed failures are recorded before correction. Re-run real services,
+  restored faults and full hosted checks before completion; no inferred pass
+  or capacity claim is made.
+
+### T01 verified checkpoint and source reconciliation
+
+- Corrected candidate f5023657 passes all10 CI44890697502 jobs and both
+  Integration44890697419 jobs. MySQL8.0.46 and8.4.13 each run all12 native
+  files/19 cases with zero skips, then prove the required command rejects
+  the altered claim assertion and restores source byte-for-byte.
+- Real NATS runs its live mutation/feed/audit case plus five committed recovery
+  cases, zero failures. Four explicit MySQL process-recovery counterparts are
+  still gated until T02; they are not claimed passed. The actual expired-key
+  correction preserves positive GC and same-task replay after real key expiry.
+- The exact hosted repository gate passes all36 checks (7 cached) in6m38.838s:
+  GUI1764/backend2421/contract1158 and production/standalone builds. CODE-v2
+  approves the current source and proof design. No local execution is claimed
+  while Cloud startup remains pending.
+- PR #16 publishes M58 as main2ebfc34 after all eight final-head checks; its
+  tested/published tree is identical. Build this final candidate on that
+  published tree plus only owned T01 changes, retaining the saved-view browser
+  gates and all completed ledger entries. No branch is force-pushed.
+- Check T01 and the real-dependency criterion. M49 is2/6; program399 total,
+  391 done, one dropped, seven pending. Final combined-head CI/integration
+  still gate PR #17 publication. T02 next proves MySQL two-instance recovery;
+  load/capacity and operations documentation remain outstanding.

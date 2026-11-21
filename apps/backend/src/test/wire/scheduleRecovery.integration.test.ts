@@ -8,7 +8,7 @@ import { eq } from 'drizzle-orm';
 import { createContextValues } from '@connectrpc/connect';
 import { setupDatabase } from '../../db/db';
 import { currentUserIdKey } from '../../modules/auth/session';
-import { purgeExpiredIdempotencyKeys } from '../../lib/idempotency';
+import { IDEMPOTENCY_KEY_TTL_MS, purgeExpiredIdempotencyKeys } from '../../lib/idempotency';
 import { createTaskManagementHandler } from '../../modules/tasks/tasks.handler';
 import { createWorkflowsHandler } from '../../modules/workflows/workflows.handler';
 import { createSchedulesHandler, createScheduleAdmission } from '../../modules/schedules/schedules.handler';
@@ -202,7 +202,13 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       expect(await db.select().from(S.domainEvents).where(eq(S.domainEvents.subject, 'domain.task.created'))).toHaveLength(1);
       const [receipt] = await db.select().from(S.scheduleRuns).where(eq(S.scheduleRuns.id, runId));
       expect(receipt).toMatchObject({ outcome: 'created', attempts: 2, taskId: completed.taskId, frozenInputs: null });
-      const later = new Date(now.getTime() + 3 * 86_400_000);
+      // Generic keys use the real creation clock, independently of the
+      // deterministic schedule clock. Advance beyond their actual lifetime.
+      const keys = await db.select({ createdAt: S.idempotencyKeys.createdAt }).from(S.idempotencyKeys);
+      expect(keys.length).toBeGreaterThan(0);
+      const lastKeyTime = Math.max(...keys.map((key: { createdAt: Date }) => key.createdAt.getTime()));
+      expect(Number.isFinite(lastKeyTime)).toBe(true);
+      const later = new Date(Math.max(now.getTime() + 3 * 86_400_000, lastKeyTime + IDEMPOTENCY_KEY_TTL_MS + 1000));
       expect(await purgeExpiredIdempotencyKeys(db, driver === 'sqlite', later)).toBeGreaterThan(0);
       const replay = await result(worker(later.toISOString(), undefined, { mode: 'execute', runId }));
       expect(replay).toEqual(completed);
