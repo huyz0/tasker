@@ -1,12 +1,12 @@
 ---
 id: M50
 title: Operational Truth
-status: todo
+status: in-progress
 goal: Architecture, roadmap, agent guidance and operations documentation match verified behavior and recovery guarantees.
 depends_on: [M49]
 surfaces: [specs, backend]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-21
 completed_at: null
 ---
 
@@ -22,7 +22,7 @@ Documents repeatedly inject obsolete assumptions into development, and new relia
 
 ## 3. Exit Criteria
 
-- [ ] Architecture no longer contradicts delivered consumers, MCP, pagination or deployment artifacts.
+- [x] Architecture no longer contradicts delivered consumers, MCP, pagination or deployment artifacts.
 - [ ] Operators can inspect and recover pending events and interrupted scheduled work.
 - [ ] Roadmap and milestone ledger agree with task checkboxes and verification evidence.
 - [ ] Documentation states the actual tested reliability and capacity boundaries.
@@ -35,7 +35,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 
 ## 5. Task Breakdown
 
-- [ ] **M50-T01** — Reconcile architecture and standards with code and current decisions.
+- [x] **M50-T01** — Reconcile architecture and standards with code and current decisions.
   - **Files**: .specs/product/architecture.md; .specs/standards/api-standard.md; .specs/standards/security-standard.md.
   - **Verify**: Check all present-tense claims against source: consumers, streams, MCP, CLI pagination, Radix, deployment manifests, measured scale and remaining gaps; doc-drift passes.
 
