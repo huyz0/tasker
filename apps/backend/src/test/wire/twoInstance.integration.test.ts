@@ -147,6 +147,7 @@ realTest('two API processes share claims, retries, acknowledged audit identity a
     await ownerA.orgs.removeOrgMember({ orgId, userId: memberId });
     expect((await member.auth.getIdentity({})).user?.id).toBe(memberId);
     const denied = await member.tasks.getTask({ taskId: task.id }).then(() => null, error => ConnectError.from(error).code);
+    if (denied === null) throw new Error('Revoked member unexpectedly read the task.');
     expect([Code.NotFound, Code.PermissionDenied]).toContain(denied);
     const ownerFeed = feed(ownerB, 35_000), after = feed(member, 35_000);
     expect((await ownerFeed.iterator.next()).value?.subject).toBe('stream.ready');expect((await after.iterator.next()).value?.subject).toBe('stream.ready');

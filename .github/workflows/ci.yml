@@ -161,6 +161,8 @@ jobs:
         run: |
           cd packages/shared-contract && bun install && cd ../..
           cd apps/backend && bun install
+      - name: Owned fixture cleanup regressions
+        run: cd apps/backend && bun test src/test/ownedCleanup.test.ts
       - name: Build & Test (Cached)
         run: moon run backend:typecheck backend:test
 

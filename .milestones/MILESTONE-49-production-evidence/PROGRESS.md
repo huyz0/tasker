@@ -116,3 +116,19 @@
 - Parent PR #17 is published as main d7e2e45 after all12 final checks, with
   identical tested/published tree713f673. Include that main as a normal merge
   parent; no force push. Actual candidate checks still gate all completion.
+
+### Rejected source checkpoint and observed regression
+
+- Preserve rejected CODE-v4. Its P1 identifies the enabled atomic MySQL fixture's
+  inherited default database, and actual job136812898549 reproduces
+  ER_BAD_DB_ERROR / Unknown database tasker. The required recovery wrapper now
+  creates and passes only a UUID outer schema, then drops only that schema;
+  nested fixtures keep their separate owned schemas.
+- Backend job136812898590 also catches a nullable denial assertion type. Add
+  an explicit unexpected-success failure before checking the non-null error
+  code; no denial outcome is broadened.
+- P2 requires independently settled teardown and creation-attempt tracking.
+  Write observable filesystem/environment cleanup regressions and an empty
+  typed scaffold first; the dedicated hosted step must demonstrate the red
+  before implementation. The task remains in progress and no cleanup safety
+  or successful recovery pass is claimed yet.
