@@ -15,7 +15,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "typecheck:e2e:saved-views": "tsc --noEmit --project tests/e2e/tsconfig.saved-views.json",
-    "test:e2e:saved-view-proof": "bun run scripts/prove-saved-view-intent.mjs"
+    "test:e2e:saved-view-proof": "bun run scripts/prove-saved-view-intent.mjs",
+    "test:e2e:claim-cursor-proof": "bun run scripts/prove-claim-history-cursor.mjs"
   },
   "dependencies": {
     "@mdxeditor/editor": "^4.2.0",

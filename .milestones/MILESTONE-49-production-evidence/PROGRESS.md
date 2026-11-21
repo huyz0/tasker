@@ -831,3 +831,24 @@
 - Resume the committed M50 source-truth work from this verified dependency;
   main remains unchanged until publication. Local execution remains
   unavailable and no local clean-tree check is claimed.
+
+## M49-T05 — Correct the observed claim-history browser oracle race
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Observed**: Final E2E job136880956867 fails all three attempts at the
+  exact-one-current-page-request assertion: zero requests yet or two
+  requests with the same valid older cursor. Canonical unassignment is
+  already visible. Source TaskClaimHistory polls history and invalidates
+  the independent canonical task read; scheduling is not an exact count.
+- **Plan**: Await actual manual refresh completion before the baseline;
+  after eventless unassignment, wait for a current history request and
+  require every observed request to retain the older-page cursor. Preserve
+  canonical owner, editor content/focus and visible page assertions.
+- **Proof**: Inject an accepted head-page browser RPC after the positive
+  current-page observation; require the precise cursor-invariant assertion
+  to fail and restore test bytes. No production UI, polling interval or
+  timeout is changed. The observed red precedes this fixture correction.
+- **State**: Reopen T05 only: M49 5/6,394 done/one dropped/four pending on
+  the candidate. All other17 final gates, including repeated native stages,
+  pass. Main remains unchanged. Preserve rejected CODE-v17.

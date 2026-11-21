@@ -128,6 +128,8 @@ jobs:
         run: cd apps/gui && bun run typecheck:e2e:saved-views
       - name: Prove native saved-view intent regression
         run: cd apps/gui && bun run test:e2e:saved-view-proof
+      - name: Prove claim-history current-page cursor invariant
+        run: cd apps/gui && bun run test:e2e:claim-cursor-proof
       - name: E2E
         run: moon run gui:e2e
       - name: Upload Playwright report
