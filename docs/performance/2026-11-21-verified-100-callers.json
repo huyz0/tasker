@@ -1,0 +1,130 @@
+{
+  "kind": "tasker-http-concurrency-v1",
+  "startedAt": "2026-11-21T13:31:01.654Z",
+  "commit": "18ae2c6117bbd1c76dbfc3a606e33594537033c1",
+  "workload": {
+    "concurrency": 100,
+    "duration": 15,
+    "fixture": 1000,
+    "instances": 2,
+    "seed": 42,
+    "maxOperations": 3000,
+    "mode": "closed-loop create/replay/get; one shared project",
+    "actualPrincipals": 100,
+    "apiPids": [
+      3944,
+      4431
+    ],
+    "peakActive": 100,
+    "fixtureTasks": 1000,
+    "poolSizePerApi": 20,
+    "poolQueueLimitPerApi": 200
+  },
+  "timing": {
+    "setupMs": 7461.184722,
+    "phaseMs": 15363.392011,
+    "lastAdmissionOffsetMs": 14985.220277,
+    "postObservationMs": 1.7309889999996813,
+    "apiDrainMs": 23.513177000000724,
+    "recoveryMs": 22585.613168,
+    "sqlDrainMs": 8.583819999999832,
+    "oracleMs": 29.92533700000058,
+    "cleanupMs": 556.8849770000015,
+    "totalMs": 46033.677994,
+    "observerIntervalMs": 500
+  },
+  "counts": {
+    "attemptedLogical": 1701,
+    "completedLogical": 1701,
+    "acknowledgedWrites": 1701,
+    "persistedMeasuredTasks": 1701,
+    "persistedProducerEvents": 1701,
+    "persistedAuditRows": 1701,
+    "rpcCalls": 5103,
+    "errors": {}
+  },
+  "throughput": {
+    "completedLogicalPerSecond": 110.71773725373309,
+    "acknowledgedWritesPerSecond": 110.71773725373309
+  },
+  "latencyMs": {
+    "allLogical": {
+      "count": 1701,
+      "p50": 855.0515429999996,
+      "p95": 1293.4292109999997,
+      "p99": 1615.375375999999
+    },
+    "successfulLogical": {
+      "count": 1701,
+      "p50": 855.0515429999996,
+      "p95": 1293.4292109999997,
+      "p99": 1615.375375999999
+    },
+    "acknowledgedFirstWrite": {
+      "count": 1701,
+      "p50": 382.72545100000025,
+      "p95": 589.8875609999996,
+      "p99": 1185.7661850000004
+    }
+  },
+  "memory": {
+    "apiPeakRssBytes": 579469312,
+    "generatorPeakRssBytes": 175116288,
+    "memoryReadFailures": 0,
+    "scope": "sampled direct API PIDs and generator; excludes MySQL/NATS"
+  },
+  "hardware": {
+    "platform": "linux",
+    "arch": "x64",
+    "cpuModel": "Intel(R) Xeon(R) 6973P-C",
+    "logicalCpus": 4,
+    "cpuQuotaCores": null,
+    "hostRamBytes": 16758390784,
+    "cgroupMemoryMaxBytes": null
+  },
+  "versions": {
+    "bun": "1.3.11",
+    "apiBun": "1.3.11",
+    "mysql": "8.4.13",
+    "nats": "2.10.29"
+  },
+  "queue": {
+    "samples": 32,
+    "readFailures": 0,
+    "maxProducerPending": 1153,
+    "maxConsumerPending": 0,
+    "maxConsumerUnacked": 3,
+    "pendingAfterApiDrain": 1144,
+    "recoveryApiStarted": true,
+    "finalPending": 0,
+    "finalAckFloor": 1704
+  },
+  "correctness": {
+    "lost": 0,
+    "duplicates": 0,
+    "identityMismatch": 0,
+    "unexpected": 0,
+    "unresolvedCommitted": 0,
+    "unresolvedNotWritten": 0,
+    "pendingAfterSqlDrain": 0,
+    "producerLost": 0,
+    "producerDuplicates": 0,
+    "producerOrphans": 0,
+    "auditLost": 0,
+    "auditDuplicates": 0,
+    "auditOrphans": 0,
+    "auditIdentityMismatch": 0,
+    "responseIdentityMismatch": 0,
+    "checked": true,
+    "ok": true
+  },
+  "cleanupFailures": 0,
+  "evidenceValid": true,
+  "limitations": [
+    "Single Linux host and one shared project; short closed-loop workload.",
+    "Actor/task fixtures are inserted directly; owner/org/project/role use real HTTP.",
+    "Observer and generator overhead are included; memory is sampled and excludes services.",
+    "Recovery API takeover, if required, is separate from measured request throughput.",
+    "Errors and uncertain outcomes are retained; no20k, steady-state, all-endpoint, streaming or multi-host claim."
+  ]
+}

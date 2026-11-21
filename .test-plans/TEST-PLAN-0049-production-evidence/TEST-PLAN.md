@@ -120,9 +120,9 @@ from the load phases. Retain each aggregate JSON and sanitized recovery logs;
 name actual hardware, runtime versions, timings, sample sizes, sampled memory,
 queue observations and limitations. No20000 or steady-state claim is accepted.
 
-## Recorded staged interpretation
+## Recorded staged interpretation — original transport
 
-The actual 1000-caller measurement is valid only as a complete, reconciled
+The original-transport 1000-caller measurement is valid only as a complete, reconciled
 experiment: 57 of 3000 workflows complete, with 2943 request errors and 194
 unacknowledged intents later confirmed committed. Do not convert successful
 measurement execution into a service-capacity claim. Preserve all raw aggregate
@@ -148,3 +148,18 @@ and report the generator's native fetch limit, preserve production API/pool
 defaults, and retain all request errors, uncertain commits and earlier
 observations. Both full outcome oracles and cleanup must finish within the
 unchanged external bound.
+
+## Repaired native-fetch profile
+
+The staged controller records its transport and configured1024-request
+generator budget; API/consumer children retain defaults. Logical caller
+concurrency is not an instrumented socket count. Two separate1000-caller
+commands must finish all source/audit reconciliation and cleanup within
+the unchanged external bound.
+
+Actual sourcee94372e finishes both with269/3000 and213/3000 complete
+workflows,2731/2787 errors and47/56 unacknowledged committed intents.
+All440 final task/source/audit rows in each run reconcile without lost,
+duplicate or changed identity; cleanup is zero. Treat this as bounded,
+valid measurement of severe saturation. Retain earlier profiles/failures
+and do not infer a controlled performance improvement or server root cause.

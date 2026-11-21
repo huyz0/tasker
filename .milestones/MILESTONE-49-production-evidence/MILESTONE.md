@@ -5,7 +5,7 @@ status: in-progress
 goal: CI exercises production dependencies and reproducible multi-instance measurements describe the capacity actually demonstrated.
 depends_on: [M46, M47, M48]
 surfaces: [backend, infra, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-21
 completed_at: null
 ---
@@ -25,7 +25,7 @@ SQLite unit tests do not establish MySQL concurrency correctness or broker outag
 - [x] Pull requests exercise real MySQL concurrency and real NATS delivery.
 - [x] Two-instance recovery tests fail on duplicate or lost outcomes.
 - [x] A documented command reproduces load runs and emits machine-readable evidence.
-- [ ] Published capacity claims name measured caller count, data volume, hardware and limitations.
+- [x] Published capacity claims name measured caller count, data volume, hardware and limitations.
 
 ## 4. Scope
 
@@ -47,7 +47,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/scripts/measure-concurrency.ts; apps/backend/package.json; docs/performance.md.
   - **Verify**: Parameterize concurrency, duration, fixture, instance count and seed; report p50/p95/p99, errors, throughput, memory, queue depth, duplicate/lost outcomes and runtime versions; fail correctness violations.
 
-- [ ] **M49-T04** — Run staged load and failure experiments and record honest capacity limits.
+- [x] **M49-T04** — Run staged load and failure experiments and record honest capacity limits.
   - **Files**: .milestones/MILESTONE-49-production-evidence/PROGRESS.md; docs/performance.md.
   - **Verify**: Run small correctness smoke then 100 and 1000 callers where resources permit; report saturation and resource limits explicitly; no claim of 20000-client validation without such a run.
 
