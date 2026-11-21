@@ -37,7 +37,6 @@ Generator transport/budget, hardware, request errors, unacknowledged writes
 and recovery tails remain explicit. **20000 simultaneous clients have not
 been validated.**
 
-
 ---
 
 ## 🏗️ The Agentic Architecture

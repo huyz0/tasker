@@ -103,3 +103,14 @@
   deliberate-break check as TDD requires. T01/T02/T03 remain unchecked
   until hosted gates and review. The independent M49 browser-oracle
   correction is still under final validation; no parent/main merge is claimed.
+
+### First rehearsal results and Markdown correction
+
+- Source89124eb's SQLite job136888555129 restores exact one task/three
+  sources/one delivery and matching private hashes, then passes real broker
+  recovery. The actual empty restored database fails the intended identity
+  assertion; source restores byte-for-byte. No SQL backup is uploaded.
+- Workspace job136888847389 rejects README.md:40 for one duplicate blank
+  line (MD012). Remove that extra blank, retaining the substantive text.
+  This is a static formatting correction; no new product test is needed.
+  All M50 tasks stay unchecked until the corrected hosted gate and review.
