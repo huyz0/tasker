@@ -31,7 +31,7 @@ async function main() {
       const started = performance.now();
       try {
         await admin.query('CREATE DATABASE ' + database + ' CHARACTER SET utf8mb4');created = true;
-        const child = Bun.spawnSync({ cmd: [process.execPath, 'test', file], cwd: root,
+        const child = Bun.spawnSync({ cmd: [process.execPath, 'test', '--timeout', '30000', file], cwd: root,
           env: { ...process.env, STANDALONE: 'false', TASKER_MYSQL_INTEGRATION: '1',
             TASKER_REAL_INTEGRATION: '1', DB_NAME: database, FORCE_COLOR: '0', NO_COLOR: '1' },
           stdout: 'pipe', stderr: 'pipe', timeout: 180_000, maxBuffer: 16 * 1024 * 1024 });

@@ -108,3 +108,15 @@ tasks:
     options:
       cache: false
       runInCI: true
+
+  test-recovery-mysql:
+    type: 'run'
+    deps:
+      - 'shared-contract:install-deps'
+    command: 'bun run test:recovery:mysql'
+    inputs:
+      - 'src/**/*'
+      - 'scripts/verify-mysql-recovery.mjs'
+    options:
+      cache: false
+      runInCI: true

@@ -92,3 +92,193 @@
   391 done, one dropped, seven pending. Final combined-head CI/integration
   still gate PR #17 publication. T02 next proves MySQL two-instance recovery;
   load/capacity and operations documentation remain outstanding.
+
+## M49-T02 — Two-instance recovery and authenticated boundaries
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Changed**: Exercise the existing recovery cases on both SQL dialects and add two independent API processes sharing a real MySQL schema and an owned JetStream broker.
+- **Verified**: T01 source candidate passes both native versions, real SQLite/NATS recovery and the exact full repository command. Ready PR #17 final combined-head checks remain running. This dependent branch starts from0586a920 and preserves all published M58 behavior and records.
+- **Notes**: Testing/security plus TDD apply. Own every temporary schema, broker, process and port; keep real human/agent credentials in memory. New persistent behavior is not introduced, so no product ADR or UI redesign is needed. The test plan precedes code. Real SQL/RPC/broker acknowledgements are independent oracles; intentional lost/duplicate audit faults must fail their own assertions and restore source before ordinary checks.
+- **Next**: Add the real two-process scenario, enable existing MySQL recovery counterparts in required CI, prove lost/duplicate detection on owned fixtures, review and run full/final hosted gates. Load and capacity remain T03/T04 and are not inferred from these cases.
+
+### Real candidate implementation
+
+- Add the two HTTP API processes, real sessions/scoped workers, audit consumer
+  and exclusively owned broker/schema/ports. SQL producer acknowledgement,
+  explicit broker replay and consumer acknowledgement precede the logical
+  audit count/identity oracle. Reconnect revocation keeps a valid user session
+  while denying source reads and domain delivery through a real heartbeat.
+- Enable all existing MySQL recovery counterparts in an uncached required
+  command that rejects skips. Two temporary projector faults model acknowledged
+  lost output and unstable identities that create duplicate rows; only their
+  specific outcome failures count as proof, and source restores in finally.
+- Parent PR #17 is published as main d7e2e45 after all12 final checks, with
+  identical tested/published tree713f673. Include that main as a normal merge
+  parent; no force push. Actual candidate checks still gate all completion.
+
+### Rejected source checkpoint and observed regression
+
+- Preserve rejected CODE-v4. Its P1 identifies the enabled atomic MySQL fixture's
+  inherited default database, and actual job136812898549 reproduces
+  ER_BAD_DB_ERROR / Unknown database tasker. The required recovery wrapper now
+  creates and passes only a UUID outer schema, then drops only that schema;
+  nested fixtures keep their separate owned schemas.
+- Backend job136812898590 also catches a nullable denial assertion type. Add
+  an explicit unexpected-success failure before checking the non-null error
+  code; no denial outcome is broadened.
+- P2 requires independently settled teardown and creation-attempt tracking.
+  Write observable filesystem/environment cleanup regressions and an empty
+  typed scaffold first; the dedicated hosted step must demonstrate the red
+  before implementation. The task remains in progress and no cleanup safety
+  or successful recovery pass is claimed yet.
+
+### Cleanup red and correction
+
+- Dedicated job136815090896 runs the new cleanup regressions against the empty
+  typed scaffold and fails both real filesystem assertions: Expected false,
+  Received true. Test finalizers remove those temporary directories and restore
+  their own marker even on red. This establishes the red before implementation.
+- Implement settled teardown that attempts every step, restores ambient test
+  state in finally and returns aggregated failures. Use it for streams, each
+  owned process, both SQL handles, schema, broker and directory. Track the
+  broker attempt before Docker and discover only objects carrying this
+  fixture's generated ownership label, including partially created containers.
+- Fault proofs also reject cleanup aggregates, so an intended outcome failure
+  cannot hide failed fixture teardown. The required outer recovery schema is
+  already generated and passed explicitly; nested fixtures preserve their
+  separate ownership. Re-run actual normal/fault/source gates before approval.
+
+### Observed cold-bootstrap and observer corrections
+
+- Candidate96f7a2a passes MySQL8.0 job136816096622: all12 native
+  files/19 cases, all10 recovery cases with zero failures/skips, plus both
+  acknowledged audit faults. Dedicated cleanup regressions also pass.
+- Overall verification remains red: job136816096628 reproduces the search
+  fixture's implicit5000ms cold-bootstrap timeout, followed by overlapping
+  migration errors. Set only the required native integration runner's default
+  case bound to30000ms; explicit operational latency assertions are unchanged.
+  Earlier job136815090966 reproduced the same issue in task bootstrap.
+- Job136815090992 reproduces SQLite database-is-locked in the durable-event
+  observer. Retry only SQLite BUSY/LOCKED reads with a shared five-second audit
+  observation deadline and a50ms observer busy timeout. Missing output and
+  non-lock SQL errors still fail. Production settings and event assertions
+  are unchanged.
+- Job136816096604 passes cleanup behavior but strict types reject the nullable
+  environment matcher. Compare the complete marker object, preserving both
+  missing and string values without a cast or broadened expectation.
+- Prior CODE-v5 source approval is retained separately from these observed
+  results. Re-run the corrected source and record a new four-lens review;
+  T02 remains in progress until the actual final gates pass.
+
+### Corrected-source results and unresolved worker exit
+
+- Source1d47090 passes both Integration44895096573 jobs, the dependency audit
+  and workspace checks. MySQL8.4 job136823295126 executes all12 native files/
+  19 cases, the claim-fault proof and the new two-API case successfully.
+- Recovery remains9 pass/1 fail: the older MySQL domain-event capture worker
+  exits before its first checkpoint with empty stderr. No runtime or resource
+  cause is established. GitHub rejects a single unchanged retry request with
+ 403, workflow run already running; no retry started. Add fixed-label worker
+  stage, numeric exit and signal diagnostics without changing any oracle or
+  timeout. Preserve the observed failure and re-run the corrected candidate.
+- Backend job136823295114 also reproduces TS2769: TypeScript retains the
+  earlier explicit environment assignment as string across the callback.
+  The object-wrapper matcher still inferred string and did not fix that
+  mismatch. Compare exact value identity as a boolean, preserving undefined
+  and string outcomes without a cast or broader expectation.
+- Preserve rejected CODE-v6 for these observed issues. T02 stays unchecked.
+  Dependent draft PR #19 has only T03 acceptance/tests and a typed empty
+  scaffold; its independent Bun core job must produce an actual red before
+  implementation. No load or capacity result is claimed.
+- Cloud startup is now explicitly failed (executor configuration capabilities
+  could not be queried). Continue through connected GitHub and hosted Actions;
+  no local command, clean-tree check or service execution is claimed.
+
+### T02 verified source and final publication evidence
+
+- All10 CI44897279959 jobs and both Integration44897279964 jobs pass on
+  source3410e39. MySQL8.0.46 and8.4.13 each run all12 native files/19 cases,
+  all10 required recovery cases without skips, the real claim-failure proof
+  and both acknowledged audit-loss/duplicate faults with byte restoration.
+- Backend2423/zero failures and strict types pass. The exact hosted repository
+  command passes all36 checks (7 cached) in8m1.445s, including GUI1764,
+  contract1158 and production/standalone builds. Real browser E2E reports
+ 103 passes/three existing skips plus strict saved-view types and the native
+  intent-fault proof. Rendered checks cover388 stories across light/dark and
+  narrow/wide widths with zero accessibility findings, plus zero375px overflow.
+- The prior1d47090 worker exit remains unattributed. It does not recur on the
+  instrumented source in either required MySQL job; failures now include fixed
+  stage, exit and signal diagnostics. No environmental/root-cause fix is
+  invented. Exact environment restoration assertions are type-correct.
+- CODE-v7 approves the tested source and the narrow per-PR concurrency
+  configuration. Completed evidence remains available; each main SHA retains
+  its own checks. Temporary cancellation files exist only on the dependent
+  load draft and have already been removed there, never added to this task.
+- Check T02 and its outcome criterion. M49 is3/6; program399 total/392 done,
+  one dropped/six pending. Final-head CI/integration still gate PR #18 merge.
+  Source code remains on the published M58/T01 tree, with no force push.
+- Resume T03 in draft PR #19/sourcebb90cb8: core7/fault proof pass; its first
+  smoke failed before executing because main was absent in shallow Git.
+  That checkout is corrected and real HTTP/JSON verification remains pending.
+  No load or capacity result is inferred.
+
+## M49-T02 — Reopen recurring ACK-worker fixture correction
+
+- **Status**: done
+- **Date**: 2026-11-21
+- **Observed**: Final job136843138595 reproduces exit0/signal none/stage ready
+  in the ack-pause worker at its real broker-ACK checkpoint. The earlier
+  source3410e39 did pass all12 checks; the final-head gate correctly catches
+  that the failure can recur. No root-cause attribution to OOM or the Cloud
+  environment is made.
+- **Approach**: The worker currently uses a one-shot sweep and can finish
+  without reaching any ACK. This scenario must instead use the production
+  recurring relay until its actual ACK callback writes the checkpoint.
+  Defer owned source eligibility by one second in the fixture to exercise
+  waiting, preserving the existing parent watchdog and every ACK/outcome
+  assertion. Ordinary one-shot relay-result workers remain one-shot.
+- **Next**: Implement this fixture correction after the observed red, retain
+  rejected CODE-v8 and re-run required services/faults and final gates.
+  Reopen T02/its criterion; M49 is2/6,399 total/391 done/one dropped/seven pending.
+
+### Recurring worker implementation after observed red
+
+- The ACK-pause worker now starts the existing production recurring runtime
+  and remains alive until the genuine publish-ACK callback pauses it. It
+  does not write the continuous-worker readiness sentinel into the ACK
+  checkpoint. Parent watchdogs, kill point and all identity/count assertions
+  remain unchanged.
+- This fixture deliberately defers its owned source eligibility by1000ms
+  immediately before starting that runtime, covering a valid empty initial
+  sweep. No production clock, backoff or lease is changed. Ordinary relay
+  result probes remain one-shot; broker-reconnect workers retain their
+  readiness checkpoint.
+- Preserve exit/signal diagnostics and add waiting-for-ack as a fixed stage.
+  Re-run both required dialect jobs and fault proofs before closure; no
+  successful result is inferred from the implementation.
+
+### Final recurring-worker verification and atomic publication candidate
+
+- Sourcee321baae passes all10 CI44904756478 jobs and both real
+  Integration44904756494 jobs. MySQL8.0.46 and8.4.13 each execute19 native
+  cases across12 files and all10 required recovery cases with zero required
+  skips. Both execute the claim-failure proof and real acknowledged audit
+  loss/duplicate faults, restoring source bytes.
+- The intentionally1000ms-deferred source reaches its actual ACK checkpoint
+  through the production recurring relay. Ordinary one-shot result probes
+  remain unchanged. This resolves the lifecycle defect recorded in CODE-v8;
+  no environmental cause or unrelated production fix is invented.
+- The hosted exact moon check --all completes36 tasks (7 cached) in
+ 5m8.386s. Backend types/tests, GUI tests/build, CLI checks and standalone
+  smoke pass. Real E2E and saved-view type/native-fault checks pass. Rendered
+  checks cover388 stories in both themes and widths with zero accessibility
+  violations; the375px overflow pass also has zero findings.
+- CODE-v9 approves source correctness, coverage, architecture and security.
+  Preserve all rejected reviews and observed failures. Cloud execution remains
+  unavailable, so no local tests or local clean-tree result are claimed.
+- Assemble this completed task as one atomic commit from main d7e2e45, including
+  code, tests, checked criterion/task, journal and state. Final combined-head
+  CI still gates publication; this entry does not claim a main merge.
+  M49 is3/6;399 tasks/392 done/one dropped/six pending. T03–T05 continue on
+  the reviewable work branch with their independent evidence/gates.

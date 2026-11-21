@@ -1,8 +1,8 @@
 ---
 active_milestone: M49
-active_task: M49-T02
+active_task: M49-T03
 last_updated: 2026-11-21
-last_commit: f502365
+last_commit: e321baa
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,22 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T02 recurring-worker source verified.** All10 CI44904756478 and both Integration44904756494 jobs pass one321baae. Each required MySQL version runs native19/recovery10, the claim proof and both acknowledged audit faults. Exact36 passes in5m8.386s; real E2E/standalone and388-story accessibility/mobile checks pass with zero rendered findings. CODE-v9 approves the deferred-source/recurring-ACK correction. This atomic task candidate contains its code/tests/checkbox/journal/ledger together; final combined-head checks and main publication remain required. M49 is3/6;399 total/392 done/one dropped/six pending. T03–T05 continue separately; no capacity result is inferred.
+
+**2026-11-21 — M49-T02 recurring ACK fixture under verification.** After final job136843138595's exit0/no-signal/ready failure, the ACK-pause worker uses the production recurring relay rather than finishing after one sweep. A1000ms deferred owned source exercises waiting. Its checkpoint still comes only from a real broker ACK; ordinary one-shot result probes and all parent watchdogs/oracles remain unchanged. T02/criterion stay unchecked, M49 is2/6,399 total/391 done/one dropped/seven pending. Keep CODE-v8 rejection and prior all-green source3410e39 evidence. T03 sourceaaf900c adds a late-SQL-commit checker test before any checker change; normal HTTP/core/fault checks pass. Cloud failed; hosted verification remains available.
+
+**2026-11-21 — M49-T02 reopened by final ACK-worker failure.** Final job136843138595 records exit0/signal none/stage ready at the ack-pause checkpoint. The fixture permits a one-shot sweep to finish without reaching an ACK. Use the production recurring relay for this pause scenario and a deliberately deferred owned source to exercise waiting, preserving the parent timeout and all real-ACK/outcome assertions. Retain rejected CODE-v8 and the earlier all-green source3410e39 evidence; no environmental/OOM cause is invented. T02/its criterion are reopened: M49 is2/6,399 total/391 done/one dropped/seven pending. T03 sourceaaf900c adds a late SQL-commit oracle test before any checker change; its ordinary four-caller smoke and core/fault proof pass. Cloud failed; hosted verification and original local drafts remain the working boundary.
+
+**2026-11-21 — M49-T02 verified; bounded load next.** Source3410e39 passes all10 CI and both integration jobs. Each MySQL version executes native19/recovery10 and the claim/audit failure proofs with zero required skips; exact36 passes in8m1.445s, backend2423, GUI1764, browser103 passes/three existing skips, and388 rendered stories have no accessibility/mobile overflow findings. CODE-v7 approves. PR #18 carries the final publication gate; M49 is3/6 and program399 total/392 done/one dropped/six pending. Resume T03 in PR #19/sourcebb90cb8: core7 and input-fault proof pass; the real HTTP smoke's shallow-Git failure is corrected but no load result exists yet. Temporary CI-maintenance files were removed from that dependent draft after four verified obsolete-run cancellations; per-PR concurrency preserves main checks. Cloud startup failed; hosted execution supplies all current evidence and original local drafts remain untouched.
+
+**2026-11-21 — M49-T02 observed worker exit and strict matcher correction.** Source1d47090 passes both integration jobs, audit/workspace, all19 native MySQL8.4 cases and the new two-API scenario. The older MySQL domain-event worker exits before its first checkpoint with empty stderr, leaving9 recovery passes/one failure. GitHub rejects a retry while the overall run remains active. Add fixed stage/exit/signal diagnostics; no cause is inferred. Backend TS2769 shows the object-wrapper matcher still narrows to string; compare exact boolean identity instead. Retain rejected CODE-v6 and keep T02 unchecked. Dependent PR #19/source9f036827 contains T03 plan, tests/scaffold and an independent Bun core job awaiting actual red; no implementation or capacity claim.399 total/391 done/one dropped/seven pending. Cloud startup has explicitly failed; use hosted verification and preserve original local drafts.
+
+**2026-11-21 — M49-T02 final fixture corrections.** Candidate96f7a2a passes all native/recovery/fault checks on MySQL8.0 and both cleanup regressions. Overall gate remains red on MySQL8.4 cold-bootstrap default5000ms and a nullable environment matcher; prior run also reproduces a transient SQLite observation lock. Bound native cold setup at30seconds, retry only observer lock codes inside its existing five-second wait, and preserve exact assertions/types. Re-run all actual gates before checking T02.399 total/391 done/one dropped/seven pending. Local Cloud startup remains pending.
+
+**2026-11-21 — M49-T02 isolation and cleanup corrections under verification.** Preserve rejected CODE-v4. The actual first candidate reproduces ER_BAD_DB_ERROR in the inherited atomic fixture; the required wrapper now creates and passes only its own UUID outer schema. Dedicated cleanup regressions fail their intended filesystem assertions on the scaffold before implementation. Settled teardown now attempts all owned resources and always restores ambient test state; broker creation attempts are tracked with a generated ownership label. Audit fault proof rejects cleanup aggregates. T02 remains unchecked pending real normal/fault checks and re-review. Parent main d7e2e45 is published after all12 checks.399 total/391 done/seven pending. Cloud startup remains pending and original drafts are preserved.
+
+**2026-11-21 — M49-T02 test plan and owned fixture in progress.** Start from reviewed T01 combined candidate0586a920 while PR #17 final checks/publication finish. Extend real MySQL recovery coverage and verify two independent HTTP API processes, current scoped actors, stable retries, claim exclusivity, acknowledged audit deduplication and reconnect revocation against an owned broker/schema. Lost/duplicate projection faults must fail real oracles. Test plan is written before code. M58 is published as main2ebfc34; no new UI behavior or capacity claim is introduced.399 total/391 done/seven pending. Original local drafts remain preserved while Cloud startup is pending.
 
 **2026-11-21 — M49-T01 verified; combined final publication next.** Candidatef5023657 passes all10 CI44890697502 jobs and both Integration44890697419 jobs. Each MySQL8.0.46/8.4.13 job executes12 files/19 native cases with zero skips and a restored failing claim proof. Real NATS passes live feed/audit plus five committed recovery cases; four explicit MySQL recovery counterparts remain T02. The exact hosted36-task gate passes in6m38.838s, with GUI1764/backend2421/contract1158/builds. CODE-v2 approves. PR #16 has published M58 as main2ebfc34 with identical tree; carry that published tree and all saved-view gates into this final T01 candidate. PR #17 still requires final-head CI/integration before merge. M49 is2/6; next T02, then bounded load, measured limits and operations docs.399 total/391 done/seven pending. Cloud startup is still pending and original local drafts remain preserved.
 
@@ -2032,7 +2048,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 2 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 3 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2043,7 +2059,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 391 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 392 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
