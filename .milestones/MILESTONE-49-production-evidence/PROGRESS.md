@@ -723,7 +723,7 @@
 
 ## M49-T04 — Reopen repeated large-caller verification
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-21
 - **Plan**: Keep the 240-second/45-second watchdog and add a second identical
   1000-caller stage with its own report. Require real settlement, oracle and
@@ -787,3 +787,23 @@
   code/tests/checkbox/journal/ledger are one atomic commit again.
 - Candidate M49 is 4/6: 393 done/one dropped/five pending. T04/T05 and final
   combined-head gates follow. Main is still d7e2e45.
+
+### Repeated native stages and complete retained evidence
+
+- Job 136873835775 runs4/100/1000/1000-repeat on source e94372e,
+  checkout220a9ba. The two larger commands finish in24.178468s and
+ 22.351016s overall, with full oracle/cleanup and severe request saturation.
+  First269/3000 and second213/3000 workflows complete;2731/2787 errors
+  remain. Acknowledged393/384 plus unacknowledged committed47/56 equal
+ 440 task/source/audit rows each. No lost/duplicate/changed identity.
+- Publish exact native-profile JSON alongside all five original records
+  and the completed100-caller cohort from the failed final v1 publication.
+  docs/performance.md distinguishes generator profile/hardware, logical
+  versus socket concurrency, early operation-cap exhaustion and separate
+  recovery tails. No retrospective claim repairs earlier incomplete runs.
+- Both real stalled-RPC cases and disabled-control faults pass/fail as
+  intended; all ten separate recovery cases and both audit faults pass.
+  All18 source checks and exact37 in4m18.434s are green. CODE-v15 approves.
+- This fresh atomic T04 commit includes workflow/reports/docs/checkbox/
+  journal/state. M49 is5/6;394 done/one dropped/four pending. Final runtime
+  closure and combined-head publication remain required.
