@@ -249,6 +249,77 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       const sourceStates = () => db.select({ id: S.domainEvents.id, deliveredAt: S.domainEvents.deliveredAt, attempts: S.domainEvents.attempts }).from(S.domainEvents).where(eq(S.domainEvents.orgId, orgId));
       const auditRows = () => db.select().from(S.auditLog).where(eq(S.auditLog.orgId, orgId));
       const auditCount = async () => Number((await db.select({ value: count() }).from(S.auditLog).where(eq(S.auditLog.orgId, orgId)))[0].value);
+      async function waitForAudit(expectedAuditRows: number, projector: Child, relay: Child | undefined, label: string) {
+        try {
+          await wait(async () => {
+            if (projector.process.exitCode !== null) throw new Error('owned audit consumer exited during broker recovery');
+            if (relay && relay?.process.exitCode !== null) throw new Error('owned producer relay exited during broker recovery');
+            return (await auditCount()) === expectedAuditRows;
+          }, label, 70_000);
+        } catch (error) {
+          const observed: Record<string, unknown> = {
+            kind: 'runbook-broker-recovery-observation', driver, expectedAuditRows,
+            relayExitCode: relay?.process.exitCode, consumerExitCode: projector.process.exitCode,
+            relaySignal: relay?.process.signalCode ?? null, consumerSignal: projector.process.signalCode ?? null,
+            relayWasRunning: relay?.process.exitCode === null, consumerWasRunning: projector.process.exitCode === null,
+          };
+          try {
+            const rows = await sourceStates();
+            observed.sourceCount = rows.length;
+            observed.deliveredSources = rows.filter((row: any) => row.deliveredAt).length;
+            observed.attemptedSources = rows.filter((row: any) => row.attempts > 0).length;
+            observed.auditRows = await auditCount();
+          } catch { observed.sqlProbeFailed = true; }
+          console.error(JSON.stringify({ ...observed, phase: 'before-broker' }));
+          let observer: Awaited<ReturnType<typeof natsConnect>> | undefined;
+          try {
+            observer = await natsConnect({ servers: url, timeout: 500, maxReconnectAttempts: 0 });
+            const manager = await observer.jetstreamManager({ timeout: 1500 });
+            const stream = await manager.streams.info(STREAM_NAME);
+            const info = await manager.consumers.info(STREAM_NAME, DURABLE_NAME);
+            observed.brokerMessages = stream.state.messages;
+            observed.consumerPending = info.num_pending;
+            observed.consumerUnacked = info.num_ack_pending;
+            observed.consumerAckFloor = info.ack_floor.stream_seq;
+            observed.consumerDelivered = info.delivered.stream_seq;
+          } catch { observed.brokerProbeFailed = true; }
+          finally { if (observer) await observer.close(); }
+          // Consumer logs are private owned files. Never wait for a live
+          // worker's pipe EOF merely to explain an already-failed checkpoint.
+          const classify = async (child: Child) => {
+            let output: string | null;
+            if (child.logs) {
+              const read = async (path: string) => {
+                const file = Bun.file(path);
+                return await file.slice(Math.max(0, file.size - 65_536)).text();
+              };
+              try { output = (await read(child.logs.stdout)) + '\n' + (await read(child.logs.stderr)); }
+              catch { return { unavailable: true }; }
+            } else if (child.process.exitCode === null) {
+              return { unavailable: true, running: true };
+            } else {
+              output = await Promise.race([
+                Promise.all([child.output, child.errors]).then(values => values.join('\n')),
+                Bun.sleep(250).then(() => null),
+              ]);
+              if (output === null) return { unavailable: true };
+            }
+            const events = ['consumer.start_failed', 'consumer.event_failed', 'consumer.nats_connect_failed',
+              'consumer.uncaughtException', 'consumer.unhandledRejection', 'consumer.shutdown_failed'];
+            return {
+              events: events.filter(event => output!.includes('"' + event + '"')),
+              sqliteBusy: /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i.test(output),
+              bunPanic: output.includes('panic(main thread)') || output.includes('Bun has crashed'),
+              connectionRefused: /CONNECTION_REFUSED|ECONNREFUSED/.test(output),
+              jetstreamUnavailable: /JetStream not enabled|jetstream.*not available/i.test(output),
+            };
+          };
+          observed.relayErrors = relay ? await classify(relay) : { notApplicable: true };
+          observed.consumerErrors = await classify(projector);
+          console.error(JSON.stringify({ ...observed, phase: 'complete' }));
+          throw error;
+        }
+      }
       const capturePoint = join(directory, 'committed');
       const producer = worker('capture', url, { key: 'committed-work', large: true, checkpoint: capturePoint });
       const captured = await checkpoint(producer, capturePoint);
@@ -328,7 +399,9 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
         await nc.jetstream().publish(sources[0].subject, Buffer.from(JSON.stringify(brokerEventReference(sources[0]))), { msgID: `duplicate-${sources[0].id}` });
       } finally { await nc.drain(); }
       const projector = consumer(url);
-      await wait(async () => (await auditCount()) === 3, 'SQL reference projection with custom DB_PATH', 70_000);
+      console.error(JSON.stringify({ kind: 'runbook-recovery-stage', driver, stage: 'first-audit-start' }));
+      await waitForAudit(3, projector, undefined, 'SQL reference projection with custom DB_PATH');
+      console.error(JSON.stringify({ kind: 'runbook-recovery-stage', driver, stage: 'first-audit-ready' }));
       const projected = await auditRows();
       expect(new Set(projected.map((row: any) => row.eventId)).size).toBe(3);
       const large = projected.find((row: any) => row.subject === 'domain.artifact.created');
@@ -365,76 +438,9 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       await wait(async () => (await sourceStates()).some((event: any) => event.attempts > 0 && !event.deliveredAt), 'broker outage retains attempted pending source');
       await docker('start', container);
       await wait(async () => { try { const nc = await natsConnect({ servers: url, timeout: 250, maxReconnectAttempts: 0 }); await nc.drain(); return true; } catch { return false; } }, 'owned broker restart');
+      console.error(JSON.stringify({ kind: 'runbook-recovery-stage', driver, stage: 'broker-restarted' }));
       const resumedProjector = consumer(url);
-      try {
-        await wait(async () => {
-          if (resumedProjector.process.exitCode !== null) throw new Error('owned audit consumer exited during broker recovery');
-          if (reconnecting.process.exitCode !== null) throw new Error('owned producer relay exited during broker recovery');
-          return (await auditCount()) === 4;
-        }, 'broker/relay recovery and resumed audit', 70_000);
-      } catch (error) {
-        const observed: Record<string, unknown> = {
-          kind: 'runbook-broker-recovery-observation', driver,
-          relayExitCode: reconnecting.process.exitCode, consumerExitCode: resumedProjector.process.exitCode,
-          relaySignal: reconnecting.process.signalCode ?? null, consumerSignal: resumedProjector.process.signalCode ?? null,
-          relayWasRunning: reconnecting.process.exitCode === null, consumerWasRunning: resumedProjector.process.exitCode === null,
-        };
-        try {
-          const rows = await sourceStates();
-          observed.sourceCount = rows.length;
-          observed.deliveredSources = rows.filter((row: any) => row.deliveredAt).length;
-          observed.attemptedSources = rows.filter((row: any) => row.attempts > 0).length;
-          observed.auditRows = await auditCount();
-        } catch { observed.sqlProbeFailed = true; }
-        console.error(JSON.stringify({ ...observed, phase: 'before-broker' }));
-        let observer: Awaited<ReturnType<typeof natsConnect>> | undefined;
-        try {
-          observer = await natsConnect({ servers: url, timeout: 500, maxReconnectAttempts: 0 });
-          const manager = await observer.jetstreamManager({ timeout: 1500 });
-          const stream = await manager.streams.info(STREAM_NAME);
-          const info = await manager.consumers.info(STREAM_NAME, DURABLE_NAME);
-          observed.brokerMessages = stream.state.messages;
-          observed.consumerPending = info.num_pending;
-          observed.consumerUnacked = info.num_ack_pending;
-          observed.consumerAckFloor = info.ack_floor.stream_seq;
-          observed.consumerDelivered = info.delivered.stream_seq;
-        } catch { observed.brokerProbeFailed = true; }
-        finally { if (observer) await observer.close(); }
-        // Consumer logs are private owned files. Never wait for a live
-        // worker's pipe EOF merely to explain an already-failed checkpoint.
-        const classify = async (child: Child) => {
-          let output: string | null;
-          if (child.logs) {
-            const read = async (path: string) => {
-              const file = Bun.file(path);
-              return await file.slice(Math.max(0, file.size - 65_536)).text();
-            };
-            try { output = (await read(child.logs.stdout)) + '\n' + (await read(child.logs.stderr)); }
-            catch { return { unavailable: true }; }
-          } else if (child.process.exitCode === null) {
-            return { unavailable: true, running: true };
-          } else {
-            output = await Promise.race([
-              Promise.all([child.output, child.errors]).then(values => values.join('\n')),
-              Bun.sleep(250).then(() => null),
-            ]);
-            if (output === null) return { unavailable: true };
-          }
-          const events = ['consumer.start_failed', 'consumer.event_failed', 'consumer.nats_connect_failed',
-            'consumer.uncaughtException', 'consumer.unhandledRejection', 'consumer.shutdown_failed'];
-          return {
-            events: events.filter(event => output!.includes('"' + event + '"')),
-            sqliteBusy: /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i.test(output),
-            bunPanic: output.includes('panic(main thread)') || output.includes('Bun has crashed'),
-            connectionRefused: /CONNECTION_REFUSED|ECONNREFUSED/.test(output),
-            jetstreamUnavailable: /JetStream not enabled|jetstream.*not available/i.test(output),
-          };
-        };
-        observed.relayErrors = await classify(reconnecting);
-        observed.consumerErrors = await classify(resumedProjector);
-        console.error(JSON.stringify({ ...observed, phase: 'complete' }));
-        throw error;
-      }
+      await waitForAudit(4, resumedProjector, reconnecting, 'broker/relay recovery and resumed audit');
       await wait(async () => (await sourceStates()).every((event: any) => event.deliveredAt), 'source completion after broker recovery', 70_000);
       expect(await db.select().from(S.tasks)).toHaveLength(2);
       expect(await db.select().from(S.webhookDeliveries)).toHaveLength(2);
