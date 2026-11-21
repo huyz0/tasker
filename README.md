@@ -30,11 +30,12 @@ fixture of 2,000 projects, 50,000 tasks in one project, 100,000 artifacts in
 one folder and 100,002 organization members is measured by
 `apps/backend/scripts/measure-latency.ts` against per-endpoint p95 budgets
 declared in `api-standard.md` §6, and every endpoint is inside its budget.
-*Concurrency* is not: there is no load test in the repository, and 20,000
-simultaneous callers have never been simulated. The largest principal count
-ever exercised is 100,002 rows, not 100,002 clients. Read the first three
-bullets as intent, the data-scale figures as evidence, and the concurrency
-targets as still unproven.
+*Concurrency* has a [bounded HTTP measurement command](docs/performance.md)
+for isolated MySQL/NATS fixtures. Its smoke and staged results are published
+only after actual verification; configured caller counts are not capacity
+claims. 20,000 simultaneous callers have never been validated. The 100,002-row
+principal fixture above describes stored data, rather than 100,002 active
+clients.
 
 ---
 
