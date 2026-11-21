@@ -735,7 +735,7 @@
 
 ## M49-T05 — Reopen final combined release gates
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-21
 - **Changed**: Runtime pins and packaging checks remain valid, but the final
   combined evidence gate is red. Reopen T03/T04/T05 and the reproducible
@@ -807,3 +807,71 @@
 - This fresh atomic T04 commit includes workflow/reports/docs/checkbox/
   journal/state. M49 is5/6;394 done/one dropped/four pending. Final runtime
   closure and combined-head publication remain required.
+
+### Repaired final gate verified and fresh M49 publication candidate
+
+- Source e94372e passes all 18 non-skipped checks after the actual stalled
+  cancellation red and native-fetch correction. Exact 37 checks (7 cached)
+  finish in 4m18.434s, with backend2432/GUI1764/contract1158 and retained
+  repository report artifact14711097018. Real browser/rendered UI, both
+  native MySQL versions/recovery/faults, integration, standalone and
+  three packaging targets pass. Tag-only publishing remains skipped.
+- Both repeated native-fetch1000-caller commands finish their complete
+  oracle and cleanup. Severe request saturation remains explicit. The
+  original measurements, incomplete runs, CODE-v13 and actual unit/fault
+  evidence are retained; no healthy fleet or server/root-cause claim.
+- CODE-v16 approves the unchanged exact Node/Bun/Moon/Go selection, reports
+  and corrected combined verification. Restore the pinned selectors after
+  the self-contained intermediate task commits.
+- A fresh branch now contains atomic T02/T03/T04/T05 commits only; no force
+  push or work-history merge is used. M49 is6/6 and all four criteria;
+  program395 done/one dropped/three pending. Run this candidate's own final
+  combined checks before its rebase merge. PR #20 remains the archived
+  repair work branch until successful publication.
+- Resume the committed M50 source-truth work from this verified dependency;
+  main remains unchanged until publication. Local execution remains
+  unavailable and no local clean-tree check is claimed.
+
+## M49-T05 — Correct the observed claim-history browser oracle race
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Observed**: Final E2E job136880956867 fails all three attempts at the
+  exact-one-current-page-request assertion: zero requests yet or two
+  requests with the same valid older cursor. Canonical unassignment is
+  already visible. Source TaskClaimHistory polls history and invalidates
+  the independent canonical task read; scheduling is not an exact count.
+- **Plan**: Await actual manual refresh completion before the baseline;
+  after eventless unassignment, wait for a current history request and
+  require every observed request to retain the older-page cursor. Preserve
+  canonical owner, editor content/focus and visible page assertions.
+- **Proof**: Inject an accepted head-page browser RPC after the positive
+  current-page observation; require the precise cursor-invariant assertion
+  to fail and restore test bytes. No production UI, polling interval or
+  timeout is changed. The observed red precedes this fixture correction.
+- **State**: Reopen T05 only: M49 5/6,394 done/one dropped/four pending on
+  the candidate. All other17 final gates, including repeated native stages,
+  pass. Main remains unchanged. Preserve rejected CODE-v17.
+
+### Corrected browser and final source verification
+
+- Source 185d0ad8f0ac970d0c2b50e5cc3be3ea53b9ae04 passes all18 non-skipped checks: CI44917125315,
+  Integration44917125403, staged recovery44917125316 and packaging44917125363.
+  Exact `moon check --all` completes37 (7 cached) in7m26.908s,
+  backend2432/GUI1764/contract1158. Hosted execution only.
+- Job136885133224 proves an actual accepted head-page request fails the
+  precise cursor invariant, restores bytes, then passes103 browser cases
+  with three existing skips. The normal test waits for real refresh and
+  preserves every older-page cursor, canonical ownership, editor/focus and
+  paging assertion. Production UI/timers are unchanged. CODE-v18 approves;
+  rejected v17 and its actual failure remain historical evidence.
+- Both MySQL versions, real recovery/faults, repeated native1000-caller
+  stages, rendered accessibility/mobile, standalone and three packaging
+  targets pass. Tag-only publishing is skipped. Severe measured saturation
+  remains explicit; no production capacity or local execution is invented.
+- Close T05 again: M49 6/6/all criteria;395 done/one dropped/three pending.
+  Preserve the first three atomic task commits and replace only the final
+  T05 commit from T04 parent85fca13. This fresh publication branch contains
+  four completed-task commits; the raw browser work branch is not merged.
+  Its own combined-head checks and exact tree verification still precede
+  main publication. M50 continues separately in draft PR #22.

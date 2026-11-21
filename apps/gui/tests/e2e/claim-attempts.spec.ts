@@ -141,17 +141,24 @@ test('groups real worker receipts and delayed reports, fences old releases and r
     await expect(notes.getByText('Legacy report without a claim receipt', { exact: true })).toBeVisible();
     await detail.getByRole('button', { name: 'Older claims', exact: true }).click();
     await expect(detail.getByText('Page 2 · 3 shown · 23 recorded', { exact: true })).toBeVisible();
+    const olderCursor = cursors.at(-1);
+    expect(Boolean(olderCursor)).toBe(true);
+    const refreshed = page.waitForResponse(response => response.url().endsWith('/ListTaskAttempts')
+      && response.status() === 200
+      && (response.request().postDataJSON() as { page?: { cursor?: string } }).page?.cursor === olderCursor);
     await detail.getByRole('button', { name: 'Refresh claim history', exact: true }).click();
+    await refreshed;
     await expect(detail.getByRole('button', { name: 'Refresh claim history', exact: true })).toBeEnabled();
-    const before = cursors.length, taskBefore = taskReads, olderCursor = cursors.at(-1);
-    expect(Boolean(olderCursor)).toBe(true);await editor.focus();
+    const before = cursors.length, taskBefore = taskReads;
+    await editor.focus();
     // UnassignTask intentionally emits no task event. Only the current visible
     // history page and canonical task read may reconcile this remote mutation.
     await tasks.unassignTask({ taskId: task.id, agentId: b.agent.id });
     await page.waitForTimeout(2000);expect(cursors).toHaveLength(before);
     await expect(detail.getByRole('button', { name: 'Unassigned — assign this task', exact: true })).toBeVisible({ timeout: 35_000 });
     expect(taskReads).toBeGreaterThan(taskBefore);
-    expect(cursors.slice(before)).toEqual([olderCursor]);
+    await expect.poll(() => cursors.length - before, { timeout: 35_000 }).toBeGreaterThan(0);
+    expect(cursors.slice(before).every(cursor => cursor === olderCursor), 'claim-history refresh must retain the visible older-page cursor').toBe(true);
     await expect(editor).toHaveValue('Keep this unsaved summary across background ownership refresh.');
     await expect(editor).toBeFocused();
     await expect(detail.getByText('Page 2 · 3 shown · 23 recorded', { exact: true })).toBeVisible();

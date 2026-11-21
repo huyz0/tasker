@@ -19,10 +19,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
       - name: Setup Moon
@@ -43,10 +41,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
       - name: Setup Moon
@@ -66,10 +62,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # needed for moon affected
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
       - name: Setup Moon
@@ -102,10 +96,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
       - name: Setup Moon
@@ -136,10 +128,12 @@ jobs:
         run: cd apps/gui && bun run typecheck:e2e:saved-views
       - name: Prove native saved-view intent regression
         run: cd apps/gui && bun run test:e2e:saved-view-proof
+      - name: Prove claim-history current-page cursor invariant
+        run: cd apps/gui && bun run test:e2e:claim-cursor-proof
       - name: E2E
         run: moon run gui:e2e
       - name: Upload Playwright report
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -154,10 +148,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
       - name: Setup Moon
@@ -208,10 +200,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
       - name: Setup Moon
@@ -230,6 +220,13 @@ jobs:
       # nothing it needs can come from the checkout it was built in.
       - name: Smoke test it
         run: ./scripts/smoke-standalone.sh
+      - name: Retain tested standalone binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-smoke-${{ github.sha }}
+          path: apps/backend/dist/tasker-standalone
+          retention-days: 14
+          if-no-files-found: error
 
   cli:
     name: CLI (Go)
@@ -239,10 +236,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
       # Read the version from go.mod rather than naming a floating '1.26':
       # a minor-version wildcard silently drifts to whatever Go released last,
       # so CI stops testing the toolchain `moon setup` gives developers.
@@ -269,7 +264,7 @@ jobs:
         run: |
           if [[ ! "$TASKER_PIN_BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || ! git cat-file -e "$TASKER_PIN_BASE_SHA^{commit}"; then
             echo 'changed=true' >> "$GITHUB_OUTPUT"
-          elif git diff --quiet "$TASKER_PIN_BASE_SHA" HEAD -- .prototools apps/cli/go.mod .github/actions .github/workflows/ci.yml; then
+          elif git diff --quiet "$TASKER_PIN_BASE_SHA" HEAD -- .prototools apps/cli/go.mod .github/actions .github/workflows; then
             echo 'changed=false' >> "$GITHUB_OUTPUT"
           else
             echo 'changed=true' >> "$GITHUB_OUTPUT"
@@ -280,7 +275,25 @@ jobs:
           VITEST_MAX_WORKERS: '1'
           MOON_CONCURRENCY: '1'
           GOMAXPROCS: '2'
-        run: moon check --all
+        run: |
+          mkdir -p "$RUNNER_TEMP/tasker-gates"
+          {
+            git rev-parse HEAD
+            node --version
+            bun --version
+            moon --version
+            go version
+          } > "$RUNNER_TEMP/tasker-gates/toolchains.txt"
+          set -o pipefail
+          moon check --all 2>&1 | tee "$RUNNER_TEMP/tasker-gates/moon-check-all.log"
+      - name: Retain exact repository gate report
+        if: always() && steps.runtime-pins.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-gate-${{ github.sha }}
+          path: ${{ runner.temp }}/tasker-gates/
+          retention-days: 30
+          if-no-files-found: error
 
   mysql-native:
     name: MySQL native (${{ matrix.mysql }})
@@ -314,10 +327,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
       - name: Setup Moon
@@ -377,10 +388,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
       - name: Setup Moon
