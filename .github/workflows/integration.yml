@@ -8,6 +8,11 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
 
+# Superseded PR checks are replaceable; every main commit keeps its own proof.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   integration:
     name: GitHub Integration Tests

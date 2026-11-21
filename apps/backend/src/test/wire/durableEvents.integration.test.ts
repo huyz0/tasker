@@ -8,6 +8,17 @@ import { Code, createClient } from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-node';
 import { AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 
+// Retry only read-observer lock contention; invalid SQL and other errors fail immediately.
+async function readUnlocked<T>(read: () => T, deadline: number): Promise<T> {
+  for (;;) {
+    try { return read(); } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+      if (!['SQLITE_BUSY', 'SQLITE_BUSY_SNAPSHOT', 'SQLITE_LOCKED'].includes(String(code)) || Date.now() >= deadline) throw error;
+      await Bun.sleep(25);
+    }
+  }
+}
+
 const realTest = process.env.TASKER_REAL_INTEGRATION === '1' ? it : it.skip;
 realTest('real brokerless API captures committed writes and projects them locally', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'tasker-durable-wire-'));
@@ -36,26 +47,28 @@ realTest('real brokerless API captures committed writes and projects them locall
     const projectId = (await createClient(ProjectService, transport).createProject({ orgId, templateId, name: 'Durable', ownerId })).project!.id;
     const task = (await createClient(TaskService, transport).createTask({ projectId, title: 'Captured over the real adapter', status: 'todo', idempotencyKey: 'durable-wire' })).task!;
     sqlite = new Database(path, { readonly: true });
-    sqlite.exec('PRAGMA busy_timeout = 1000');
-    const event = sqlite.query("SELECT * FROM domain_events WHERE subject = 'domain.task.created'").get() as any;
+    sqlite.exec('PRAGMA busy_timeout = 50');
+    const reader = sqlite;
+    const event = await readUnlocked(() => reader.query("SELECT * FROM domain_events WHERE subject = 'domain.task.created'").get(), Date.now() + 5_000) as any;
     expect(event).toBeTruthy();
     expect(JSON.parse(event.payload)).toMatchObject({ id: task.id, orgId, projectId, eventId: event.id });
     let audit: any;
-    for (let attempt = 0; attempt < 100; attempt++) {
-      audit = sqlite.query('SELECT * FROM audit_log WHERE event_id = ?').get(event.id);
+    const auditDeadline = Date.now() + 5_000;
+    while (Date.now() < auditDeadline) {
+      audit = await readUnlocked(() => reader.query('SELECT * FROM audit_log WHERE event_id = ?').get(event.id), auditDeadline);
       if (audit) break;
       await Bun.sleep(50);
     }
     expect(audit).toBeTruthy();
     expect(JSON.parse(audit.payload).id).toBe(task.id);
-    expect((sqlite.query('SELECT COUNT(*) AS n FROM audit_log WHERE event_id = ?').get(event.id) as any).n).toBe(1);
+    expect((await readUnlocked(() => reader.query('SELECT COUNT(*) AS n FROM audit_log WHERE event_id = ?').get(event.id), Date.now() + 5_000) as any).n).toBe(1);
     child.kill('SIGTERM');
     for (let attempt = 0; attempt < 50; attempt++) {
       if ((await fetch(`${baseUrl}/readyz`)).status === 503) break;
       await Bun.sleep(5);
     }
     await expect(createClient(TaskService, transport).createTask({ projectId, title: 'Must not enter during drain', status: 'todo' })).rejects.toMatchObject({ code: Code.Unavailable });
-    expect((sqlite.query('SELECT COUNT(*) AS n FROM tasks').get() as any).n).toBe(1);
+    expect((await readUnlocked(() => reader.query('SELECT COUNT(*) AS n FROM tasks').get(), Date.now() + 5_000) as any).n).toBe(1);
 
   } finally {
     sqlite?.close(); child.kill('SIGTERM');
