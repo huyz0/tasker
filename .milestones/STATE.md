@@ -2,7 +2,7 @@
 active_milestone: M58
 active_task: M58-T04
 last_updated: 2026-11-21
-last_commit: debb00ba
+last_commit: 8b132f2
 blocked: false
 blocker: null
 ---
@@ -15,7 +15,9 @@ blocker: null
 
 ## Now
 
-**2026-11-21 — M58-T04 hosted verification in progress.** PR #14 is published as main9be092b; the interface is delivered. Preserve the existing local T04 draft while Cloud startup remains pending. This dependent provider branch adds permanent actual-browser privacy/history/shared-access/obsolete-resource checks and a public guide, with strict browser types and a temporary restored intent fault. M49-T06/draft PR #15 owns the observed new Go audit failure; its reviewed Go1.26.11 candidate is the branch base and its actual full gate is running. Neither task is complete yet.399 total/388 done/10 pending. Original worktrees/WIP/services remain preserved.
+**2026-11-21 — M58-T04 permanent checks in progress.** Preserve the original local draft while Cloud startup remains pending. The dependent provider branch now contains two real-browser journeys, strict browser types, a temporary intent fault with byte-for-byte restoration, and the public saved-view guide. Actual hosted results and independent review still gate closure. M49-T06 is verified on its source candidate and checked; PR #15 final-head CI/publication remain pending. The branch incorporates its completed ledger/review without losing T04 work.399 total/389 done/nine pending.
+
+**2026-11-21 — M49-T06 verified; final publication next.** The Go 1.26.11 patch clears the actual GO-2026-6859 audit failure. Reviewed candidate debb00ba passes the unchanged audit, seven CLI checks and the exact hosted `moon check --all` gate: all 36 checks (7 cached), 4m42.071s, GUI 1,764/backend 2,421/contract 1,158 and production/standalone builds. CODE-v1 approves. PR #15 still needs final-head CI before merge; no local execution is claimed while Cloud startup remains pending. M49 is 1/6; original T01–T05 remain open. Resume M58-T04 permanent browser/guide coverage, whose local edits and dependent provider checkpoint remain preserved.399 total/389 done/nine pending. Main9be092b already contains the saved-view UI.
 
 **2026-11-21 — M49-T06 urgent Go audit follow-up in progress.** M58-T03 is published as main9be092b via PR #14 after all8 exact-head CI jobs passed. Nine of10 post-main jobs pass, including both integration jobs; Dependency vulnerabilities fails GO-2026-6859 on the existing Go1.26.10 pin. The official advisory fixes the maintained1.26 line in1.26.11. Prepare an isolated configuration patch through the connected provider while the Cloud workspace starts; the actual audit is the observed regression, and no runtime TDD applies to version/static-document changes. Local/full and final-head checks still gate completion/publication. Preserve unfinished M58-T04 test/guide work in tasker-saved-view-ui.399 total/388 done/10 pending. Original worktrees/WIP/services remain preserved.
 
@@ -2024,7 +2026,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 0 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 1 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2035,7 +2037,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | in-progress | M53 | 5 | 4 |
 
-**Total: 399 tasks across 52 milestones — 388 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 389 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
