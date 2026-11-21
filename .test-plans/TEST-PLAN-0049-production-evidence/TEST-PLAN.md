@@ -46,3 +46,36 @@ results; source approval does not substitute for final-head CI.
 
 Load harnesses, staged caller counts, hardware/capacity limits and release
 toolchain consolidation remain M49-T03–T05 and require their own actual results.
+
+## M49-T03 bounded load acceptance
+
+1. Given invalid, unknown, repeated or unbounded CLI dimensions, reject before
+   opening SQL, starting a process or allocating fixture data. Accept only
+   concurrency1–1000, duration1–120seconds, fixture0–10000tasks, instances1–4,
+   a uint32 seed and at most50000 logical operations. No deployment URL/schema
+   may be supplied; generate all writable resources internally.
+2. Given observed completion times, report nearest-rank p50/p95/p99 and sample
+   counts for all completions and successful logical operations separately.
+   Empty samples report null, never zero latency. Preserve input observations.
+3. Given attempted keys, acknowledged first-write IDs and independent SQL rows,
+   fail absent acknowledged writes, duplicate logical rows, changed identity
+   and unattempted rows. Distinguish uncertain committed from uncertain absent
+   writes. Test the lost/duplicate oracles before implementation.
+4. Given a disposable MySQL schema and an owned broker, start the requested
+   number of real API PIDs and a durable audit consumer. Seed only that schema;
+   use one distinct scoped agent per caller. Each measured logical operation
+   creates with a stable key, replays through another instance, then reads the
+   canonical task. Production rate limits and database pools are retained.
+5. Given the duration or operation cap is reached, stop admitting work, settle
+   bounded requests and drain the owned APIs before final source reconciliation.
+   Drain pending events separately; audit identity/counts and source outcomes
+   must match. Cleanup failures and incomplete correctness checks fail the run.
+6. Emit one machine-readable result with workload dimensions, actual elapsed
+   time, operation and error-code counts, throughput, latency distributions,
+   sampled own-process memory, hardware/cgroup limits, queue observations,
+   correctness counts and actual runtime/MySQL/NATS versions. No credential,
+   session, raw driver error, request body or event body appears in artifacts.
+7. A small hosted smoke must complete without correctness violations and retain
+   its JSON. T04 separately records100 and1000 caller experiments, any saturation
+   and resource limits. No result implies20000 callers, every endpoint, steady
+   long-duration load, multiple hosts or long-lived streaming capacity.

@@ -1,8 +1,8 @@
 ---
 active_milestone: M49
-active_task: M49-T02
+active_task: M49-T03
 last_updated: 2026-11-21
-last_commit: 96f7a2a
+last_commit: 1d47090
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T03 acceptance plan while recovery gates queue.** PR #18/source1d47090 contains the corrected T02 fixtures; real NATS and five SQLite recovery cases pass, while required MySQL and full repository jobs still wait for runners. Keep T02 unchecked and its publication separate. Prepare bounded load acceptance tests on a dependent draft, with no capacity claim. Source-oracle and configuration tests must actually fail before implementation.399 total/391 done/one dropped/seven pending. Remote GitHub Actions supplies verification while the original local drafts remain untouched.
 
 **2026-11-21 — M49-T02 final fixture corrections.** Candidate96f7a2a passes all native/recovery/fault checks on MySQL8.0 and both cleanup regressions. Overall gate remains red on MySQL8.4 cold-bootstrap default5000ms and a nullable environment matcher; prior run also reproduces a transient SQLite observation lock. Bound native cold setup at30seconds, retry only observer lock codes inside its existing five-second wait, and preserve exact assertions/types. Re-run all actual gates before checking T02.399 total/391 done/one dropped/seven pending. Local Cloud startup remains pending.
 

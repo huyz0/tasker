@@ -170,3 +170,22 @@
 - Prior CODE-v5 source approval is retained separately from these observed
   results. Re-run the corrected source and record a new four-lens review;
   T02 remains in progress until the actual final gates pass.
+
+## M49-T03 — Bounded HTTP concurrency evidence
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Changed**: Prepare a standalone bounded workload against disposable MySQL and
+  an owned broker, with actual independent API processes and distinct scoped
+  agent principals. The recovery candidate remains separately gated in PR #18.
+- **Verified**: No load implementation or capacity result is claimed. The test
+  plan precedes code; core configuration, observed latency and source-outcome
+  reconciliation tests will first run against a typed empty scaffold.
+- **Notes**: Testing/security plus TDD apply. Existing HTTP adapters, SQL, NATS,
+  token generation and owned cleanup suffice; no new dependency or runtime
+  protocol is introduced, so a product ADR and UX artifact are unnecessary.
+  Concurrency/duration/fixture/instance/seed/operation bounds are explicit.
+  Credentials stay in memory; only internally generated resources are removed.
+- **Next**: Establish the actual failing core tests, implement the minimal
+  harness and exercise a small correctness smoke. Separate T04 stages and
+  published capacity claims require their own measured artifacts.
