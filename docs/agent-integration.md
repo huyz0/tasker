@@ -215,8 +215,8 @@ Retry-After: 7
  "detail":"Rate limit exceeded. Retry after 7 seconds."}
 ```
 
-Honour `Retry-After`. Waiting that long and retrying is guaranteed to have
-capacity; retrying sooner is guaranteed not to. The CLI reports this as
+Honor `Retry-After` as a minimum delay, then retry with bounded backoff/jitter.
+Waiting does not guarantee future capacity; other callers may consume it. The CLI reports this as
 `rate limit exceeded - wait before retrying` rather than as a connection
 failure, so do not treat it as the backend being down.
 
@@ -224,7 +224,8 @@ Operators can change the limits with `AGENT_RATE_LIMIT_BURST` and
 `AGENT_RATE_LIMIT_WINDOW_MS`.
 
 > The limiter is per backend instance. Behind N instances the effective limit
-> is N times this one. Multi-instance deployment is owned by a later milestone.
+> is N times this one. Real multi-instance behavior has been exercised; a
+> shared global rate budget is a separate unscheduled design.
 
 ## 7. When something is refused
 
@@ -394,7 +395,9 @@ whose response you never saw, and you get the original response back instead
 of a second task or a second claim. A key is bound to the request it was first
 used with: the same key with *different* arguments is refused with
 `InvalidArgument` rather than answered with the first request's result, so
-never reuse a key for a new request. Keys are kept for 24 hours.
+never reuse a key for a new request. Generic keys become eligible for hourly cleanup after 24 hours. That is a
+bounded retry window, not indefinite protection. Durable schedule receipts
+have their own stable creation identity.
 
 Task creation, claims and workflow starts reserve the key, change the database
 and save the response in one transaction. A process interrupted before commit
@@ -464,7 +467,7 @@ tasker tasks usage show "$T" --attempt-id "$ATTEMPT_ID" --limit 20 --json
 tasker artifacts list-task-links --task "$T" --uncorrelated-only --limit 20 --json
 ```
 
-History defaults to50 receipts and caps pages at100, newest first with stable
+History defaults to50 receipts and caps pages at 100, newest first with stable
 ID ties. Follow `nextCursor` using `--cursor`, or explicitly request `--page-all`
 for NDJSON. Source reads choose either one receipt or `--uncorrelated-only`;
 discard the old cursor when changing task/filter. MCP exposes `list_task_attempts`,
@@ -772,6 +775,41 @@ snapshot; legacy authors/times stay unknown. Recorded pull requests are separate
 provider signals that can be incomplete/outdated; a merged PR does not verify
 task completion. Current permissions govern reads and writes independently.
 An artifact-write agent may create/link, but unlinking remains human-only.
+
+## Request deadlines and uncertain writes
+
+The CLI defaults to a 30-second deadline for each backend request. Use a
+positive duration, for example:
+
+```sh
+tasker --timeout 45s tasks list --project "$P" --page-all
+```
+
+Each page has its own bound; the entire command may last longer. Earlier
+parent cancellation/deadlines still apply. A long-lived stdio MCP session
+is not terminated merely because 30 seconds pass; each forwarded backend
+request is bounded. Earlier NDJSON items may already be on stdout when a
+later page fails, so check exit status and stderr before treating a listing
+as complete.
+
+| Result | Interpretation and action |
+|---|---|
+| Aborted / processing conflict | Retry the same request and stable key after a bounded delay; another contender may have completed the intent |
+| DeadlineExceeded, cancellation or lost transport | Commit outcome may be unknown; preserve the same principal/method/key/request and reconcile instead of creating another intent |
+| Changed request under an existing key | InvalidArgument; use a new key only for a genuinely new operation |
+| Credential/scope/membership refusal | Repair current authorization; a cached prior success grants no access |
+| Retry-After | Minimum wait, not guaranteed capacity; avoid an unbounded retry loop |
+| Internal under load | Preserve the intent and inspect evidence; the code alone does not identify a driver/pool cause |
+
+The [recorded load profiles](performance.md) include writes that commit
+without acknowledgement and many request failures at 1000 logical callers.
+A transport timeout is not proof of rollback. Current permission checks
+still govern a recovered keyed response.
+
+A manual schedule Run creates a new intent. Inspect its accepted receipt and
+let pending/interrupted recovery resume that occurrence; clicking Run again
+does not retry the same receipt. See schedule history above and the
+[operator recovery runbook](recovery.md).
 
 ## See also
 
