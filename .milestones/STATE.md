@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T02
 last_updated: 2026-11-21
-last_commit: 610d19b
+last_commit: 96f7a2a
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T02 final fixture corrections.** Candidate96f7a2a passes all native/recovery/fault checks on MySQL8.0 and both cleanup regressions. Overall gate remains red on MySQL8.4 cold-bootstrap default5000ms and a nullable environment matcher; prior run also reproduces a transient SQLite observation lock. Bound native cold setup at30seconds, retry only observer lock codes inside its existing five-second wait, and preserve exact assertions/types. Re-run all actual gates before checking T02.399 total/391 done/one dropped/seven pending. Local Cloud startup remains pending.
 
 **2026-11-21 — M49-T02 isolation and cleanup corrections under verification.** Preserve rejected CODE-v4. The actual first candidate reproduces ER_BAD_DB_ERROR in the inherited atomic fixture; the required wrapper now creates and passes only its own UUID outer schema. Dedicated cleanup regressions fail their intended filesystem assertions on the scaffold before implementation. Settled teardown now attempts all owned resources and always restores ambient test state; broker creation attempts are tracked with a generated ownership label. Audit fault proof rejects cleanup aggregates. T02 remains unchecked pending real normal/fault checks and re-review. Parent main d7e2e45 is published after all12 checks.399 total/391 done/seven pending. Cloud startup remains pending and original drafts are preserved.
 

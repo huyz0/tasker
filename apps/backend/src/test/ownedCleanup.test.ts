@@ -15,7 +15,7 @@ it('attempts later owned cleanup and restores environment after a connection clo
       async () => { rmSync(directory, { recursive: true }); },
     ], restore);
     expect(existsSync(directory)).toBe(false);
-    expect(process.env.TASKER_CLEANUP_TEST_MARKER).toBe(previous);
+    expect({ marker: process.env.TASKER_CLEANUP_TEST_MARKER }).toEqual({ marker: previous });
     expect(failures).toEqual([failure]);
   } finally { rmSync(directory, { recursive: true, force: true });restore(); }
 });

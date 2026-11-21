@@ -148,3 +148,25 @@
   cannot hide failed fixture teardown. The required outer recovery schema is
   already generated and passed explicitly; nested fixtures preserve their
   separate ownership. Re-run actual normal/fault/source gates before approval.
+
+### Observed cold-bootstrap and observer corrections
+
+- Candidate96f7a2a passes MySQL8.0 job136816096622: all12 native
+  files/19 cases, all10 recovery cases with zero failures/skips, plus both
+  acknowledged audit faults. Dedicated cleanup regressions also pass.
+- Overall verification remains red: job136816096628 reproduces the search
+  fixture's implicit5000ms cold-bootstrap timeout, followed by overlapping
+  migration errors. Set only the required native integration runner's default
+  case bound to30000ms; explicit operational latency assertions are unchanged.
+  Earlier job136815090966 reproduced the same issue in task bootstrap.
+- Job136815090992 reproduces SQLite database-is-locked in the durable-event
+  observer. Retry only SQLite BUSY/LOCKED reads with a shared five-second audit
+  observation deadline and a50ms observer busy timeout. Missing output and
+  non-lock SQL errors still fail. Production settings and event assertions
+  are unchanged.
+- Job136816096604 passes cleanup behavior but strict types reject the nullable
+  environment matcher. Compare the complete marker object, preserving both
+  missing and string values without a cast or broadened expectation.
+- Prior CODE-v5 source approval is retained separately from these observed
+  results. Re-run the corrected source and record a new four-lens review;
+  T02 remains in progress until the actual final gates pass.
