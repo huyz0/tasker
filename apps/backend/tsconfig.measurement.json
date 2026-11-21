@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "scripts/measure-concurrency.ts",
+    "scripts/concurrency-core.ts"
+  ]
+}

@@ -6,6 +6,8 @@ tasks:
     inputs:
       - 'src/**/*'
       - '**/*.test.ts'
+      - 'scripts/concurrency-core.ts'
+      - 'scripts/measurement-transport.ts'
   test-integration:
     deps:
       - 'shared-contract:install-deps'
@@ -70,6 +72,7 @@ tasks:
     command: 'bun run lint'
     inputs:
       - 'src/**/*'
+      - 'scripts/**/*.ts'
       - 'package.json'
 
   # The compiler as a gate, mirroring `gui:typecheck`. `bun test` transpiles
@@ -83,6 +86,8 @@ tasks:
     inputs:
       - 'src/**/*'
       - 'tsconfig.json'
+      - 'scripts/concurrency-core.ts'
+      - 'scripts/measurement-transport.ts'
       - '/packages/shared-contract/gen/**/*'
 
   # Explicit real-service commands never reuse a cached prerequisite skip.
@@ -120,3 +125,15 @@ tasks:
     options:
       cache: false
       runInCI: true
+
+  typecheck-measurement:
+    type: 'test'
+    deps:
+      - 'shared-contract:install-deps'
+    command: 'bun run typecheck:measurement'
+    inputs:
+      - 'scripts/**/*.ts'
+      - 'src/**/*'
+      - 'tsconfig.json'
+      - 'tsconfig.measurement.json'
+      - '/packages/shared-contract/gen/**/*'

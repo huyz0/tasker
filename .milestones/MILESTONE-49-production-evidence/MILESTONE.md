@@ -24,7 +24,7 @@ SQLite unit tests do not establish MySQL concurrency correctness or broker outag
 
 - [x] Pull requests exercise real MySQL concurrency and real NATS delivery.
 - [x] Two-instance recovery tests fail on duplicate or lost outcomes.
-- [ ] A documented command reproduces load runs and emits machine-readable evidence.
+- [x] A documented command reproduces load runs and emits machine-readable evidence.
 - [ ] Published capacity claims name measured caller count, data volume, hardware and limitations.
 
 ## 4. Scope
@@ -43,7 +43,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/test/wire/; apps/backend/src/modules/events/realtime.integration.test.ts.
   - **Verify**: Two instances share one MySQL database and broker; assert unique claims, occurrence recovery, deduplication and permission revocation after reconnect.
 
-- [ ] **M49-T03** — Build a bounded load harness using existing tooling and machine-readable results.
+- [x] **M49-T03** — Build a bounded load harness using existing tooling and machine-readable results.
   - **Files**: apps/backend/scripts/measure-concurrency.ts; apps/backend/package.json; docs/performance.md.
   - **Verify**: Parameterize concurrency, duration, fixture, instance count and seed; report p50/p95/p99, errors, throughput, memory, queue depth, duplicate/lost outcomes and runtime versions; fail correctness violations.
 
