@@ -397,6 +397,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/tasker-load"
           bun run measure:concurrency --concurrency 4 --duration 3 --fixture 20 --instances 2 --seed 42 --max-operations 20 > "$RUNNER_TEMP/tasker-load/smoke.json"
           bun -e 'const r = JSON.parse(await Bun.file(process.env.RUNNER_TEMP + "/tasker-load/smoke.json").text()); if (!r.correctness?.ok || !r.evidenceValid || r.cleanupFailures !== 0 || r.timing?.setupMs <= 0 || r.timing?.totalMs <= r.timing?.phaseMs || r.timing?.cleanupMs < 0 || new Set(r.workload?.apiPids).size !== 2 || r.workload?.actualPrincipals !== 4 || r.workload?.fixtureTasks !== 20 || r.counts?.completedLogical < 1 || Object.values(r.counts.errors).some(n => n !== 0) || r.queue?.samples < 1 || r.memory?.apiPeakRssBytes <= 0 || !r.versions?.mysql || !r.versions?.nats) throw new Error("The smoke report lacks required positive observations.");'
+      - name: Prove late SQL commits cannot escape the outcome oracle
+        working-directory: apps/backend
+        run: bun run prove:measurement-quiescence
       - name: Show aggregate measurement evidence
         if: always()
         run: |

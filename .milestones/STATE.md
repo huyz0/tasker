@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T03
 last_updated: 2026-11-21
-last_commit: a545543
+last_commit: bb90cb8
 blocked: false
 blocker: null
 ---
@@ -15,11 +15,9 @@ blocker: null
 
 ## Now
 
-**2026-11-21 — M49-T03 core/fault green; smoke checkout corrected.** Job136834841208 passes all seven core cases and the bypassed-input proof with byte restoration. Maintenance136834841091 cancels four verified obsolete runs; fresh reads confirm cancellation and protect current heads/main. Remove both temporary maintenance files, retaining only per-PR concurrency. The first HTTP smoke fails before workload/type execution because shallow Git lacks main; add fetch-depth0, preserving all checks. No load/capacity result exists yet. T02 source3410e39 passes exact36/backend2423, both real SQL versions and E2E/standalone; its rendered GUI job remains active, so T02 stays unchecked.399 total/391 done/one dropped/seven pending. Cloud failed; all execution evidence is hosted.
+**2026-11-21 — M49-T03 real smoke green; testing late SQL commit visibility.** Sourcebb90cb8/job136838106023 runs20 complete create/replay/get operations (60 RPCs) with four callers/two APIs, one persisted task/event/audit per intent, no request/correctness/cleanup errors. This355.819ms smoke is not capacity evidence. Add a deliberately late committed SQL task and require the final checker to reject it before changing the oracle. Core7 and bypassed-input fault proof pass. Merge T02 final candidate52d4680 normally, preserving CODE-v7 and392-done/six-pending ledger; PR #18 final publication remains separate. Temporary maintenance files are absent and per-PR concurrency replaces stale checks. Cloud failed; all execution evidence is hosted.
 
-**2026-11-21 — M49-T03 bounded HTTP harness awaiting actual smoke.** The core's actual scaffold red is job136823008841 (one pass/six intended failures). Sourcef6aa796 implements the core and merges corrected T02 parent3410e39 normally. Add timed owned SQL/broker/API fixtures, distinct scoped callers, create/replay/get operations, independent source/audit oracles, aggregate JSON, strict script types and a real four-caller/two-API smoke. Queue/error/memory/hardware/runtime and separate recovery-tail evidence are explicit; no capacity result is inferred. README links the command. T02 source3410e39 passes both integration jobs, audit and contract while remaining gates queue; retain its unresolved prior worker exit and CODE-v6.399 total/391 done/one dropped/seven pending. Cloud startup has failed; all execution evidence is hosted and original local drafts remain preserved.
-
-**2026-11-21 — M49-T03 dependent scaffold; corrected recovery parent3410e39.** Preserve current T02 failures and diagnostics from PR #18. T03 core tests/scaffold are unchanged from9f036827 and their independent Bun job must establish actual red before implementation. Merge the corrected T02 parent normally and preserve both journals; publish only T03 changes after T02 main publication and actual final gates.399 total/391 done/one dropped/seven pending. Cloud startup has failed; hosted checks remain the verification path.
+**2026-11-21 — M49-T02 verified; bounded load next.** Source3410e39 passes all10 CI and both integration jobs. Each MySQL version executes native19/recovery10 and the claim/audit failure proofs with zero required skips; exact36 passes in8m1.445s, backend2423, GUI1764, browser103 passes/three existing skips, and388 rendered stories have no accessibility/mobile overflow findings. CODE-v7 approves. PR #18 carries the final publication gate; M49 is3/6 and program399 total/392 done/one dropped/six pending. Resume T03 in PR #19/sourcebb90cb8: core7 and input-fault proof pass; the real HTTP smoke's shallow-Git failure is corrected but no load result exists yet. Temporary CI-maintenance files were removed from that dependent draft after four verified obsolete-run cancellations; per-PR concurrency preserves main checks. Cloud startup failed; hosted execution supplies all current evidence and original local drafts remain untouched.
 
 **2026-11-21 — M49-T02 observed worker exit and strict matcher correction.** Source1d47090 passes both integration jobs, audit/workspace, all19 native MySQL8.4 cases and the new two-API scenario. The older MySQL domain-event worker exits before its first checkpoint with empty stderr, leaving9 recovery passes/one failure. GitHub rejects a retry while the overall run remains active. Add fixed stage/exit/signal diagnostics; no cause is inferred. Backend TS2769 shows the object-wrapper matcher still narrows to string; compare exact boolean identity instead. Retain rejected CODE-v6 and keep T02 unchecked. Dependent PR #19/source9f036827 contains T03 plan, tests/scaffold and an independent Bun core job awaiting actual red; no implementation or capacity claim.399 total/391 done/one dropped/seven pending. Cloud startup has explicitly failed; use hosted verification and preserve original local drafts.
 
@@ -2046,7 +2044,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 2 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 3 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2057,7 +2055,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 391 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 392 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

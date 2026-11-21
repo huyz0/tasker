@@ -23,7 +23,7 @@ SQLite unit tests do not establish MySQL concurrency correctness or broker outag
 ## 3. Exit Criteria
 
 - [x] Pull requests exercise real MySQL concurrency and real NATS delivery.
-- [ ] Two-instance recovery tests fail on duplicate or lost outcomes.
+- [x] Two-instance recovery tests fail on duplicate or lost outcomes.
 - [ ] A documented command reproduces load runs and emits machine-readable evidence.
 - [ ] Published capacity claims name measured caller count, data volume, hardware and limitations.
 
@@ -39,7 +39,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: .github/workflows/ci.yml; apps/backend/moon.yml; apps/backend/src/modules/tasks/tasks.mysql.test.ts.
   - **Verify**: Run the jobs against real services with readiness probes and unique databases; deliberately break a MySQL claim assertion and prove the job fails.
 
-- [ ] **M49-T02** — Add cross-process integration scenarios for retries, schedules, audit and events.
+- [x] **M49-T02** — Add cross-process integration scenarios for retries, schedules, audit and events.
   - **Files**: apps/backend/src/test/wire/; apps/backend/src/modules/events/realtime.integration.test.ts.
   - **Verify**: Two instances share one MySQL database and broker; assert unique claims, occurrence recovery, deduplication and permission revocation after reconnect.
 

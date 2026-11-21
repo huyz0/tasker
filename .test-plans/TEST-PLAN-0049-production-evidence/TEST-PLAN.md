@@ -79,3 +79,18 @@ toolchain consolidation remain M49-T03–T05 and require their own actual result
    its JSON. T04 separately records100 and1000 caller experiments, any saturation
    and resource limits. No result implies20000 callers, every endpoint, steady
    long-duration load, multiple hosts or long-lived streaming capacity.
+
+## Late SQL commit visibility
+
+Given an owned fixture with a successful measured operation and stopped measured
+API processes, open an independent SQL transaction at the final-oracle boundary
+and insert an unattempted task under this run's measured title prefix.
+
+When that transaction actually commits after a bounded delay, the final checker
+must observe the persisted task and fail its unexpected-outcome assertion,
+rather than report a valid result from an earlier snapshot.
+
+Require a positive SQL-commit marker, a completed checked report with unexpected
+outcome count above zero, exit1 and successful owned-resource cleanup. Bootstrap,
+transport, timeout and cleanup errors cannot satisfy this proof. Restore the
+temporary harness source byte-for-byte before any ordinary verification.
