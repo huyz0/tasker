@@ -1,0 +1,120 @@
+name: Staged Capacity Evidence
+
+on:
+  push:
+    branches: ["main", "feature/m49-staged-capacity"]
+    paths:
+      - ".github/workflows/capacity.yml"
+      - "apps/backend/scripts/*concurrency*"
+      - "apps/backend/src/**"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/capacity.yml"
+      - "apps/backend/scripts/*concurrency*"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  stages:
+    name: HTTP stages and separate recovery experiments
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: tasker-native-ci
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --password=tasker-native-ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_USER: root
+      DB_PASSWORD: tasker-native-ci
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+      - name: Setup Moon
+        uses: ./.github/actions/setup-moon
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Check measurement types
+        run: moon run backend:typecheck-measurement
+      - name: Prepare owned broker image
+        run: docker pull nats:2.10-alpine
+      - name: Sequential correctness and caller stages
+        working-directory: apps/backend
+        run: |
+          mkdir -p "$RUNNER_TEMP/tasker-capacity"
+          for callers in 4 100 1000; do
+            fixture=1000
+            duration=15
+            operations=3000
+            if [ "$callers" = 4 ]; then
+              fixture=20
+              duration=3
+              operations=20
+            fi
+            report="$RUNNER_TEMP/tasker-capacity/callers-$callers.json"
+            bun run measure:concurrency --concurrency "$callers" --duration "$duration" --fixture "$fixture" --instances 2 --seed 42 --max-operations "$operations" > "$report"
+            TASKER_STAGE_CALLERS="$callers" TASKER_STAGE_FIXTURE="$fixture" TASKER_STAGE_REPORT="$report" bun -e '
+              const r = JSON.parse(await Bun.file(process.env.TASKER_STAGE_REPORT).text());
+              if (!r.correctness?.checked || !r.correctness.ok || !r.evidenceValid || r.cleanupFailures !== 0 ||
+                r.workload?.concurrency !== Number(process.env.TASKER_STAGE_CALLERS) ||
+                r.workload?.actualPrincipals !== Number(process.env.TASKER_STAGE_CALLERS) ||
+                r.workload?.fixtureTasks !== Number(process.env.TASKER_STAGE_FIXTURE) ||
+                new Set(r.workload?.apiPids).size !== 2 || r.workload?.peakActive < 1 ||
+                r.counts?.acknowledgedWrites < 1 || r.timing?.phaseMs <= 0 ||
+                r.queue?.samples < 1 || r.memory?.apiPeakRssBytes <= 0)
+                throw new Error("Stage lacks complete positive correctness observations.");
+              if (Number(process.env.TASKER_STAGE_CALLERS) === 4 && Object.values(r.counts.errors).some(n => n !== 0))
+                throw new Error("Correctness baseline has request errors.");
+            '
+            cat "$report"
+          done
+      # These real failure/recovery experiments follow the measured phases.
+      # They do not establish resilience while 1000 callers are active.
+      - name: Separate cross-process MySQL and broker recovery
+        working-directory: apps/backend
+        run: |
+          set -o pipefail
+          bun run test:recovery:mysql 2>&1 | tee "$RUNNER_TEMP/tasker-capacity/recovery.log"
+      - name: Separate acknowledged audit-loss and duplicate faults
+        working-directory: apps/backend
+        run: |
+          set -o pipefail
+          bun run test:recovery:audit-proof 2>&1 | tee "$RUNNER_TEMP/tasker-capacity/audit-faults.log"
+      - name: Show every completed stage
+        if: always()
+        run: |
+          for report in "$RUNNER_TEMP"/tasker-capacity/*.json; do
+            if [ -s "$report" ]; then cat "$report"; fi
+          done
+      - name: Retain aggregate stage and recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staged-capacity-${{ github.sha }}
+          path: ${{ runner.temp }}/tasker-capacity/
+          retention-days: 30
+          if-no-files-found: error
