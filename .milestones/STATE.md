@@ -1,8 +1,8 @@
 ---
 active_milestone: M49
-active_task: M49-T04
+active_task: M49-T05
 last_updated: 2026-11-21
-last_commit: 282f72f
+last_commit: 6665750
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T05 toolchain consistency preparation.** Official Node24.22.3 is the maintained security release researched from nodejs/node; current pin24.12.0 and floating CI/release selections disagree. Prepare exact checked Node selection and reuse pinned Bun/Moon in packaging, with retained final-gate reports and no release publication. T04 sequential hosted stages are queued on6665750; T02/T03 current-source gates remain in progress. Task boxes/counts remain unchanged. Cloud failed; use actual hosted evidence.
 
 **2026-11-21 — M49-T04 staged evidence preparation.** The corrected T03 smoke and actual late-SQL rejection proof pass on282f72f; full gates remain pending. Prepare sequential4/100/1000 caller experiments on disposable MySQL/NATS with unchanged production pools/limits, retain aggregate JSON, then run separate real cross-process recovery/fault experiments. Record saturation and uncertainty without a20000 or sustained-capacity claim. T02 recurring-worker final gates are still running. Both tasks remain unchecked; M49 is2/6,399 total/391 done/one dropped/seven pending. Hosted verification is available despite failed Cloud startup.
 

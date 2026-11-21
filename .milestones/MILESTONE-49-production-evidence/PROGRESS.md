@@ -444,3 +444,28 @@
 - **Next**: Configure and execute the bounded stages, publish their actual
   results and review evidence before checking T04. Keep T02/T03 unchecked
   until their independent current-source gates pass.
+
+## M49-T05 — Repository-pinned CI and packaging toolchains
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Observed**: CI selects a floating Node24 while .prototools still names
+ 24.12.0; release.yml selects latest Bun and a floating Moon setup action.
+  The real integration jobs do not explicitly select Node. These paths can
+  test/package different runtimes from the repository pins.
+- **Approach**: Read and verify the exact Node pin through a local composite
+  action, use the existing pinned Bun/Moon actions in release packaging, and
+  select Node explicitly in integration/capacity jobs. Preserve Go's exact
+  go.mod selection. Broaden full-gate detection to all workflow configuration.
+- **Research**: Official Node releasev24.22.3, published2026-11-11, is a
+  security release in the already-selected24 line:
+  https://github.com/nodejs/node/releases/tag/v24.22.3 .
+  Update the old24.12.0 pin and tech-stack record to24.22.3 rather than freezing
+  an obsolete patch. No new dependency, runtime family or advisory suppression.
+- **Verify**: Actual setup must print and compare the selected version.
+  Require exact hosted moon check --all, native services, browser E2E,
+  rendered UI and standalone smoke; retain reports/artifacts. This is pure
+  configuration, so no constant-mirroring TDD test is added. No release tag,
+  published binary release or deployment is requested or performed.
+- **Next**: Implement pinned selection/report retention and verify the final
+  publication candidate. Keep T05 and all unfinished task boxes unchecked.
