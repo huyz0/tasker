@@ -62,3 +62,18 @@
   delivery identity, revalidation and per-request CLI deadlines. Generated
   cli-reference.md remains governed by actual help/doc checks. Static-content
   TDD exception applies; runtime behavior and dependencies are unchanged.
+
+### T02 integration and roadmap candidate
+
+- Reconcile M30–M58 statuses with the current candidate ledger; label the
+  dated original review sequence as history. M47/M53–M58 are delivered.
+- README distinguishes historical data volume, measured concurrent bursts
+  and unvalidated20000-client targets, links UI/UX evidence and operating
+  guidance, and explains the actual drift gates' limited scope.
+- Agent guidance now treats Retry-After as a minimum, explains per-request
+  CLI deadlines/partial NDJSON, unknown writes and stable-intent retries.
+  Current stream/replay/schedule guidance remains; webhooks link the common
+  runbook and distinguish broker/audit/receiver completion.
+- Generated cli-reference.md is unchanged because current help already
+  contains these flags; its real docs-check remains required. T03 will add
+  the referenced runbook before final verification. No runtime changes.

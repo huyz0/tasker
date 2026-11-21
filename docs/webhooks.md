@@ -132,6 +132,10 @@ def verify(secret: str, raw_body: bytes, headers) -> bool:
 
 ## Recovery and operations
 
+The [recovery runbook](recovery.md) covers coordinated backup/restore,
+inspection, retention and the disposable rehearsal. Broker acknowledgement,
+audit projection and receiver acceptance are separate completion points.
+
 The source event ID in the body and `X-Tasker-Delivery` stay stable across
 retries. A lease token prevents an expired worker from changing its successor's
 result, but cannot undo a request the receiver already accepted. Keep receiver
