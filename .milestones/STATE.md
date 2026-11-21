@@ -1,8 +1,8 @@
 ---
 active_milestone: M50
-active_task: M50-T02
+active_task: M50-T03
 last_updated: 2026-11-21
-last_commit: 2d15b54
+last_commit: 7dca10f
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M50-T03 private backup rehearsal starts.** T01/T02 source/docs are committed but unchecked pending final gates. Record the actual SQLite checkpoint/offline-copy and MySQL dump/fresh-schema-restore procedure before fixture code; compare exact identities/hashes and prove an empty restored database fails the intended oracle. Only generated resources and private temp files are touched. Both schemas confirm SQLite timestamp seconds. M49's independent browser-test oracle race is being corrected; no parent/main publication or production backup is claimed. M50 remains0/3 with395 done/one dropped/three pending on this draft dependency candidate.
 
 **2026-11-21 — M50 resumes on repaired M49 candidate.** Source e94372e passes all18 checks, actual stalled-RPC control/fault tests and both repeated1000-caller experiments. Fresh atomic M49 candidate e011834 is in PR #21's final gate; no main merge is inferred. This merge overlays only M50-owned documents onto the repaired dependency. T01 source-truth content remains under verification; T02 roadmap/integration edits start with an in-progress journal before content changes. M50 is in progress with0/3 checked; candidate395 done/one dropped/three pending. Preserve severe saturation, original profiles and the actual backup/restore requirement for T03.
 

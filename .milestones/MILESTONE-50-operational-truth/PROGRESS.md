@@ -77,3 +77,29 @@
 - Generated cli-reference.md is unchanged because current help already
   contains these flags; its real docs-check remains required. T03 will add
   the referenced runbook before final verification. No runtime changes.
+
+## M50-T03 — Exercise private backup and recovery procedures
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Plan**: Extend the existing real process/broker recovery fixture after
+  a killed producer commits pending source/webhook rows. Quiesce/checkpoint
+  SQLite, close it, copy/remove/restore the owned file and reopen production
+  database setup. Use the existing MySQL service image's dump/client tools
+  to restore into a second generated schema, then continue real recovery.
+- **Verify**: Compare exact task/event/delivery IDs and payload/secret hashes,
+  without logging bodies or private SQL. An empty SQLite restore must boot
+  and fail the exact restored-identity oracle. Restore source bytes.
+  Required MySQL8.0/8.4 and SQLite jobs execute every counterpart.
+- **Safety**: Track original/restored schema creation separately; delete
+  only created resources, remove private backups, preserve encryption keys.
+  Supply the owned service container ID explicitly in CI step environment.
+  No system package, runtime dependency or production procedure is executed.
+- **Source facts**: Both dialect schemas confirm SQLite timestamp columns use
+  Unix seconds, not milliseconds. Existing recovery tests use controlled
+  fixture clocks; the runbook will distinguish them from operator waiting.
+- **Notes**: This is a verification fixture/config/static runbook, not a new
+  production algorithm. Existing-behavior tests are followed by an actual
+  deliberate-break check as TDD requires. T01/T02/T03 remain unchecked
+  until hosted gates and review. The independent M49 browser-oracle
+  correction is still under final validation; no parent/main merge is claimed.
