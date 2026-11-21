@@ -234,6 +234,13 @@ async function main(args: string[]) {
     await wait(drained, 'Measured source or acknowledged audit did not drain.', 60_000);
     await stopAll(children.filter(child => child.kind === 'recovery'));
     const recoveryMs = performance.now() - tailStart;
+    phase = 'sql-drain';
+    const sqlDrainAt = performance.now();
+    await stop(projector);
+    await wait(async () => Number((await query('SELECT COUNT(*) AS n FROM INFORMATION_SCHEMA.PROCESSLIST WHERE DB = ? AND ID <> CONNECTION_ID()', [database]))[0].n) === 0,
+      'Owned SQL sessions did not quiesce.', 15_000);
+    const sqlDrainMs = performance.now() - sqlDrainAt;
+    const pendingAfterSqlDrain = await pending();
     phase = 'oracle';
     const oracleAt = performance.now();
     const sourceRows = await query('SELECT id, title FROM tasks WHERE project_id = ? AND title LIKE ?', [projectId, prefix + '%']);
@@ -259,8 +266,8 @@ async function main(args: string[]) {
       if (!produced) producerLost++;producerDuplicates += Math.max(0, produced - 1);
       if (!projected) auditLost++;auditDuplicates += Math.max(0, projected - 1);
     }
-    const correctness = { ...outcomes, producerLost, producerDuplicates, producerOrphans, auditLost, auditDuplicates, auditOrphans, auditIdentityMismatch, responseIdentityMismatch,
-      checked: true, ok: outcomes.lost + outcomes.duplicates + outcomes.identityMismatch + outcomes.unexpected + producerLost + producerDuplicates + producerOrphans + auditLost + auditDuplicates + auditOrphans + auditIdentityMismatch + responseIdentityMismatch === 0 };
+    const correctness = { ...outcomes, pendingAfterSqlDrain, producerLost, producerDuplicates, producerOrphans, auditLost, auditDuplicates, auditOrphans, auditIdentityMismatch, responseIdentityMismatch,
+      checked: true, ok: outcomes.lost + outcomes.duplicates + outcomes.identityMismatch + outcomes.unexpected + producerLost + producerDuplicates + producerOrphans + auditLost + auditDuplicates + auditOrphans + auditIdentityMismatch + responseIdentityMismatch + pendingAfterSqlDrain === 0 };
     const completed = attempts.filter(attempt => attempt.success), acknowledged = attempts.filter(attempt => attempt.acceptedId !== undefined).length;
     let cpuQuotaCores: number | null = null;
     try { const [quota, period] = readFileSync('/sys/fs/cgroup/cpu.max', 'utf8').trim().split(/\s+/);if (quota !== 'max' && Number(period) > 0) cpuQuotaCores = Number(quota) / Number(period); } catch { /* reported as unknown */ }
@@ -269,14 +276,14 @@ async function main(args: string[]) {
       kind: 'tasker-http-concurrency-v1', startedAt, commit: process.env.GITHUB_SHA || 'unrecorded',
       workload: { ...config, mode: 'closed-loop create/replay/get; one shared project', actualPrincipals: actualAgents, apiPids: measured.map(child => child.process.pid),
         peakActive, fixtureTasks: actualFixtureTasks, poolSizePerApi: Number(process.env.DB_POOL_SIZE) || 20, poolQueueLimitPerApi: Number(process.env.DB_POOL_QUEUE_LIMIT) || 200 },
-      timing: { setupMs: started - launched, phaseMs, lastAdmissionOffsetMs, postObservationMs, apiDrainMs, recoveryMs, oracleMs: performance.now() - oracleAt, cleanupMs: 0, totalMs: 0, observerIntervalMs: 500 },
+      timing: { setupMs: started - launched, phaseMs, lastAdmissionOffsetMs, postObservationMs, apiDrainMs, recoveryMs, sqlDrainMs, oracleMs: performance.now() - oracleAt, cleanupMs: 0, totalMs: 0, observerIntervalMs: 500 },
       counts: { attemptedLogical: attempts.length, completedLogical: completed.length, acknowledgedWrites: acknowledged, persistedMeasuredTasks: sourceRows.length, persistedProducerEvents: producers.length, persistedAuditRows: audit.length, rpcCalls, errors },
       throughput: { completedLogicalPerSecond: completed.length * 1000 / phaseMs, acknowledgedWritesPerSecond: acknowledged * 1000 / phaseMs },
       latencyMs: { allLogical: latencySummary(attempts.map(attempt => attempt.milliseconds)), successfulLogical: latencySummary(completed.map(attempt => attempt.milliseconds)), acknowledgedFirstWrite: latencySummary(firstWriteLatencies) },
       memory: { apiPeakRssBytes, generatorPeakRssBytes: Math.max(generatorPeakRssBytes, process.memoryUsage().rss), memoryReadFailures, scope: 'sampled direct API PIDs and generator; excludes MySQL/NATS' },
       hardware: { platform: process.platform, arch: process.arch, cpuModel: cpus()[0]?.model ?? null, logicalCpus: cpus().length, cpuQuotaCores, hostRamBytes: totalmem(), cgroupMemoryMaxBytes: readNumber('/sys/fs/cgroup/memory.max') },
       versions: { bun: Bun.version, apiBun: Bun.version, mysql: version, nats: nc!.info?.version ?? null },
-      queue: { samples: queueSamples, readFailures: queueReadFailures, maxProducerPending, maxConsumerPending, maxConsumerUnacked, pendingAfterApiDrain, recoveryApiStarted, finalPending: await pending(), finalAckFloor: finalConsumer.ack_floor.stream_seq },
+      queue: { samples: queueSamples, readFailures: queueReadFailures, maxProducerPending, maxConsumerPending, maxConsumerUnacked, pendingAfterApiDrain, recoveryApiStarted, finalPending: pendingAfterSqlDrain, finalAckFloor: finalConsumer.ack_floor.stream_seq },
       correctness, cleanupFailures: 0, evidenceValid: acknowledged > 0,
       limitations: ['Single Linux host and one shared project; short closed-loop workload.', 'Actor/task fixtures are inserted directly; owner/org/project/role use real HTTP.', 'Observer and generator overhead are included; memory is sampled and excludes services.', 'Recovery API takeover, if required, is separate from measured request throughput.', 'Errors and uncertain outcomes are retained; no20k, steady-state, all-endpoint, streaming or multi-host claim.'],
     };

@@ -223,6 +223,41 @@
   That checkout is corrected and real HTTP/JSON verification remains pending.
   No load or capacity result is inferred.
 
+## M49-T02 — Reopen recurring ACK-worker fixture correction
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Observed**: Final job136843138595 reproduces exit0/signal none/stage ready
+  in the ack-pause worker at its real broker-ACK checkpoint. The earlier
+  source3410e39 did pass all12 checks; the final-head gate correctly catches
+  that the failure can recur. No root-cause attribution to OOM or the Cloud
+  environment is made.
+- **Approach**: The worker currently uses a one-shot sweep and can finish
+  without reaching any ACK. This scenario must instead use the production
+  recurring relay until its actual ACK callback writes the checkpoint.
+  Defer owned source eligibility by one second in the fixture to exercise
+  waiting, preserving the existing parent watchdog and every ACK/outcome
+  assertion. Ordinary one-shot relay-result workers remain one-shot.
+- **Next**: Implement this fixture correction after the observed red, retain
+  rejected CODE-v8 and re-run required services/faults and final gates.
+  Reopen T02/its criterion; M49 is2/6,399 total/391 done/one dropped/seven pending.
+
+### Recurring worker implementation after observed red
+
+- The ACK-pause worker now starts the existing production recurring runtime
+  and remains alive until the genuine publish-ACK callback pauses it. It
+  does not write the continuous-worker readiness sentinel into the ACK
+  checkpoint. Parent watchdogs, kill point and all identity/count assertions
+  remain unchanged.
+- This fixture deliberately defers its owned source eligibility by1000ms
+  immediately before starting that runtime, covering a valid empty initial
+  sweep. No production clock, backoff or lease is changed. Ordinary relay
+  result probes remain one-shot; broker-reconnect workers retain their
+  readiness checkpoint.
+- Preserve exit/signal diagnostics and add waiting-for-ack as a fixed stage.
+  Re-run both required dialect jobs and fault proofs before closure; no
+  successful result is inferred from the implementation.
+
 ## M49-T03 — Bounded HTTP concurrency evidence
 
 - **Status**: in-progress
@@ -360,3 +395,20 @@
 - Incorporate T02 final candidate52d4680 as a normal merge parent, preserving
   its completed task/review and392-done ledger. PR #18 publication still has
   its own final-head gates. T03 remains unchecked and staged load stays T04.
+
+### Actual late-commit red and SQL-session barrier
+
+- Job136844676136 executes the deliberate late transaction and records:
+  exitCode0, committed true, checked true, unexpected0, valid true and
+  cleanupFailures0. The final oracle incorrectly reports success from its
+  earlier snapshot. This is a real checker defect, observed before correction.
+- After API/recovery drain and genuine broker acknowledgement, stop the
+  projector and wait for every other SQL session in this generated schema to
+  close. Only the controller's observer connection remains. Then read the
+  source/audit snapshots and include any remaining pending producer count in
+  correctness. Record SQL drain separately from API/recovery/oracle timing.
+- Keep the same late-commit fault, real commit marker, unexpected-row assertion
+  and byte restoration. Re-run ordinary smoke plus the negative proof; no
+  green result is inferred. No production handler or transaction is changed.
+- Merge T02 correctione321baa normally and preserve its reopened391-done/
+  seven-pending ledger, CODE-v8 rejection and recurring ACK-worker regression.

@@ -94,3 +94,9 @@ Require a positive SQL-commit marker, a completed checked report with unexpected
 outcome count above zero, exit1 and successful owned-resource cleanup. Bootstrap,
 transport, timeout and cleanup errors cannot satisfy this proof. Restore the
 temporary harness source byte-for-byte before any ordinary verification.
+
+The actual red is job136844676136: committed true, exit0, checked true,
+unexpected0 and valid true. The correction must stop the projector and wait for
+all other SQL sessions in the owned schema to close before final reads, so the
+same delayed commit becomes an observed unexpected outcome. Pending producer
+work after that SQL drain also invalidates correctness.

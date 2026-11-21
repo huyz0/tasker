@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T03
 last_updated: 2026-11-21
-last_commit: bb90cb8
+last_commit: aaf900c
 blocked: false
 blocker: null
 ---
@@ -15,7 +15,11 @@ blocker: null
 
 ## Now
 
-**2026-11-21 — M49-T03 real smoke green; testing late SQL commit visibility.** Sourcebb90cb8/job136838106023 runs20 complete create/replay/get operations (60 RPCs) with four callers/two APIs, one persisted task/event/audit per intent, no request/correctness/cleanup errors. This355.819ms smoke is not capacity evidence. Add a deliberately late committed SQL task and require the final checker to reject it before changing the oracle. Core7 and bypassed-input fault proof pass. Merge T02 final candidate52d4680 normally, preserving CODE-v7 and392-done/six-pending ledger; PR #18 final publication remains separate. Temporary maintenance files are absent and per-PR concurrency replaces stale checks. Cloud failed; all execution evidence is hosted.
+**2026-11-21 — M49-T03 late SQL-commit checker correction.** Job136844676136 proves the checker missed an actually committed late task: exit0, committed true, checked true, unexpected0, valid true. Stop the projector after acknowledged drain, wait until all other SQL sessions in the owned schema have closed, then snapshot source/audit state and count any remaining pending source work as a correctness failure. Keep the actual negative proof and byte restoration; green remains pending. The earlier four-caller/two-API smoke20/20 and core7/input-fault proof pass. Merge T02 recurring-worker correctione321baa normally; T02 is reopened, M49 is2/6 and program399 total/391 done/one dropped/seven pending. Temporary maintenance files are absent; hosted execution remains the verification path.
+
+**2026-11-21 — M49-T02 recurring ACK fixture under verification.** After final job136843138595's exit0/no-signal/ready failure, the ACK-pause worker uses the production recurring relay rather than finishing after one sweep. A1000ms deferred owned source exercises waiting. Its checkpoint still comes only from a real broker ACK; ordinary one-shot result probes and all parent watchdogs/oracles remain unchanged. T02/criterion stay unchecked, M49 is2/6,399 total/391 done/one dropped/seven pending. Keep CODE-v8 rejection and prior all-green source3410e39 evidence. T03 sourceaaf900c adds a late-SQL-commit checker test before any checker change; normal HTTP/core/fault checks pass. Cloud failed; hosted verification remains available.
+
+**2026-11-21 — M49-T02 reopened by final ACK-worker failure.** Final job136843138595 records exit0/signal none/stage ready at the ack-pause checkpoint. The fixture permits a one-shot sweep to finish without reaching an ACK. Use the production recurring relay for this pause scenario and a deliberately deferred owned source to exercise waiting, preserving the parent timeout and all real-ACK/outcome assertions. Retain rejected CODE-v8 and the earlier all-green source3410e39 evidence; no environmental/OOM cause is invented. T02/its criterion are reopened: M49 is2/6,399 total/391 done/one dropped/seven pending. T03 sourceaaf900c adds a late SQL-commit oracle test before any checker change; its ordinary four-caller smoke and core/fault proof pass. Cloud failed; hosted verification and original local drafts remain the working boundary.
 
 **2026-11-21 — M49-T02 verified; bounded load next.** Source3410e39 passes all10 CI and both integration jobs. Each MySQL version executes native19/recovery10 and the claim/audit failure proofs with zero required skips; exact36 passes in8m1.445s, backend2423, GUI1764, browser103 passes/three existing skips, and388 rendered stories have no accessibility/mobile overflow findings. CODE-v7 approves. PR #18 carries the final publication gate; M49 is3/6 and program399 total/392 done/one dropped/six pending. Resume T03 in PR #19/sourcebb90cb8: core7 and input-fault proof pass; the real HTTP smoke's shallow-Git failure is corrected but no load result exists yet. Temporary CI-maintenance files were removed from that dependent draft after four verified obsolete-run cancellations; per-PR concurrency preserves main checks. Cloud startup failed; hosted execution supplies all current evidence and original local drafts remain untouched.
 
@@ -2044,7 +2048,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 3 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 2 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2055,7 +2059,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 392 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 391 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

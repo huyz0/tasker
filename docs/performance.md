@@ -64,7 +64,8 @@ operations are both recorded.
   that actual elapsed time. A logical completion includes create, replay and
   read. Error-code counts retain failures at each stage.
 - timing also separates setup, post-measurement observation, API drain,
-  recovery, source reconciliation and cleanup; totalMs includes them all.
+  recovery, SQL-session drain, source reconciliation and cleanup; totalMs
+  includes them all.
 - latencyMs reports nearest-rank p50/p95/p99 for all logical completions,
   successful logical completions and acknowledged first writes separately.
   Empty sample sets report null. Short samples do not establish stable tails.
@@ -81,6 +82,10 @@ operations are both recorded.
 - Requests settle and measured APIs drain before final reconciliation. If
   pending events remain, a separate owned recovery API drains them. Recovery
   duration and whether takeover was needed are reported outside throughput.
+  The projector then stops and all other SQL sessions in the owned schema
+  must close before final source/audit reads. Remaining pending producer
+  work is a correctness failure. A deliberately late committed task must be
+  rejected by this final oracle; its actual negative proof restores source.
 - cleanupFailures and evidenceValid make incomplete cleanup and a run with no
   acknowledged write explicit. A correctness/cleanup failure exits1; a complete
   run with no acknowledged write exits2.
