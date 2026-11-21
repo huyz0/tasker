@@ -120,7 +120,7 @@ try {
 `;
 
 type Driver = 'sqlite' | 'mysql';
-type Child = { process: Subprocess; output: Promise<string>; errors: Promise<string> };
+type Child = { process: Subprocess; output: Promise<string>; errors: Promise<string>; logs?: { stdout: string; stderr: string } };
 const enabled = process.env.TASKER_REAL_INTEGRATION === '1';
 
 for (const driver of ['sqlite', 'mysql'] as Driver[]) {
@@ -162,7 +162,13 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       return track(spawn({ cmd: [process.execPath, '--eval', WORKER], cwd: join(sourceRoot, '..'), env: { ...childEnv(), TASKER_DOMAIN_RECOVERY_CASE: JSON.stringify({ sourceRoot, driver, path, mode, url, orgId, userId, projectId, ...extra }) }, stdout: 'pipe', stderr: 'pipe' }));
     }
     function consumer(url: string) {
-      return track(spawn({ cmd: [process.execPath, 'run', join(sourceRoot, 'consumers/index.ts')], cwd: directory, env: { ...childEnv(), NATS_URL: url, LOG_LEVEL: 'error' }, stdout: 'pipe', stderr: 'pipe' }));
+      const logs = { stdout: join(directory, 'consumer-' + children.length + '.stdout'),
+        stderr: join(directory, 'consumer-' + children.length + '.stderr') };
+      const process = spawn({ cmd: [globalThis.process.execPath, 'run', join(sourceRoot, 'consumers/index.ts')], cwd: directory,
+        env: { ...childEnv(), NATS_URL: url, LOG_LEVEL: 'error' }, stdout: Bun.file(logs.stdout), stderr: Bun.file(logs.stderr) });
+      const child: Child = { process, output: Promise.resolve(''), errors: Promise.resolve(''), logs };
+      children.push(child);
+      return child;
     }
     async function result(child: Child) {
       const timeout = setTimeout(() => child.process.kill('SIGKILL'), 20_000);
@@ -380,6 +386,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
           observed.attemptedSources = rows.filter((row: any) => row.attempts > 0).length;
           observed.auditRows = await auditCount();
         } catch { observed.sqlProbeFailed = true; }
+        console.error(JSON.stringify({ ...observed, phase: 'before-broker' }));
         let observer: Awaited<ReturnType<typeof natsConnect>> | undefined;
         try {
           observer = await natsConnect({ servers: url, timeout: 500, maxReconnectAttempts: 0 });
@@ -393,27 +400,39 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
           observed.consumerDelivered = info.delivered.stream_seq;
         } catch { observed.brokerProbeFailed = true; }
         finally { if (observer) await observer.close(); }
-        // Failure has already occurred. Stop only these owned workers before
-        // collecting their buffered diagnostics; never print bodies or SQL.
-        for (const child of [reconnecting, resumedProjector]) {
-          if (child.process.exitCode === null) child.process.kill('SIGKILL');
-        }
-        await Promise.all([reconnecting.process.exited, resumedProjector.process.exited]);
+        // Consumer logs are private owned files. Never wait for a live
+        // worker's pipe EOF merely to explain an already-failed checkpoint.
         const classify = async (child: Child) => {
-          const output = (await child.output) + '\n' + (await child.errors);
+          let output: string | null;
+          if (child.logs) {
+            const read = async (path: string) => {
+              const file = Bun.file(path);
+              return await file.slice(Math.max(0, file.size - 65_536)).text();
+            };
+            try { output = (await read(child.logs.stdout)) + '\n' + (await read(child.logs.stderr)); }
+            catch { return { unavailable: true }; }
+          } else if (child.process.exitCode === null) {
+            return { unavailable: true, running: true };
+          } else {
+            output = await Promise.race([
+              Promise.all([child.output, child.errors]).then(values => values.join('\n')),
+              Bun.sleep(250).then(() => null),
+            ]);
+            if (output === null) return { unavailable: true };
+          }
           const events = ['consumer.start_failed', 'consumer.event_failed', 'consumer.nats_connect_failed',
             'consumer.uncaughtException', 'consumer.unhandledRejection', 'consumer.shutdown_failed'];
           return {
-            events: events.filter(event => output.includes('"' + event + '"')),
+            events: events.filter(event => output!.includes('"' + event + '"')),
             sqliteBusy: /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i.test(output),
-            bunPanic: /panic\\(main thread\\)|Bun has crashed/.test(output),
+            bunPanic: output.includes('panic(main thread)') || output.includes('Bun has crashed'),
             connectionRefused: /CONNECTION_REFUSED|ECONNREFUSED/.test(output),
             jetstreamUnavailable: /JetStream not enabled|jetstream.*not available/i.test(output),
           };
         };
         observed.relayErrors = await classify(reconnecting);
         observed.consumerErrors = await classify(resumedProjector);
-        console.error(JSON.stringify(observed));
+        console.error(JSON.stringify({ ...observed, phase: 'complete' }));
         throw error;
       }
       await wait(async () => (await sourceStates()).every((event: any) => event.deliveredAt), 'source completion after broker recovery', 70_000);

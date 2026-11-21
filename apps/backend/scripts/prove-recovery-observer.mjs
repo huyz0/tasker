@@ -22,11 +22,11 @@ const observations = output.split('\n').flatMap(line => {
   if (at < 0) return [];
   try { return [JSON.parse(line.slice(at))]; } catch { return []; }
 });
-const observation = observations.find(value => value.driver === 'sqlite' && value.sourceCount === 4
-  && value.auditRows === 3 && value.consumerWasRunning === false && value.consumerExitCode !== null
+const observation = observations.find(value => value.driver === 'sqlite' && value.phase === 'complete' && value.sourceCount === 4
+  && value.auditRows === 3 && value.consumerWasRunning === false && Number.isInteger(value.consumerExitCode)
   && value.consumerExitCode !== 0);
 console.log(JSON.stringify({ kind: 'runbook-recovery-observer-fault', exitCode: result.exitCode,
-  stoppedConsumerObserved: Boolean(observation) }));
+  stoppedConsumerObserved: Boolean(observation), observedPhases: observations.map(value => value.phase) }));
 if (result.exitCode !== 1 || !observation || !output.includes('owned audit consumer exited during broker recovery')
   || !output.includes('1 fail') || output.includes('"cleanupErrors"')) {
   throw new Error('Owned consumer kill did not reach the intended recovery observer and checkpoint.');
