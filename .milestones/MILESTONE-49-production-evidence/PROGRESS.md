@@ -735,7 +735,7 @@
 
 ## M49-T05 — Reopen final combined release gates
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-21
 - **Changed**: Runtime pins and packaging checks remain valid, but the final
   combined evidence gate is red. Reopen T03/T04/T05 and the reproducible
@@ -807,3 +807,27 @@
 - This fresh atomic T04 commit includes workflow/reports/docs/checkbox/
   journal/state. M49 is5/6;394 done/one dropped/four pending. Final runtime
   closure and combined-head publication remain required.
+
+### Repaired final gate verified and fresh M49 publication candidate
+
+- Source e94372e passes all 18 non-skipped checks after the actual stalled
+  cancellation red and native-fetch correction. Exact 37 checks (7 cached)
+  finish in 4m18.434s, with backend2432/GUI1764/contract1158 and retained
+  repository report artifact14711097018. Real browser/rendered UI, both
+  native MySQL versions/recovery/faults, integration, standalone and
+  three packaging targets pass. Tag-only publishing remains skipped.
+- Both repeated native-fetch1000-caller commands finish their complete
+  oracle and cleanup. Severe request saturation remains explicit. The
+  original measurements, incomplete runs, CODE-v13 and actual unit/fault
+  evidence are retained; no healthy fleet or server/root-cause claim.
+- CODE-v16 approves the unchanged exact Node/Bun/Moon/Go selection, reports
+  and corrected combined verification. Restore the pinned selectors after
+  the self-contained intermediate task commits.
+- A fresh branch now contains atomic T02/T03/T04/T05 commits only; no force
+  push or work-history merge is used. M49 is6/6 and all four criteria;
+  program395 done/one dropped/three pending. Run this candidate's own final
+  combined checks before its rebase merge. PR #20 remains the archived
+  repair work branch until successful publication.
+- Resume the committed M50 source-truth work from this verified dependency;
+  main remains unchanged until publication. Local execution remains
+  unavailable and no local clean-tree check is claimed.
