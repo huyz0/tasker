@@ -275,3 +275,24 @@
 - Clarify that teardown attempts every owned resource and a cleanup failure
   fails the run; force-kill cannot guarantee graceful cleanup. Results remain
   pending, not inferred.
+
+### Superseded CI backlog
+
+- The actual read-only preview verifies the fixed run IDs, branch/head identity,
+  PR ownership and workflow paths. Completed runs are excluded. Current PR #18
+  head3410e39 and PR #19 headf3a6988 are protected by current-head checks; main
+  is outside the allowlist. A new maintenance head makes the old PR #19 source
+  replaceable while preserving current source3410e39 on PR #18.
+- GitHub's public status reports operational Actions/no open incident, so no
+  global outage or billing cause is inferred. This task has several obsolete
+  queued runs; remove that known backlog, not unrelated account work.
+- The connected GitHub tools have no cancel action, browser control is not
+  exposed, and the Cloud executor failed. Add a temporary same-repository/
+  PR19-only Bun maintenance job with actions-write and read-only content/PR
+  access. It revalidates every fixed candidate and current head before cancel,
+  preserves completed evidence, and stops if its own head is superseded.
+  No token, response body or credential is printed.
+- Permanent per-PR concurrency prevents future superseded check accumulation;
+  each main SHA has its own group and main checks are never cancelled.
+- Remove both temporary maintenance files before final publication. Actual
+  cancellation results and ordinary final-head checks remain required.
