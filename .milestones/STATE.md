@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T05
 last_updated: 2026-11-21
-last_commit: b88a91f
+last_commit: 727569e
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49 100-caller result and stalled 1000-caller diagnosis.** Interrupted job 136854961314 retains a complete 100-caller result: 1508/1508 workflows, 4524 RPCs, matching SQL/source/audit rows, no errors/uncertain/correctness/cleanup failures, 15.42s request phase, 97.78 workflows/s and p95 1.45s. Recovery adds 19.60s. The 1000-caller command has no completed report; no cause is established. Before changing runtime behavior, add fixed phase diagnostics and a 240s external stage watchdog plus 45s graceful allowance. Initial run 44906822995 remains active. The actual MD034 errors are corrected on source 727569e, whose new gates are pending. Keep T03/T04 unchecked and preserve all observed results; main remains d7e2e45.
 
 **2026-11-21 — M49 actual Markdown gate correction.** Job 136856196396 rejects exactly two bare official Node-release URLs (MD034). Format both as Markdown autolinks, retain the actual failure and advance the draft review branch without changing runtime behavior or lint rules. Standard per-PR concurrency replaces old checks; inspect interrupted staged output to diagnose the long caller step. The initial push-based stage run remains active. Other current-source smoke/core/integration/packaging checks pass, but exact full/native/browser completion remains required. No new task closure or main publication is claimed.
 

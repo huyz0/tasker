@@ -517,3 +517,31 @@
 - Inspect interrupted staged evidence for the observed long runtime before
   attributing it to a controller, service or resource cause. Initial staged
   push run 44906822995 remains unaffected and retains its external watchdog.
+
+### Actual 100-caller evidence and uncompleted 1000-caller stage
+
+- Interrupted pinned job 136854961314 retains two complete positive reports.
+  Its 100-caller stage uses 100 actual principals/peak active operations, two
+  API PIDs and 1000 existing tasks on a four-vCPU AMD EPYC 9V74 runner with
+  16759431168 bytes host RAM. Bun 1.3.11, MySQL 8.4.13 and NATS 2.10.29.
+- All 1508 attempted logical workflows complete, with 4524 RPCs, matching
+  1508 task/source/audit rows, zero request/correctness/cleanup failures and
+  no uncertain outcomes. Request settlement is 15.421865s, throughput
+  97.783247 workflows/s, p50/p95/p99 993.221/1445.677/1934.209ms.
+  Separate recovery is 19.604031s; total is 41.277869s.
+- API sampled RSS peaks at 577028096 bytes, generator at 175022080; producer
+  pending peaks at 963, consumer unacked at two, with zero read failures.
+  The recovery API drains 962 pending source rows to zero. These short,
+  one-host/one-project results are not sustained capacity or all-endpoint
+  latency evidence. The aggregate report checkout is b9cb15c, source 35b8d33.
+- The subsequent 1000-caller command has no completed JSON when superseded.
+  Its unresolved phase is not assigned a service/controller/resource cause.
+  The initial push-based run remains active under its 25-minute job bound.
+- Add fixed non-sensitive controller phase diagnostics and a per-stage
+  240-second external watchdog with 45-second graceful termination allowance.
+  Preserve failed/partial reports and stop escalation; force-kill cannot
+  guarantee controller cleanup and never counts as valid measurement.
+  No operational deadline or correctness assertion is relaxed.
+- This is fixture diagnostics and execution configuration after the observed
+  uncompleted run, not a production behavior change. T03/T04 remain unchecked;
+  inspect the actual diagnostic run before proposing a runtime fix.
