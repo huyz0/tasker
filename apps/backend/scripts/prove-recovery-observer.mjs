@@ -11,9 +11,23 @@ const directory = mkdtempSync(join(tmpdir(), 'tasker-recovery-observer-'));
 const stdoutPath = join(directory, 'stdout'), stderrPath = join(directory, 'stderr');
 let exitCode, output = '', timedOut = false;
 try {
+  const signalProbe = Bun.spawn({ cmd: [process.execPath, '--eval', 'setInterval(() => {}, 1000)'],
+    stdout: 'ignore', stderr: 'ignore' });
+  const probeExit = signalProbe.exited;
+  let probeTimeout;
+  try {
+    signalProbe.kill('SIGKILL');
+    const awaitedExitCode = await Promise.race([probeExit, new Promise((_, reject) => {
+      probeTimeout = setTimeout(() => reject(new Error('Owned signal probe did not settle.')), 5000);
+    })]);
+    console.log(JSON.stringify({ kind: 'runbook-signal-exit-probe', getterExitCode: signalProbe.exitCode,
+      signal: signalProbe.signalCode ?? null, awaitedExitCode }));
+    if (!Number.isInteger(awaitedExitCode) || awaitedExitCode === 0) throw new Error('Owned signal probe did not observe termination.');
+  } finally { clearTimeout(probeTimeout); }
   writeFileSync(source, original.replace(anchor, anchor
     + "\n      console.error(JSON.stringify({ kind: 'runbook-recovery-stage', driver, stage: 'before-consumer-kill' }));"
-    + "\n      resumedProjector.process.kill('SIGKILL');\n      await resumedProjector.process.exited;"
+    + "\n      resumedProjector.process.kill('SIGKILL');\n      const controlledExit = await resumedProjector.process.exited;"
+    + "\n      console.error(JSON.stringify({ kind: 'runbook-consumer-signal-exit', getterExitCode: resumedProjector.process.exitCode, signal: resumedProjector.process.signalCode ?? null, awaitedExitCode: controlledExit }));"
     + "\n      console.error(JSON.stringify({ kind: 'runbook-recovery-stage', driver, stage: 'after-consumer-kill' }));"));
   const child = Bun.spawn({ cmd: [process.execPath, 'test', 'src/test/wire/domainEventRecovery.integration.test.ts',
     '--test-name-pattern', 'domain recovery.*sqlite'], cwd: fileURLToPath(new URL('..', import.meta.url)),
@@ -43,7 +57,7 @@ const stages = records('runbook-recovery-stage').map(value => value.stage)
   .filter(value => ['first-audit-start', 'first-audit-ready', 'broker-restarted', 'before-consumer-kill', 'after-consumer-kill'].includes(value));
 console.log(JSON.stringify({ kind: 'runbook-recovery-observer-fault', exitCode, timedOut,
   stoppedConsumerObserved: Boolean(observation), backupObserved: records('runbook-backup-observation').length > 0,
-  observedPhases: observations.map(value => value.phase), stages }));
+  observedPhases: observations.map(value => value.phase), stages, signalExits: records('runbook-consumer-signal-exit') }));
 if (exitCode !== 1 || timedOut || !observation || !output.includes('owned audit consumer exited during broker recovery')
   || !output.includes('1 fail') || output.includes('"cleanupErrors"')) {
   for (const value of observations) console.log(JSON.stringify(value));

@@ -120,7 +120,7 @@ try {
 `;
 
 type Driver = 'sqlite' | 'mysql';
-type Child = { process: Subprocess; output: Promise<string>; errors: Promise<string>; logs?: { stdout: string; stderr: string } };
+type Child = { process: Subprocess; output: Promise<string>; errors: Promise<string>; exit: { settled: boolean; code: number | null }; logs?: { stdout: string; stderr: string } };
 const enabled = process.env.TASKER_REAL_INTEGRATION === '1';
 
 for (const driver of ['sqlite', 'mysql'] as Driver[]) {
@@ -154,9 +154,16 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
     }
     async function docker(...args: string[]) { return (await dockerInput(args)).trim(); }
     const childEnv = () => ({ ...process.env, STANDALONE: driver === 'sqlite' ? 'true' : 'false', DB_PATH: path, NODE_ENV: 'test', LOG_LEVEL: 'silent', OTEL_EXPORTER_OTLP_ENDPOINT: '', OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: '' });
-    function track(process: Subprocess): Child {
-      const child = { process, output: new Response(process.stdout as ReadableStream).text(), errors: new Response(process.stderr as ReadableStream).text() };
-      children.push(child); return child;
+    function track(childProcess: Subprocess, logs?: Child['logs']): Child {
+      const exit: Child['exit'] = { settled: false, code: null };
+      const child: Child = {
+        process: childProcess, exit, logs,
+        output: logs ? Promise.resolve('') : new Response(childProcess.stdout as ReadableStream).text(),
+        errors: logs ? Promise.resolve('') : new Response(childProcess.stderr as ReadableStream).text(),
+      };
+      void childProcess.exited.then(code => { exit.code = code; exit.settled = true; });
+      children.push(child);
+      return child;
     }
     function worker(mode: string, url: string, extra: Record<string, unknown> = {}) {
       return track(spawn({ cmd: [process.execPath, '--eval', WORKER], cwd: join(sourceRoot, '..'), env: { ...childEnv(), TASKER_DOMAIN_RECOVERY_CASE: JSON.stringify({ sourceRoot, driver, path, mode, url, orgId, userId, projectId, ...extra }) }, stdout: 'pipe', stderr: 'pipe' }));
@@ -164,11 +171,9 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
     function consumer(url: string) {
       const logs = { stdout: join(directory, 'consumer-' + children.length + '.stdout'),
         stderr: join(directory, 'consumer-' + children.length + '.stderr') };
-      const process = spawn({ cmd: [globalThis.process.execPath, 'run', join(sourceRoot, 'consumers/index.ts')], cwd: directory,
+      const childProcess = spawn({ cmd: [process.execPath, 'run', join(sourceRoot, 'consumers/index.ts')], cwd: directory,
         env: { ...childEnv(), NATS_URL: url, LOG_LEVEL: 'error' }, stdout: Bun.file(logs.stdout), stderr: Bun.file(logs.stderr) });
-      const child: Child = { process, output: Promise.resolve(''), errors: Promise.resolve(''), logs };
-      children.push(child);
-      return child;
+      return track(childProcess, logs);
     }
     async function result(child: Child) {
       const timeout = setTimeout(() => child.process.kill('SIGKILL'), 20_000);
@@ -194,7 +199,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
     async function checkpoint(child: Child, name: string) {
       await wait(async () => {
         if (existsSync(name)) return true;
-        if (child.process.exitCode !== null) {
+        if (child.exit.settled) {
           const exitCode = await child.process.exited;
           const recorded = existsSync(name + '.stage') ? await Bun.file(name + '.stage').text() : 'not-reported';
           const stage = ['database', 'ready', 'task-committed', 'folder-committed', 'artifact-committed', 'waiting-for-ack'].includes(recorded) ? recorded : 'not-reported';
@@ -252,16 +257,16 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       async function waitForAudit(expectedAuditRows: number, projector: Child, relay: Child | undefined, label: string) {
         try {
           await wait(async () => {
-            if (projector.process.exitCode !== null) throw new Error('owned audit consumer exited during broker recovery');
-            if (relay && relay?.process.exitCode !== null) throw new Error('owned producer relay exited during broker recovery');
+            if (projector.exit.settled) throw new Error('owned audit consumer exited during broker recovery');
+            if (relay && relay.exit.settled) throw new Error('owned producer relay exited during broker recovery');
             return (await auditCount()) === expectedAuditRows;
           }, label, 70_000);
         } catch (error) {
           const observed: Record<string, unknown> = {
             kind: 'runbook-broker-recovery-observation', driver, expectedAuditRows,
-            relayExitCode: relay?.process.exitCode, consumerExitCode: projector.process.exitCode,
+            relayExitCode: relay?.exit.code ?? null, consumerExitCode: projector.exit.code,
             relaySignal: relay?.process.signalCode ?? null, consumerSignal: projector.process.signalCode ?? null,
-            relayWasRunning: relay?.process.exitCode === null, consumerWasRunning: projector.process.exitCode === null,
+            relayWasRunning: relay ? !relay.exit.settled : null, consumerWasRunning: !projector.exit.settled,
           };
           try {
             const rows = await sourceStates();
@@ -295,7 +300,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
               };
               try { output = (await read(child.logs.stdout)) + '\n' + (await read(child.logs.stderr)); }
               catch { return { unavailable: true }; }
-            } else if (child.process.exitCode === null) {
+            } else if (!child.exit.settled) {
               return { unavailable: true, running: true };
             } else {
               output = await Promise.race([
@@ -412,7 +417,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       const firstSender = worker('webhook', url);
       await wait(async () => {
         if (held) return true;
-        if (firstSender.process.exitCode !== null) throw new Error(`sender exited before HTTP: ${await firstSender.errors}`);
+        if (firstSender.exit.settled) throw new Error(`sender exited before HTTP: ${await firstSender.errors}`);
         return false;
       }, 'first signed webhook HTTP request');
       firstSender.process.kill('SIGSTOP');
@@ -449,7 +454,7 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       if (originalStandalone === undefined) delete process.env.STANDALONE; else process.env.STANDALONE = originalStandalone;
       if (originalName === undefined) delete process.env.DB_NAME; else process.env.DB_NAME = originalName;
       for (const child of children) {
-        try { if (child.process.exitCode === null) child.process.kill('SIGKILL'); }
+        try { if (!child.exit.settled) child.process.kill('SIGKILL'); }
         catch (error) { teardownErrors.push(String(error)); }
       }
       await Promise.all(children.map(child => child.process.exited));
