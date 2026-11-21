@@ -1,8 +1,8 @@
 ---
-active_milestone: M58
-active_task: M58-T04
-last_updated: 2026-11-10
-last_commit: 4b86afb
+active_milestone: M49
+active_task: M49-T06
+last_updated: 2026-11-21
+last_commit: 9be092b
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T06 urgent Go audit follow-up in progress.** M58-T03 is published as main9be092b via PR #14 after all8 exact-head CI jobs passed. Nine of10 post-main jobs pass, including both integration jobs; Dependency vulnerabilities fails GO-2026-6859 on the existing Go1.26.10 pin. The official advisory fixes the maintained1.26 line in1.26.11. Prepare an isolated configuration patch through the connected provider while the Cloud workspace starts; the actual audit is the observed regression, and no runtime TDD applies to version/static-document changes. Local/full and final-head checks still gate completion/publication. Preserve unfinished M58-T04 test/guide work in tasker-saved-view-ui.399 total/388 done/10 pending. Original worktrees/WIP/services remain preserved.
 
 **2026-11-10 — M58-T03 verified; publication next.** Personal/shared Save/Open/Rename/Delete, fresh URL/project application, bounded catalogs and draft-preserving authority recovery pass all36 checks (19 cached;3m1.449s after cached full2 GUI1764/95.37% branches). Backend2421/zero failures, contract1158, production/standalone builds, native MySQL/socket/22 old-client roundtrips,57 previews and actual browser sharing/history/obsolete-resource journeys pass; eight restored faults fail correctly. CODE-v8/UX-v8 approve.398 total/388 done/nine pending, M584/5. Preserve the raw atomic checkpoint, reconcile only T03 onto published main4b86afb with identical-tree proof, and merge after actual final-head CI. T04 owns permanent end-to-end coverage and milestone closure. Original worktrees/WIP/services remain preserved.
 
@@ -2020,7 +2022,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | done | M45, M46 | 4 | 4 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
-| M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
+| M49 | Production Evidence | in-progress | M46, M47, M48 | 6 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
@@ -2031,7 +2033,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | in-progress | M53 | 5 | 4 |
 
-**Total: 398 tasks across 52 milestones — 388 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 388 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

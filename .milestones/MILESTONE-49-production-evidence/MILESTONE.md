@@ -1,12 +1,12 @@
 ---
 id: M49
 title: Production Evidence
-status: todo
+status: in-progress
 goal: CI exercises production dependencies and reproducible multi-instance measurements describe the capacity actually demonstrated.
 depends_on: [M46, M47, M48]
 surfaces: [backend, infra, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-21
 completed_at: null
 ---
 
@@ -54,6 +54,10 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 - [ ] **M49-T05** — Pin CI runtime selection and verify all release gates.
   - **Files**: .github/workflows/ci.yml; .prototools; .milestones/MILESTONE-49-production-evidence/reviews/.
   - **Verify**: CI uses repository-pinned toolchains; run moon check --all, integration jobs, E2E and standalone smoke; retain reports as artifacts.
+
+- [ ] **M49-T06** — Upgrade the Go security patch after the post-publication vulnerability audit.
+  - **Files**: .prototools; apps/cli/go.mod; .specs/product/tech-stack.md; .milestones/MILESTONE-49-production-evidence/.
+  - **Verify**: Reproduce GO-2026-6859 on1.26.10; update the maintained1.26 line to its fixed1.26.11 patch; the unchanged vulnerability audit, CLI checks and final repository/release gates pass. Do not suppress the advisory.
 
 ## 6. Verification
 
