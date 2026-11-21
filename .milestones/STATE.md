@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T03
 last_updated: 2026-11-21
-last_commit: f6aa796
+last_commit: a545543
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T03 core/fault green; smoke checkout corrected.** Job136834841208 passes all seven core cases and the bypassed-input proof with byte restoration. Maintenance136834841091 cancels four verified obsolete runs; fresh reads confirm cancellation and protect current heads/main. Remove both temporary maintenance files, retaining only per-PR concurrency. The first HTTP smoke fails before workload/type execution because shallow Git lacks main; add fetch-depth0, preserving all checks. No load/capacity result exists yet. T02 source3410e39 passes exact36/backend2423, both real SQL versions and E2E/standalone; its rendered GUI job remains active, so T02 stays unchecked.399 total/391 done/one dropped/seven pending. Cloud failed; all execution evidence is hosted.
 
 **2026-11-21 — M49-T03 bounded HTTP harness awaiting actual smoke.** The core's actual scaffold red is job136823008841 (one pass/six intended failures). Sourcef6aa796 implements the core and merges corrected T02 parent3410e39 normally. Add timed owned SQL/broker/API fixtures, distinct scoped callers, create/replay/get operations, independent source/audit oracles, aggregate JSON, strict script types and a real four-caller/two-API smoke. Queue/error/memory/hardware/runtime and separate recovery-tail evidence are explicit; no capacity result is inferred. README links the command. T02 source3410e39 passes both integration jobs, audit and contract while remaining gates queue; retain its unresolved prior worker exit and CODE-v6.399 total/391 done/one dropped/seven pending. Cloud startup has failed; all execution evidence is hosted and original local drafts remain preserved.
 

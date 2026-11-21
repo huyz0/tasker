@@ -296,3 +296,22 @@
   each main SHA has its own group and main checks are never cancelled.
 - Remove both temporary maintenance files before final publication. Actual
   cancellation results and ordinary final-head checks remain required.
+
+### Verified core/fault and backlog cleanup; smoke setup correction
+
+- Job136834841208 passes all seven core cases and the actual bypassed-input
+  assertion proof, with source restored byte-for-byte. The earlier source's
+  pure core job136826871810 also passes all seven with100% lines/functions.
+- Maintenance job136834841091 requests four cancellations and skips eight
+  completed/current candidates. Fresh API reads confirm all four selected
+  runs are completed/cancelled. Current PR #18/source3410e39 and main are
+  preserved. Remove both temporary maintenance files; no actions-write token
+  permission or maintenance code is retained in the final implementation.
+- First smoke job136834841212 fails before typechecking or workload execution:
+  Moon cannot resolve main in a shallow checkout (git128). No load result or
+  artifact exists. Give only this Moon-using job the same fetch-depth0 as the
+  repository's other Moon jobs. Keep every smoke oracle and budget.
+- Source3410e39 now passes the exact36-task gate (8m1.445s), backend2423,
+  MySQL8.4 native19/recovery10/both audit faults, native8.0 and the real E2E/
+  standalone checks; its final rendered GUI job is still running. T02 remains
+  unchecked until that actual final result. T03 also remains in progress.
