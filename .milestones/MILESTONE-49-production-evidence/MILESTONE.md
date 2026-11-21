@@ -22,7 +22,7 @@ SQLite unit tests do not establish MySQL concurrency correctness or broker outag
 
 ## 3. Exit Criteria
 
-- [ ] Pull requests exercise real MySQL concurrency and real NATS delivery.
+- [x] Pull requests exercise real MySQL concurrency and real NATS delivery.
 - [ ] Two-instance recovery tests fail on duplicate or lost outcomes.
 - [ ] A documented command reproduces load runs and emits machine-readable evidence.
 - [ ] Published capacity claims name measured caller count, data volume, hardware and limitations.
@@ -35,7 +35,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 
 ## 5. Task Breakdown
 
-- [ ] **M49-T01** — Add isolated MySQL coverage and extend the existing JetStream integration job to the recovery paths.
+- [x] **M49-T01** — Add isolated MySQL coverage and extend the existing JetStream integration job to the recovery paths.
   - **Files**: .github/workflows/ci.yml; apps/backend/moon.yml; apps/backend/src/modules/tasks/tasks.mysql.test.ts.
   - **Verify**: Run the jobs against real services with readiness probes and unique databases; deliberately break a MySQL claim assertion and prove the job fails.
 

@@ -44,7 +44,7 @@
 
 ## M49-T01 — Required production-dependency checks
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-21
 - **Changed**: Add an explicit isolated MySQL gate and extend the existing real JetStream job to committed recovery cases.
 - **Verified**: M46/M47/M48 dependencies are published. M49-T06 publishes the patched runtime as main ed1b323 after all eight final-head checks, with identical tested/published tree. Permanent M58-T04 browser coverage proceeds separately in PR #16; preserve its remote and local drafts. Cloud startup remains pending, so use actual hosted dependency services and the exact repository gate.
@@ -69,3 +69,26 @@
 - Both observed failures are recorded before correction. Re-run real services,
   restored faults and full hosted checks before completion; no inferred pass
   or capacity claim is made.
+
+### T01 verified checkpoint and source reconciliation
+
+- Corrected candidate f5023657 passes all10 CI44890697502 jobs and both
+  Integration44890697419 jobs. MySQL8.0.46 and8.4.13 each run all12 native
+  files/19 cases with zero skips, then prove the required command rejects
+  the altered claim assertion and restores source byte-for-byte.
+- Real NATS runs its live mutation/feed/audit case plus five committed recovery
+  cases, zero failures. Four explicit MySQL process-recovery counterparts are
+  still gated until T02; they are not claimed passed. The actual expired-key
+  correction preserves positive GC and same-task replay after real key expiry.
+- The exact hosted repository gate passes all36 checks (7 cached) in6m38.838s:
+  GUI1764/backend2421/contract1158 and production/standalone builds. CODE-v2
+  approves the current source and proof design. No local execution is claimed
+  while Cloud startup remains pending.
+- PR #16 publishes M58 as main2ebfc34 after all eight final-head checks; its
+  tested/published tree is identical. Build this final candidate on that
+  published tree plus only owned T01 changes, retaining the saved-view browser
+  gates and all completed ledger entries. No branch is force-pushed.
+- Check T01 and the real-dependency criterion. M49 is2/6; program399 total,
+  391 done, one dropped, seven pending. Final combined-head CI/integration
+  still gate PR #17 publication. T02 next proves MySQL two-instance recovery;
+  load/capacity and operations documentation remain outstanding.

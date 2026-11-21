@@ -1,13 +1,13 @@
 ---
 id: M58
 title: Operational Views
-status: in-progress
+status: done
 goal: Task and report filters survive reload and browser history, and people can reopen named tenant-safe personal or explicitly shared query definitions.
 depends_on: [M53]
 surfaces: [backend, gui, contract, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-10
-completed_at: null
+completed_at: 2026-11-21
 ---
 
 # M58 — Operational Views
@@ -25,7 +25,7 @@ Useful operational views currently disappear when local screen state resets.
 - [x] Tasks and Reports use validated URLs as the source of view state across reload and history.
 - [x] Named definitions are personal by default; shared editing has an explicit checked server policy.
 - [x] Saved definitions confer no data access and revalidate referenced resources when used.
-- [ ] Obsolete/malformed definitions recover clearly and tenant/history/browser/full-gate checks pass.
+- [x] Obsolete/malformed definitions recover clearly and tenant/history/browser/full-gate checks pass.
 
 ## 4. Scope
 
@@ -47,7 +47,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/gui/src/features/Tasks/; apps/gui/src/features/Reports/; apps/gui/src/components/SavedViews/; packages/shared-contract/; apps/cli/gen/.
   - **Verify**: Applying a view updates URL intentionally; distinguish personal/shared ownership and editable state; removed statuses/labels/projects show recovery; no-access/error/empty/cancel and dirty naming states are usable; keyboard/mobile/a11y stories pass.
 
-- [ ] **M58-T04** — Verify history, sharing permissions and deleted-resource recovery end to end.
+- [x] **M58-T04** — Verify history, sharing permissions and deleted-resource recovery end to end.
   - **Files**: apps/gui/tests/e2e/; apps/backend/src/test/wire/; docs/; .milestones/MILESTONE-58-operational-views/reviews/.
   - **Verify**: Test two users in one org plus another org, private-ID guessing, shared admin-only edits, scope revocation/deleted references, reload and Back/Forward; both dialects, migrations, generated clients and all gates pass.
 
