@@ -545,3 +545,12 @@
 - This is fixture diagnostics and execution configuration after the observed
   uncompleted run, not a production behavior change. T03/T04 remain unchecked;
   inspect the actual diagnostic run before proposing a runtime fix.
+
+### Preserve the completed stage as reviewable evidence
+
+- Commit the exact 100-caller aggregate JSON and a sourced table in
+  docs/performance.md. Name the cancelled parent job, the completed stage,
+  actual checkout, hardware, dataset, defaults and separate recovery tail.
+  The incomplete 1000-caller stage and unrun later failure steps remain open.
+- Preserve uncertainty and all limitations. A zero-error short stage does
+  not establish steady-state queue stability or maximum supported capacity.

@@ -2,10 +2,48 @@
 
 ## Current evidence
 
-M49-T03 is in progress. The command and hosted smoke below require actual green
-results before they establish load evidence. No concurrent-caller capacity or
-20000-client validation is claimed here. Existing single-handler data-volume
-measurements are a different workload.
+M49 verification remains in progress. A completed **100-caller correctness
+stage** is available below. The later 1000-caller command did not complete
+before its workflow was superseded; it has no valid result. No maximum fleet,
+sustained capacity or 20000-client validation is claimed. Existing
+single-handler data-volume measurements are a different workload.
+
+### Completed 100-caller observation — 21 November 2026
+
+[Exact aggregate JSON](performance/2026-11-21-pinned-100-callers.json) comes from
+[job 136854961314](https://github.com/huyz0/tasker/actions/runs/44907118491/job/136854961314).
+That job was later cancelled when its source was superseded. Its four- and
+100-caller commands had already completed and printed checked reports; the
+following 1000-caller command had not. The successful stage does not imply the
+whole job passed.
+
+| Dimension | Actual observation |
+|---|---|
+| Workload | 100 distinct principals, peak 100 active operations, two API PIDs, one shared project |
+| Existing dataset | 1000 tasks; direct fixture insertion is outside measurement |
+| Admission / request settlement | 15 seconds configured / 15.421865 seconds observed |
+| Logical create/replay/read workflows | 1508 attempted, 1508 complete; 4524 RPCs |
+| Outcomes | 1508 acknowledged tasks, source events and audit rows; no request, identity, lost, duplicate or cleanup failures |
+| Successful workflow latency | p50 993.221ms; p95 1445.677ms; p99 1934.209ms, 1508 samples |
+| Throughput | 97.783247 completed logical workflows/s during the measured request phase |
+| Recovery / total | 19.604031s separate recovery tail / 41.277869s including setup and cleanup |
+| Sampled RSS | APIs together 577028096 bytes; generator 175022080 bytes; excludes MySQL/NATS |
+| Queue | producer pending peak 963; consumer unacked peak two; final pending zero |
+| Hardware | AMD EPYC 9V74, four logical CPUs; host RAM 16759431168 bytes; cgroup CPU/memory limits unknown |
+| Runtimes | Bun 1.3.11; MySQL 8.4.13; NATS 2.10.29 |
+| Source | controller 35b8d33; actual pull-request checkout b9cb15c13b20f6f2f9983fd6d685e5aba8ddef72 |
+| Defaults | database pool 20 and queue limit 200 per API; production limiters retained |
+
+The producer queue had 962 rows pending after the measured APIs stopped. A
+separate recovery API drained it to zero; its work is excluded from request
+throughput. This backlog and the measured workflow latency matter when choosing
+a service level. A short successful run does not establish steady-state queue
+stability, acceptable latency for another workload or a maximum supported fleet.
+
+This is one hosted Linux machine and one project, with synthetic actors/task
+fixtures. It excludes streaming, other endpoints, multi-host behavior and
+long-duration soak. The 1000-caller investigation and separate failure
+experiments remain open.
 
 ## Prerequisites and command
 
