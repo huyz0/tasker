@@ -1,8 +1,8 @@
 ---
 active_milestone: M49
-active_task: M49-T03
+active_task: M49-T04
 last_updated: 2026-11-21
-last_commit: aaf900c
+last_commit: 282f72f
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T04 staged evidence preparation.** The corrected T03 smoke and actual late-SQL rejection proof pass on282f72f; full gates remain pending. Prepare sequential4/100/1000 caller experiments on disposable MySQL/NATS with unchanged production pools/limits, retain aggregate JSON, then run separate real cross-process recovery/fault experiments. Record saturation and uncertainty without a20000 or sustained-capacity claim. T02 recurring-worker final gates are still running. Both tasks remain unchecked; M49 is2/6,399 total/391 done/one dropped/seven pending. Hosted verification is available despite failed Cloud startup.
 
 **2026-11-21 — M49-T03 late SQL-commit checker correction.** Job136844676136 proves the checker missed an actually committed late task: exit0, committed true, checked true, unexpected0, valid true. Stop the projector after acknowledged drain, wait until all other SQL sessions in the owned schema have closed, then snapshot source/audit state and count any remaining pending source work as a correctness failure. Keep the actual negative proof and byte restoration; green remains pending. The earlier four-caller/two-API smoke20/20 and core7/input-fault proof pass. Merge T02 recurring-worker correctione321baa normally; T02 is reopened, M49 is2/6 and program399 total/391 done/one dropped/seven pending. Temporary maintenance files are absent; hosted execution remains the verification path.
 

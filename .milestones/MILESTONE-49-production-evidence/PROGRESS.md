@@ -412,3 +412,35 @@
   green result is inferred. No production handler or transaction is changed.
 - Merge T02 correctione321baa normally and preserve its reopened391-done/
   seven-pending ledger, CODE-v8 rejection and recurring ACK-worker regression.
+
+## M49-T04 — Staged caller and recovery experiments
+
+- **Status**: in-progress
+- **Date**: 2026-11-21
+- **Changed**: Prepare hosted, disposable-service experiments using the T03
+  controller unchanged: a four-caller correctness baseline followed by100
+  and1000 distinct callers, two API processes,1000 existing tasks and a
+  fifteen-second admission window bounded at3000 logical operations per stage.
+- **Verified**: T03 source282f72f smoke job136849580992 passes20/20 real
+  logical operations,60 RPCs, matching20 task/source/audit records and no
+  correctness or cleanup failures. Its late-SQL fault actually commits and
+  exits1 with unexpected1/valid false/cleanup0; source bytes are restored.
+  That small smoke is not a capacity result. Full source gates remain pending.
+- **Plan**: Run stages sequentially on the same named hosted hardware. Stop
+  escalation on correctness, cleanup or bootstrap failure; retain every
+  completed JSON and fixed failure phase. Transport errors remain saturation
+  evidence. Follow completed stages with the existing real MySQL/NATS
+  cross-process recovery and audit-loss/duplicate fault proofs on that host.
+  These are separate recovery experiments, not faults during1000-caller load.
+- **Limits**: Preserve production limiter/pool defaults. Report requested and
+  observed peak callers, duration including settlement, data size, throughput,
+  success/all latency, error codes, uncertain commits, memory and queue
+  observations. No20000, sustained, multi-host or streaming capacity claim.
+- **Notes**: This task adds execution configuration and static evidence, not
+  new controller behavior; the TDD protocol's pure-configuration exception
+  applies. Existing controller tests, actual fault proofs and final gates
+  remain required. The failed Cloud environment prevents local execution;
+  hosted Actions is the explicit evidence source.
+- **Next**: Configure and execute the bounded stages, publish their actual
+  results and review evidence before checking T04. Keep T02/T03 unchecked
+  until their independent current-source gates pass.
