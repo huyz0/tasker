@@ -1,8 +1,8 @@
 ---
-active_milestone: M58
-active_task: M58-T04
+active_milestone: M49
+active_task: M49-T01
 last_updated: 2026-11-21
-last_commit: debb00ba
+last_commit: ed1b323
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T01 in progress during independent T04 checks.** The Go patch is published as main ed1b323. Add the required isolated MySQL gate and actual broker-recovery coverage from the accepted plan; verify real services, no silent required skips and a restored failing claim assertion. M58-T04 remains separate in draft PR #16, with approved source correction and actual hosted browser/full checks underway. Preserve all local drafts while Cloud startup remains pending.399 total/389 done/nine pending. No production capacity is claimed.
 
 **2026-11-21 — M49-T06 verified; final publication next.** The Go 1.26.11 patch clears the actual GO-2026-6859 audit failure. Reviewed candidate debb00ba passes the unchanged audit, seven CLI checks and the exact hosted `moon check --all` gate: all 36 checks (7 cached), 4m42.071s, GUI 1,764/backend 2,421/contract 1,158 and production/standalone builds. CODE-v1 approves. PR #15 still needs final-head CI before merge; no local execution is claimed while Cloud startup remains pending. M49 is 1/6; original T01–T05 remain open. Resume M58-T04 permanent browser/guide coverage, whose local edits and dependent provider checkpoint remain preserved.399 total/389 done/nine pending. Main9be092b already contains the saved-view UI.
 
