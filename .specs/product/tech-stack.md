@@ -5,8 +5,8 @@ Every entry under **In Use** is traceable to a committed manifest — `package.j
 dependency appears in a manifest without an entry here, or an entry here names
 something no manifest declares.
 
-**Planned** names technology a later milestone will introduce. It is not
-installed. An agent must not import from it.
+**Future decisions** names uninstalled choices that require an explicit new
+owner/decision before adoption. Delivered technology is not left in that list.
 
 **Dropped** records ambitions that were written here, never built, and are owned
 by nobody. They are listed so nobody reintroduces them by accident.
@@ -39,7 +39,7 @@ written as `@scope/*` covers that scope's packages.
 | `react-markdown`, `remark-gfm`, `rehype-sanitize` | ^10.1.0 / ^4.0.1 / ^6.0.0 | Markdown rendering |
 | `@mdxeditor/editor` | ^4.2.0 | WYSIWYG markdown editing (`RichMarkdownEditor`, piloted on task description — ADR-0018) |
 | `use-debounce` | ^10.1.1 | Input debouncing |
-| `storybook`, `@storybook/*` (react, react-vite, addon-a11y, addon-docs, addon-vitest) | ^10.3.5 | Component documentation |
+| `storybook`, `@storybook/*` (react, react-vite, addon-a11y, addon-docs, addon-vitest) | ^10.5.10 | Component documentation |
 | `@chromatic-com/storybook` | ^5.3.0 | Storybook addon only — no Chromatic service is configured |
 | `axe-core` | ^4.11.3 | Accessibility scanning, driven directly by `scripts/storybook-a11y.mjs` — a direct dependency rather than relying on `@storybook/addon-a11y`'s own transitive copy, which `require.resolve` from `apps/gui/package.json`'s own directory could not reliably find in a clean CI install |
 
