@@ -469,3 +469,37 @@
   published binary release or deployment is requested or performed.
 - **Next**: Implement pinned selection/report retention and verify the final
   publication candidate. Keep T05 and all unfinished task boxes unchecked.
+
+### Pinned packaging and observed smoke verification
+
+- Source 35b8d33 uses Node 24.22.3, Bun 1.3.11 and Moon 2.4.6.
+  Release run 44907118503 passes all three packaging targets; Linux also
+  executes the standalone smoke. Both tag-only publishing jobs are skipped.
+  The Node action actually prints and compares v24.22.3.
+- Both Integration 44907118610 jobs pass. CI 44907118504 passes dependency
+  audits, contract compilation, seven core cases/input fault, the real HTTP
+  smoke and late-SQL fault. The smoke completes 20 logical workflows with
+  matching task/source/audit records and cleanup zero. The late transaction
+  actually commits and is rejected with unexpected 1, exit 1 and cleanup zero;
+  the proof restores source bytes. Full 37-check/native/browser/rendered gates
+  are still running or queued; no final result is inferred.
+- Staged runs 44906822995 (initial controller source) and 44907118491
+  (pinned-toolchain checkout) remain inside their sequential caller step.
+  The first started that step at 13:06:36 UTC and has exceeded twelve minutes.
+  The fifteen-second value bounds admission, not total setup/recovery/cleanup.
+  Final logs are unavailable while active. Do not invent a cause or publish
+  a capacity figure; each job retains its 25-minute external watchdog.
+- T02 source e321baae passes all ten CI and both integration jobs, including
+  both MySQL versions, native 19/recovery 10 and actual fault proofs. CODE-v9
+  and its atomic completed-task candidate are on feature/m49-production-final,
+  commit 9f0eba8. Blob comparison proves that only milestone metadata/review
+  differ from the tested source. This work branch retains the reopened ledger
+  until its task results are assembled atomically on that publication branch.
+- Main remains d7e2e45: 391 done, one dropped and seven pending. Publication
+  candidate T02 is 392 done/six pending and has not been merged. Keep both
+  levels explicit. PR #18 and draft #19 now describe the actual evidence.
+- Source audit for M50 identifies stale architecture, API unary-only and
+  missing-scanner claims; roadmap M47/M53–M58 statuses also drift. Prepare an
+  offline SQLite and disposable MySQL backup/restore rehearsal that checks
+  exact restored identities and rejects a deliberately broken backup.
+  Do not start M50 implementation before M49's dependency is satisfied.

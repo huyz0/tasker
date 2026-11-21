@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T05
 last_updated: 2026-11-21
-last_commit: 6665750
+last_commit: 35b8d33
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49 staged evidence and pinned gates in flight.** Source 35b8d33 passes all three packaging targets (including real Linux smoke), both integration jobs, audits, contract, core/input fault and normal/late-SQL smoke. Remaining exact-37/native/browser/rendered gates are running or queued in CI 44907118504. Sequential stage runs 44906822995 and 44907118491 are still active; the initial caller step began 13:06:36 UTC, and no final logs/capacity figure exist yet. T02 source e321baae is fully green and assembled as atomic candidate 9f0eba8 on feature/m49-production-final, with CODE-v9 and source-blob identity verified. Main is still d7e2e45 (391 done/one dropped/seven pending); that unpublished candidate is 392 done/six pending. This WIP note does not move PR #19's tested source or cancel its checks. Cloud remains failed; no local execution/clean-tree claim. Finish actual staged/full results and atomic M49 publication before M50 implementation.
 
 **2026-11-21 — M49-T05 toolchain consistency preparation.** Official Node24.22.3 is the maintained security release researched from nodejs/node; current pin24.12.0 and floating CI/release selections disagree. Prepare exact checked Node selection and reuse pinned Bun/Moon in packaging, with retained final-gate reports and no release publication. T04 sequential hosted stages are queued on6665750; T02/T03 current-source gates remain in progress. Task boxes/counts remain unchanged. Cloud failed; use actual hosted evidence.
 
