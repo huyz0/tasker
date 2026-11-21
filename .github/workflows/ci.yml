@@ -321,3 +321,10 @@ jobs:
         run: moon run backend:test-mysql
       - name: Prove native claim failures block the command
         run: cd apps/backend && bun run test:mysql-claim-proof
+
+      - name: Prepare owned recovery broker image
+        run: docker pull nats:2.10-alpine
+      - name: Required MySQL cross-process recovery
+        run: moon run backend:test-recovery-mysql
+      - name: Prove acknowledged audit loss and duplicates fail
+        run: cd apps/backend && bun run test:recovery:audit-proof

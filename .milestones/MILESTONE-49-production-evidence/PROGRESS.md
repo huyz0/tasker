@@ -101,3 +101,18 @@
 - **Verified**: T01 source candidate passes both native versions, real SQLite/NATS recovery and the exact full repository command. Ready PR #17 final combined-head checks remain running. This dependent branch starts from0586a920 and preserves all published M58 behavior and records.
 - **Notes**: Testing/security plus TDD apply. Own every temporary schema, broker, process and port; keep real human/agent credentials in memory. New persistent behavior is not introduced, so no product ADR or UI redesign is needed. The test plan precedes code. Real SQL/RPC/broker acknowledgements are independent oracles; intentional lost/duplicate audit faults must fail their own assertions and restore source before ordinary checks.
 - **Next**: Add the real two-process scenario, enable existing MySQL recovery counterparts in required CI, prove lost/duplicate detection on owned fixtures, review and run full/final hosted gates. Load and capacity remain T03/T04 and are not inferred from these cases.
+
+### Real candidate implementation
+
+- Add the two HTTP API processes, real sessions/scoped workers, audit consumer
+  and exclusively owned broker/schema/ports. SQL producer acknowledgement,
+  explicit broker replay and consumer acknowledgement precede the logical
+  audit count/identity oracle. Reconnect revocation keeps a valid user session
+  while denying source reads and domain delivery through a real heartbeat.
+- Enable all existing MySQL recovery counterparts in an uncached required
+  command that rejects skips. Two temporary projector faults model acknowledged
+  lost output and unstable identities that create duplicate rows; only their
+  specific outcome failures count as proof, and source restores in finally.
+- Parent PR #17 is published as main d7e2e45 after all12 final checks, with
+  identical tested/published tree713f673. Include that main as a normal merge
+  parent; no force push. Actual candidate checks still gate all completion.
