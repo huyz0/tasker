@@ -146,7 +146,7 @@ mode**; Viper, the Charmbracelet ecosystem and `mcp-go` are not dependencies.
 | Technology | Version | Role |
 |---|---|---|
 | `moon` | 2.4.6 | Task running, caching, CI orchestration |
-| `node` | 24.12.0 | Runs the zero-dependency gate scripts |
+| `node` | 24.22.3 | Runs the zero-dependency gate scripts |
 | `bun` | 1.3.11 | Backend runtime, package manager, test runner |
 | `go` | 1.26.11 | CLI toolchain |
 
@@ -227,3 +227,8 @@ reintroduce without a roadmap entry and an owner.
 The root lockfile refresh stays within existing dependency ranges. Root overrides select `markdown-it` 15.0.3 (through markdownlint-cli2), `undici` 7.30.1 (through jsdom), Vite 8.3.6 and Zod 4.6.7 so their already-installed transitive copies cannot remain on releases with the November 2026 high-severity advisories. These are dependency patch constraints, not additional product libraries. Storybook is refreshed within its existing range; Vite and Zod constraints deduplicate old nested copies within their existing ranges; the audit gate and its empty exception list remain enabled.
 
 Go's module minimum and proto pin are 1.26.11. The earlier publication scan found ten reachable standard-library vulnerabilities on 1.26.6, requiring crypto/x509's 1.26.10 fix (GO-2026-6809). The 21 November post-main audit additionally reports net/http GO-2026-6859 in 1.26.10; 1.26.11 fixes that advisory. No Go production dependency is added.
+
+CI and release packaging read exact Node/Bun/Moon versions from `.prototools`
+through local setup actions. Node24.22.3 is the official2026-11-11 security
+release (https://github.com/nodejs/node/releases/tag/v24.22.3). The Node action
+compares the selected executable version; Go reads its exact module minimum.

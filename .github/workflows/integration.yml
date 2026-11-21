@@ -27,6 +27,9 @@ jobs:
         with:
           fetch-depth: 0
       
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
+
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
           
@@ -87,6 +90,9 @@ jobs:
             sleep 1
           done
           echo "nats did not come up in 20s"; docker logs nats; exit 1
+
+      - name: Setup pinned Node
+        uses: ./.github/actions/setup-node
 
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
