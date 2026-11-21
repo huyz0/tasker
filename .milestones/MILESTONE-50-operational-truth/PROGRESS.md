@@ -226,3 +226,19 @@
  397 done/one dropped/one pending; published main remains654c222 with its
   own15 checks green. CODE-v5 rejects the final candidate's unresolved
   recovery. The prior Bun panic/retry and Markdown correction stay recorded.
+
+### Observer's actual negative-control failure
+
+- Integration job136903046789 passes the ordinary SQLite restore/recovery
+  and empty-backup proof. The new real consumer-kill proof instead reaches
+  its60-second watchdog: exitCode null/stoppedConsumerObserved false. It
+  correctly rejects this as proof; no intended observation is claimed.
+- Inspection finds unbounded worker-output collection in the observer.
+  Replace consumer pipes with private owned log files, read only bounded
+  content, and never await a live worker's output. Emit aggregate stages
+  before broker probes and require a completed observer in the fault proof.
+  The original70-second checkpoint and exact audit oracle remain unchanged.
+- Exercise five isolated real SQLite broker-recovery runs after the observer
+  proof to investigate the intermittent original failure. Stop on the first
+  failure and preserve its safe diagnostics; no retry-to-green loop.
+  The original cause is still unknown and T03 stays unchecked.
