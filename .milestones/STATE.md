@@ -2,7 +2,7 @@
 active_milestone: M49
 active_task: M49-T02
 last_updated: 2026-11-21
-last_commit: 96f7a2a
+last_commit: 1d47090
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M49-T02 observed worker exit and strict matcher correction.** Source1d47090 passes both integration jobs, audit/workspace, all19 native MySQL8.4 cases and the new two-API scenario. The older MySQL domain-event worker exits before its first checkpoint with empty stderr, leaving9 recovery passes/one failure. GitHub rejects a retry while the overall run remains active. Add fixed stage/exit/signal diagnostics; no cause is inferred. Backend TS2769 shows the object-wrapper matcher still narrows to string; compare exact boolean identity instead. Retain rejected CODE-v6 and keep T02 unchecked. Dependent PR #19/source9f036827 contains T03 plan, tests/scaffold and an independent Bun core job awaiting actual red; no implementation or capacity claim.399 total/391 done/one dropped/seven pending. Cloud startup has explicitly failed; use hosted verification and preserve original local drafts.
 
 **2026-11-21 — M49-T02 final fixture corrections.** Candidate96f7a2a passes all native/recovery/fault checks on MySQL8.0 and both cleanup regressions. Overall gate remains red on MySQL8.4 cold-bootstrap default5000ms and a nullable environment matcher; prior run also reproduces a transient SQLite observation lock. Bound native cold setup at30seconds, retry only observer lock codes inside its existing five-second wait, and preserve exact assertions/types. Re-run all actual gates before checking T02.399 total/391 done/one dropped/seven pending. Local Cloud startup remains pending.
 
