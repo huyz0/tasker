@@ -1,8 +1,8 @@
 ---
-active_milestone: M58
-active_task: M58-T04
+active_milestone: M49
+active_task: M49-T01
 last_updated: 2026-11-21
-last_commit: ed1b323
+last_commit: 99ff7c3
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-21 — M58 complete on its verified candidate; publication next.** All5 tasks and4 criteria pass. Candidate99ff7c37 passes all eight CI44889512496 jobs, strict browser types, the intended native history-fault proof with byte restoration, all102 ordinary browser cases, rendered checks and the exact hosted36-task repository command (7m37.852s; GUI1764/backend2421/contract1158 and builds). CODE-v10 approves the corrected Reports observer. The public guide is linked. PR #16 still needs actual final-head checks and main publication. Next M49-T01/draft PR #17 owns newly required real MySQL/NATS gates and their exposed fixture assumptions; M49-T02–T05 and M50 remain open. Go repair mained1b323 passes all10 post-main jobs.399 total/390 done/eight pending. Cloud startup remains pending; original local drafts/WIP/services are preserved.
 
 **2026-11-21 — Go repair published; T04 observer proof tightened.** PR #15 is on main ed1b323 after all eight final-head jobs passed, with identical tested/published tree d2349fc. M58-T04 candidate 9dd19509 passes strict browser types and the actual native intent-fault proof; other checks remain pending. CODE-v9 approves with a nonblocking Reports observer improvement, now applied before the next candidate run. This provider branch incorporates published main without force-push and preserves all local drafts while Cloud startup remains pending.399 total/389 done/nine pending; M58 remains4/5.
 
@@ -2037,9 +2039,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M55 | Attention Center | done | M48, M53, M54 | 5 | 5 |
 | M56 | Agent Connection | done | M54 | 4 | 4 |
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
-| M58 | Operational Views | in-progress | M53 | 5 | 4 |
+| M58 | Operational Views | done | M53 | 5 | 5 |
 
-**Total: 399 tasks across 52 milestones — 389 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 399 tasks across 52 milestones — 390 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
