@@ -75,13 +75,13 @@ export function ReportsScreen() {
   // History commits before the router render; a fast section activation must
   // preserve the window/scope the user just chose. Modified clicks keep the
   // anchor's native browser behavior.
-  const activateSection = (event: MouseEvent<HTMLAnchorElement>, id: typeof REPORT_SECTIONS[number]['id']) => {
+  const activateSection = (event: MouseEvent<HTMLAnchorElement>, id: (typeof REPORT_SECTIONS)[number]['id']) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
       || event.currentTarget.target && event.currentTarget.target !== '_self') return;
     event.preventDefault();
     const live = currentLocation(location);
     const hash = `#${id}`;
-    if (!/^\\/reports\\/?$/.test(live.pathname) || live.hash === hash) return;
+    if (!/^\/reports\/?$/.test(live.pathname) || live.hash === hash) return;
     navigate({ pathname: live.pathname, search: live.search, hash });
   };
 
