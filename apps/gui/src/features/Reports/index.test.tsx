@@ -146,6 +146,19 @@ describe('ReportsScreen', () => {
     expect(screen.getByLabelText('Fixture location')).toHaveTextContent('project=proj-1');
   });
 
+  it('retains a committed window when a section is activated before the router catches up', () => {
+    const previousUrl = window.location.href, previousState = window.history.state;
+    try {
+      renderPage('/reports?org=org-1&project=proj-1&days=7&marker=keep', true);
+      window.history.pushState({ key: 'committed-window' }, '', '/reports?org=org-1&project=proj-1&days=90&marker=keep');
+      fireEvent.click(screen.getByRole('link', { name: 'Trends' }));
+      expect(screen.getByLabelText('Fixture location')).toHaveTextContent('days=90');
+      expect(screen.getByLabelText('Fixture location')).toHaveTextContent('marker=keep#trends');
+    } finally {
+      window.history.replaceState(previousState, '', previousUrl);
+    }
+  });
+
   it('opens a direct spend location while exceptions are still loading', async () => {
     mockRpcPending(ReportService, 'GetReportExceptions');
     renderPage('/reports?org=org-1&project=proj-1&days=7#spend');

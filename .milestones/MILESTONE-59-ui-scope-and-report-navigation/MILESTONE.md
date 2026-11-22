@@ -1,13 +1,13 @@
 ---
 id: M59
 title: UI Scope and Report Navigation
-status: done
+status: in-progress
 goal: People can identify automation scope and navigate readable project reports without losing their current view.
 depends_on: [M51, M58]
 surfaces: [gui, infra, specs]
-exit_criteria_met: true
+exit_criteria_met: false
 started_at: 2026-11-22
-completed_at: 2026-11-22
+completed_at: null
 ---
 
 # M59 — UI Scope and Report Navigation
@@ -28,7 +28,7 @@ The next useful UI changes build on that delivered behavior.
 ## 3. Exit Criteria
 
 - [x] Organization-wide automation collections state their scope and schedules show their own project even when another project is selected.
-- [x] Reports sections are addressable and preserve project/window, saved-view application and browser Back/Forward.
+- [ ] Reports sections are addressable and preserve project/window, saved-view application and browser Back/Forward.
 - [x] Reviewed report controls, typography and daily-spend alternatives work in both themes, narrow layouts and enlarged text.
 - [x] Behavioral regressions fail before implementation; actual GUI/browser/visual and repository checks support the final review.
 
@@ -49,7 +49,7 @@ No backend filter, permission, contract, dependency or font-family change.
   - **Files**: apps/gui/src/features/Workflows/index.tsx; apps/gui/src/features/Schedules/index.tsx; their tests/stories; this milestone's design/review artifacts.
   - **Verify**: With projectA selected and an authorized projectB schedule returned by the organization list, its row names projectB; existing start/edit and cross-project journeys retain canonical scope. Source-backed static scope wording uses the TDD exception; new data visibility gets an actual red.
 
-- [x] **M59-T02** — Give Reports URL-fragment navigation for Exceptions, Trends and Spend with preserved view state.
+- [ ] **M59-T02** — Give Reports URL-fragment navigation for Exceptions, Trends and Spend with preserved view state.
   - **Files**: apps/gui/src/features/Reports/index.tsx; index.test.tsx; ReportsScreen.stories.tsx; apps/gui/tests/e2e/reports.spec.ts.
   - **Verify**: Direct links, keyboard activation, Back/Forward, window changes and named-view application select the correct visible section without dropping scope/query/hash or unrelated draft state. Loading/error/denied sections remain navigable; new regressions fail on the current screen first.
 

@@ -38,7 +38,6 @@
   project text. T01 remains unchecked pending real green/source review;
   no local execution or participant result is claimed.
 
-
 ### T01 completion — 2026-11-22
 
 - **Status**: done
@@ -68,7 +67,6 @@
 - T02 red: CI run 44992604666, GUI job 137116868509: exactly three new navigation/direct-Spend/recovery cases fail; 1766 existing cases pass, including both T01 scope cases. Added an early real-browser section-location check before implementing Reports navigation.
 
 - T02 browser red: CI44992988893 job137118054574 fails at the missing Trends navigation link after a real seeded Reports load. Implement native fragment links/current-location, default Reports heading, selected-section heading focus, recovery, toolbar wrapping and mounted hidden regions. Update old simultaneous-panel expectations; add direct state stories and extend the owned saved-view browser journey to retain Spend.
-
 
 ### T02 completion — 2026-11-22
 
@@ -113,3 +111,12 @@
 - **Review**: CODE-REVIEW-v4 approves correctness, coverage, architecture and security, resolving CODE-v1's presentation block. Final candidate CI is mandatory before merge; the changed test selector and static gutters must be exercised there.
 - **Runtime**: The requested Cloud environment never became usable during source work. Hosted workflows supply the actual results; local gh-act/clean-tree execution, manual screen-reader testing and participant usability are not claimed.
 - **Next**: Merge the final three-task delivery chain only after its own combined-head checks pass, then verify published tree/checks. Candidate402 tasks/53 milestones:401 done, one deliberately dropped, zero pending. Capacity and participant-study limits remain separate.
+
+## M59-T02 reopened — live-location race
+
+- **Status**: in-progress
+- **Date**: 2026-11-22
+- **Reproduction**: Final candidate job137131690750 changes90 days immediately before Trends; Back returns to a Trends URL without days90. A render-time section link can overwrite the already-committed browser query. Keep the failing real-browser assertion and add a deterministic live-history-gap unit regression before implementation.
+- **Plan**: Reuse the existing currentLocation protocol for ordinary section/recovery activation, retain native link affordances and reject stale activation after leaving Reports. Frontend/UI standards and TDD apply. No service or saved-view-definition change.
+- **Docs**: Workspace job137131690777 rejects two consecutive blank lines in the assembled journal. Normalize Markdown spacing in every staged task; this is static formatting.
+- **Gate**: Add an early focused Reports regression step so this live-location contract fails before the longer GUI suite. Reopen T02/one pending task; no candidate with this failure is merged.
