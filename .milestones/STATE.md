@@ -1,6 +1,6 @@
 ---
 active_milestone: M59
-active_task: M59-T01
+active_task: M59-T02
 last_updated: 2026-11-22
 last_commit: 134f2fa
 blocked: false
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-22 — M59 report-navigation red tests start.** T01's project-label regressions failed as intended on unchanged source; its minimal scope fix is committed and pending green/review. T02 now adds fragment/history/focus and independent-state tests before changing Reports. All three tasks remain unchecked;402 total/398 done/one dropped/three pending. Native fragments reuse existing window/saved-view preservation without expanding route guards. The runtime wait is still pending; hosted verification continues.
 
 **2026-11-22 — UI follow-up M59 starts.** Published main134f2fa has all15 post-publication checks green. Continue remaining UI recommendations: organization-wide automation scope/project labels, URL-fragment Reports navigation preserving M58 view state, and report typography/control/data accessibility. Three tasks are planned with independent W3C/Carbon research and source-backed acceptance; no new dependency, font family, API filter or view-definition field. T01 is in progress before code. Candidate402 tasks/53 milestones:398 done/one dropped/three pending. The Cloud runtime is starting; no local/rendered execution is claimed. Human usability testing remains unmeasured, and M49 capacity limits remain separate.
 

@@ -37,3 +37,21 @@
 - Update only old exact link-name assertions to include the new accessible
   project text. T01 remains unchecked pending real green/source review;
   no local execution or participant result is claimed.
+
+## M59-T02 — URL-fragment report sections
+
+- **Status**: in-progress
+- **Date**: 2026-11-22
+- **Plan before code**: Native links select Exceptions/Trends/Spend using the
+  existing preserved fragment; no new path, query-definition or authorization
+  boundary. Keep panels mounted/hidden to retain independent reads and CFD
+  state. Use a page heading/current-location link and focus only on fragment
+  transitions, including recovery; window-only changes retain control focus.
+- **Artifacts/standards**: ADR-0050/UX/acceptance precede implementation.
+  Frontend/UI standards plus TDD apply here. T01 has its minimal scope fix
+  committed and awaits green/source review; it is not marked complete.
+- **Red first**: Add observable fragment/history/focus, independent-read and
+  invalid-fragment regressions before any Reports implementation change.
+  Baseline has no section navigation. Do not infer a red from source alone.
+- **Next**: Observe actual failures, then implement and update the old
+  all-panels-at-once assertions to require every panel remain reachable.
