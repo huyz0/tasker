@@ -138,7 +138,7 @@ jobs:
         if: always()
         run: |
           cd apps/gui
-          bun -e 'for await (const path of new Bun.Glob("test-results/**/report-capture-*.png").scan()) { if (!/report-capture-(trends-light-375-100|spend-dark-375-100|exceptions-dark-1280-100|exceptions-light-375-200)\\.png$/.test(path)) continue; const data = Buffer.from(await Bun.file(path).arrayBuffer()); console.log("M59_CAPTURE " + JSON.stringify({ path, base64: data.toString("base64") })); }'
+          bun -e 'for await (const path of new Bun.Glob("test-results/**/report-capture-*.png").scan()) { if (!/report-capture-(trends-light-375-100|spend-dark-375-100|exceptions-dark-1280-100|exceptions-light-375-200)[.]png$/.test(path)) continue; const data = Buffer.from(await Bun.file(path).arrayBuffer()); console.log("M59_CAPTURE " + JSON.stringify({ path, base64: data.toString("base64") })); }'
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
