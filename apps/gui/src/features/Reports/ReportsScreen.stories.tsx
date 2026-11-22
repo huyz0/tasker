@@ -25,7 +25,7 @@ export const Empty: Story = { render: () => <ReportsPreview state="empty"><Repor
 export const Loading: Story = { render: () => <ReportsPreview state="loading"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => { await expect(within(canvasElement).findByText('Loading project reports…')).resolves.toBeVisible(); } };
 export const Error: Story = { render: () => <ReportsPreview state="error"><ReportsScreen /></ReportsPreview>,
-  play: async ({ canvasElement }) => { await waitFor(() => expect(within(canvasElement).queryAllByRole('button', { name: 'Try again' })).toHaveLength(3)); } };
+  play: async ({ canvasElement }) => { await waitFor(() => expect(within(canvasElement).queryAllByRole('button', { name: 'Try again' })).toHaveLength(1)); } };
 export const Denied: Story = { render: () => <ReportsPreview state="denied"><ReportsScreen /></ReportsPreview>, play: Error.play };
 
 export const ChooseOrganization: Story = { render: () => <ReportsPreview scope="none" initialEntry="/reports"><ReportsScreen /></ReportsPreview>,
@@ -36,3 +36,104 @@ export const ChooseProject: Story = { render: () => <ReportsPreview scope="organ
 
 export const NamedViewEntry: Story = { render: () => <ReportsPreview><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('button', { name: 'Saved views' })).resolves.toBeEnabled(); } };
+
+export const TrendsPopulated: Story = {
+  render: () => <ReportsPreview state="populated" initialEntry="/reports?org=org-story&project=project-story#trends"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByRole('heading', { name: 'Reports — Trends' })).resolves.toBeVisible();
+    
+  },
+};
+
+export const TrendsEmpty: Story = {
+  render: () => <ReportsPreview state="empty" initialEntry="/reports?org=org-story&project=project-story#trends"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByRole('heading', { name: 'Reports — Trends' })).resolves.toBeVisible();
+    
+  },
+};
+
+export const TrendsLoading: Story = {
+  render: () => <ReportsPreview state="loading" initialEntry="/reports?org=org-story&project=project-story#trends"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByRole('heading', { name: 'Reports — Trends' })).resolves.toBeVisible();
+    
+  },
+};
+
+export const TrendsError: Story = {
+  render: () => <ReportsPreview state="error" initialEntry="/reports?org=org-story&project=project-story#trends"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByRole('heading', { name: 'Reports — Trends' })).resolves.toBeVisible();
+    await expect(canvas.findByRole('button', { name: 'Try again' })).resolves.toBeVisible();
+  },
+};
+
+export const TrendsDenied: Story = {
+  render: () => <ReportsPreview state="denied" initialEntry="/reports?org=org-story&project=project-story#trends"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByRole('heading', { name: 'Reports — Trends' })).resolves.toBeVisible();
+    await expect(canvas.findByRole('button', { name: 'Try again' })).resolves.toBeVisible();
+  },
+};
+
+export const SpendPopulated: Story = {
+  render: () => <ReportsPreview state="populated" initialEntry="/reports?org=org-story&project=project-story#spend"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByRole('heading', { name: 'Reports — Spend' })).resolves.toBeVisible();
+    
+  },
+};
+
+export const SpendEmpty: Story = {
+  render: () => <ReportsPreview state="empty" initialEntry="/reports?org=org-story&project=project-story#spend"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByRole('heading', { name: 'Reports — Spend' })).resolves.toBeVisible();
+    
+  },
+};
+
+export const SpendLoading: Story = {
+  render: () => <ReportsPreview state="loading" initialEntry="/reports?org=org-story&project=project-story#spend"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByRole('heading', { name: 'Reports — Spend' })).resolves.toBeVisible();
+    
+  },
+};
+
+export const SpendError: Story = {
+  render: () => <ReportsPreview state="error" initialEntry="/reports?org=org-story&project=project-story#spend"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByRole('heading', { name: 'Reports — Spend' })).resolves.toBeVisible();
+    await expect(canvas.findByRole('button', { name: 'Try again' })).resolves.toBeVisible();
+  },
+};
+
+export const SpendDenied: Story = {
+  render: () => <ReportsPreview state="denied" initialEntry="/reports?org=org-story&project=project-story#spend"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByRole('heading', { name: 'Reports — Spend' })).resolves.toBeVisible();
+    await expect(canvas.findByRole('button', { name: 'Try again' })).resolves.toBeVisible();
+  },
+};
+
+export const RecoveredSection: Story = {
+  render: () => <ReportsPreview initialEntry="/reports?org=org-story&project=project-story&days=90#unknown"><ReportsScreen /></ReportsPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('link', { name: 'Show exceptions' }));
+    await expect(canvas.findByRole('heading', { name: 'Reports' })).resolves.toHaveFocus();
+    await expect(canvas.getByRole('button', { name: '90 days' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.queryByRole('status', { name: 'Report section recovery' })).not.toBeInTheDocument();
+  },
+};

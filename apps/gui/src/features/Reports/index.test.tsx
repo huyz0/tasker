@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -88,7 +88,7 @@ const EMPTY_TRENDS = {
 
 function HistoryControls() {
   const location = useLocation(), navigate = useNavigate();
-  return <><output aria-label="Fixture location">{location.pathname + location.search}</output>
+  return <><output aria-label="Fixture location">{location.pathname + location.search + location.hash}</output>
     <button onClick={() => navigate(-1)}>Fixture Back</button><button onClick={() => navigate(1)}>Fixture Forward</button></>;
 }
 function renderPage(entry = '/reports', history = false) {
@@ -118,6 +118,53 @@ describe('ReportsScreen', () => {
     mockRpc(ReportService, 'GetReportExceptions', RESPONSE);
     mockRpc(ReportService, 'GetReportTrends', EMPTY_TRENDS);
     mockRpc(ReportService, 'GetUsageReport', { totals: { reports: '0' }, byAgent: [], byProject: [], byDay: [], since: '' });
+  });
+
+  it('navigates report sections with preserved scope, window, history and focus', async () => {
+    renderPage('/reports?org=org-1&project=proj-1&days=90&marker=keep', true);
+    const navigation = await screen.findByRole('navigation', { name: 'Report sections' });
+    fireEvent.click(within(navigation).getByRole('link', { name: 'Trends' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Reports — Trends' })).toHaveFocus();
+    expect(await screen.findByRole('heading', { name: 'Flow' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Stalled work' })).not.toBeInTheDocument();
+    expect(within(navigation).getByRole('link', { name: 'Trends' })).toHaveAttribute('aria-current', 'location');
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('#trends');
+    const sevenDays = screen.getByRole('button', { name: '7 days' });
+    sevenDays.focus();fireEvent.click(sevenDays);
+    expect(sevenDays).toHaveFocus();
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('#trends');
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('marker=keep');
+    fireEvent.click(screen.getByRole('button', { name: 'Fixture Back' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '90 days' })).toHaveAttribute('aria-pressed', 'true'));
+    expect(within(navigation).getByRole('link', { name: 'Trends' })).toHaveAttribute('aria-current', 'location');
+    fireEvent.click(screen.getByRole('button', { name: 'Fixture Back' }));
+    expect(await screen.findByRole('heading', { name: 'Stalled work' })).toBeVisible();
+    expect(within(navigation).getByRole('link', { name: 'Exceptions' })).toHaveAttribute('aria-current', 'location');
+    fireEvent.click(screen.getByRole('button', { name: 'Fixture Forward' }));
+    expect(await screen.findByRole('heading', { name: 'Flow' })).toBeVisible();
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('org=org-1');
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('project=proj-1');
+  });
+
+  it('opens a direct spend location while exceptions are still loading', async () => {
+    mockRpcPending(ReportService, 'GetReportExceptions');
+    renderPage('/reports?org=org-1&project=proj-1&days=7#spend');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Reports — Spend' })).toBeVisible();
+    expect(await screen.findByText('No agent reported usage in this window.')).toBeVisible();
+    expect(screen.getByText('Loading project reports…')).not.toBeVisible();
+    expect(screen.getByRole('link', { name: 'Spend' })).toHaveAttribute('aria-current', 'location');
+  });
+
+  it('recovers a malformed section without dropping project or query settings', async () => {
+    renderPage('/reports?org=org-1&project=proj-1&days=90&marker=keep#%E0%A4%', true);
+    const notice = await screen.findByRole('status', { name: 'Report section recovery' });
+    expect(notice).toHaveTextContent('This report section is unavailable. Showing Exceptions.');
+    expect(notice).not.toHaveTextContent('%E0%A4%');
+    fireEvent.click(within(notice).getByRole('link', { name: 'Show exceptions' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Reports' })).toHaveFocus();
+    expect(screen.queryByRole('status', { name: 'Report section recovery' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('days=90');
+    expect(screen.getByLabelText('Fixture location')).toHaveTextContent('marker=keep#exceptions');
   });
 
   it('uses a deep-linked report window for exceptions, trends and spend', async () => {
@@ -203,15 +250,17 @@ describe('ReportsScreen', () => {
     expect(screen.getByRole('link', { name: /Refactor the mailer/ })).toHaveAttribute('href', '/tasks/task-5');
     expect(screen.getByRole('cell', { name: 'Builder One' })).toBeInTheDocument();
 
-    // Urgency order is the design: exceptions (stalled, regressions, churn,
-    // scorecard) lead because agents fail discretely; the trend cards follow,
-    // in document order.
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Flow' })).toBeInTheDocument());
-    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual([
-      'Stalled work', 'Went backwards', 'Churning tasks', 'Fleet scorecard', 'Agent spend',
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+      'Stalled work', 'Went backwards', 'Churning tasks', 'Fleet scorecard',
+    ]);
+    const navigation = screen.getByRole('navigation', { name: 'Report sections' });
+    fireEvent.click(within(navigation).getByRole('link', { name: 'Trends' }));
+    await screen.findByRole('heading', { name: 'Flow' });
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
       'Autonomy and rework', 'Created vs completed', 'Flow',
     ]);
+    fireEvent.click(within(navigation).getByRole('link', { name: 'Spend' }));
+    expect(await screen.findByRole('heading', { name: 'Agent spend' })).toBeVisible();
   });
 
   it('computes the agent-share header stat from the four counts', async () => {

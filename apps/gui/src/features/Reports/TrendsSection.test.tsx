@@ -96,7 +96,7 @@ function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/reports']}>
+      <MemoryRouter initialEntries={['/reports#trends']}>
         <Routes>
           <Route path="/reports" element={<ReportsScreen />} />
           <Route path="/tasks/:taskId" element={<div>Task detail page</div>} />
@@ -246,10 +246,12 @@ describe('Reports trend cards', () => {
 
     // Independent queries: one failing must not blank the other.
     await waitFor(() => expect(screen.getByText(/trend backend down/)).toBeInTheDocument());
-    expect(screen.getByRole('heading', { name: 'Stalled work' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'Exceptions' }));
+    expect(screen.getByRole('heading', { name: 'Stalled work' })).toBeVisible();
     expect(screen.getByText('Migrate the billing job')).toBeInTheDocument();
 
     mockRpc(ReportService, 'GetReportTrends', TRENDS);
+    fireEvent.click(screen.getByRole('link', { name: 'Trends' }));
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(screen.getByRole('img', { name: 'Cumulative flow' })).toBeInTheDocument());
   });
