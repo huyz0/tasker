@@ -46,3 +46,41 @@
 - **Verified**: Both new label regressions failed first in job137115116361. The unchanged T01 implementation passes11 schedule cases and the complete1770-case GUI suite in checked source17bda23, plus105 browser passes/three existing skips,401 story audits in both themes, and all37 repository tasks in7m29.856s. These are hosted results; no local executor or participant result is claimed.
 - **Review**: CODE-REVIEW-v2 approves correctness, coverage, architecture and security for T01. Full milestone source is being normalized into three completed-task commits; intermediate task commits are not separately gated and the final combined head must pass its own checks.
 - **Next**: M59-T02;399 done/one dropped/two pending out of402.
+
+## M59-T02 — URL-fragment report sections
+
+- **Status**: done
+- **Date**: 2026-11-22
+- **Plan before code**: Native links select Exceptions/Trends/Spend using the
+  existing preserved fragment; no new path, query-definition or authorization
+  boundary. Keep panels mounted/hidden to retain independent reads and CFD
+  state. Use a page heading/current-location link and focus only on fragment
+  transitions, including recovery; window-only changes retain control focus.
+- **Artifacts/standards**: ADR-0050/UX/acceptance precede implementation.
+  Frontend/UI standards plus TDD apply here. T01 has its minimal scope fix
+  committed and awaits green/source review; it is not marked complete.
+- **Red first**: Add observable fragment/history/focus, independent-read and
+  invalid-fragment regressions before any Reports implementation change.
+  Baseline has no section navigation. Do not infer a red from source alone.
+- **Next**: Observe actual failures, then implement and update the old
+  all-panels-at-once assertions to require every panel remain reachable.
+
+- T02 red: CI run 44992604666, GUI job 137116868509: exactly three new navigation/direct-Spend/recovery cases fail; 1766 existing cases pass, including both T01 scope cases. Added an early real-browser section-location check before implementing Reports navigation.
+
+- T02 browser red: CI44992988893 job137118054574 fails at the missing Trends navigation link after a real seeded Reports load. Implement native fragment links/current-location, default Reports heading, selected-section heading focus, recovery, toolbar wrapping and mounted hidden regions. Update old simultaneous-panel expectations; add direct state stories and extend the owned saved-view browser journey to retain Spend.
+
+
+### T02 completion — 2026-11-22
+
+- **Status**: done
+- **Changed**: Native Reports fragments, current-location links, selected headings and layout-timed focus, invalid-fragment recovery, wrapping toolbar, mounted hidden sections, state stories and scoped/history/saved-view browser coverage.
+- **Verified**: Three intended unit reds in44992604666 and a real missing-link browser red in44992988893 precede implementation. Source17bda23 passes18 screen cases,10 trend cases, the full1770 GUI suite,105 browser cases/three existing skips,401 story audits and all37 repository tasks. The real browser journey covers keyboard focus, retained CFD choice, shared window/project, Back and reload; the owned saved-view journey applies fresh project/window while retaining Spend.
+- **Review**: CODE-REVIEW-v3 approves all four lenses for T02. Final combined-head checks remain mandatory; intermediate task commits are not claimed as separately gated.
+- **Next**: M59-T03;400 done/one dropped/one pending out of402. Presentation and retained rendered evidence finish in the following task.
+
+## M59-T03 — Presentation and accessible daily data
+
+- **Status**: in-progress
+- **Date**: 2026-11-22
+- **Plan before code**: frontend/UI standards plus TDD. Reuse system fonts and semantic color roles. Add a metric type role matching existing 24/32 numeric emphasis; adopt report caption/code/label roles and 44px reviewed controls without changing global density. Provide per-day accessible table values and contain spend-table reflow.
+- **Red first**: Daily-data table regression and real 320/375/768/1280 browser target/reflow check are committed before T03 implementation. T02 window/saved-view controls retain original sizes so geometry can expose the gap. Await actual output. No rendered capture or local execution claimed.

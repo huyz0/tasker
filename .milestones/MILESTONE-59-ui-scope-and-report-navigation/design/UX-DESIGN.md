@@ -47,8 +47,9 @@ Exceptions, Trends, Spend. Fragments are #exceptions/#trends/#spend; an absent
 fragment defaults to Exceptions. Links preserve the complete current query.
 Unknown fragments recover visibly to Exceptions without echoing raw input.
 
-One visible section at a time, with a page heading that names Reports and the
-current section. Keep the three query components mounted behind hidden
+One visible section at a time. Keep the familiar Reports heading at the
+default Exceptions entry; name Trends/Spend in the page heading when selected.
+A named content region and current-location link identify every section. Keep the three query components mounted behind hidden
 panels to preserve independent queries and local CFD selection. This does
 not claim fewer requests. The active section remains navigable when another
 read fails. Native link keyboard and new-tab affordances apply; do not add
