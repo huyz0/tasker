@@ -81,8 +81,8 @@ each report section. Test scope absence separately. Retain canonical scope
 and current query across navigation; show explicit recovery for malformed
 settings and fragments.
 
-Capture before/after examples at320/375/768/1280px in light/dark, plus an
-explicit200% text-size check. Assert actual control sizes, visible charts,
+Measure320/375/768/1280px in light/dark with an explicit200% text-size check;
+retain representative375/1280px before/after examples and enlarged-text captures. Assert actual control sizes, visible charts,
 focus and overflow containment. Synthetic test data only; no credentials.
 
 ## Unmeasured user validation
@@ -92,3 +92,11 @@ compare trends, inspect spend, change the report window and return with
 Back. Observe first-attempt success, wrong-scope assumptions and recovery.
 Recruitment/results are outside this implementation batch. Automated checks
 and this heuristic review are not a usability study.
+
+## Enlarged-text shell finding
+
+The rendered report matrix also exercises the shared mobile header. At200% text sizing its fixed-height, single-row groups overflow before report section changes. Let the header and utility groups wrap with a minimum height, retaining branding, current scope and every action. This is a presentation prerequisite of the report reflow criterion, with no route/state/auth change. Measure all320/375/768/1280px/theme/text-size cases; retain representative375/1280px and enlarged-text captures alongside the existing375/1280px baseline. The capture sample supports visual judgment while the full matrix remains a DOM assertion.
+
+## Evidence retention
+
+The source verification run produced captures that were inspected against M58's existing baseline. The written record in design/evidence links that run and records limitations. Automatic approval review rejected copying image bytes into git because application data might be disclosed; final CI removes the temporary screenshot export/capture mechanism and retains the full geometry/visibility/overlap checks. Existing source-run artifacts use normal seven-day retention. Numeric table gutters are a small static refinement after the captured spend review; final candidate checks must verify their reflow. No permanent screenshot copy, manual AT pass or participant result is claimed.

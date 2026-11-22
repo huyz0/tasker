@@ -80,6 +80,102 @@ test.describe('Reports', () => {
     await expect(navigation.getByRole('link', { name: 'Spend', exact: true })).toHaveAttribute('aria-current', 'location');
   });
 
+  test('report touch targets and text reflow stay usable', async ({ page }) => {
+    test.setTimeout(120_000);
+    // Presentation-only synthetic spend: real scoped RPC/history behavior is
+    // exercised separately above and in saved-views.spec.ts.
+    await page.route('**/GetUsageReport', route => route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify({
+        totals: { costMicros: '2500000000', inputTokens: '12000', outputTokens: '4000', reports: '2' },
+        byDay: [
+          { key: '2026-11-01', costMicros: '0', inputTokens: '0', outputTokens: '0', reports: '0' },
+          { key: '2026-11-02', costMicros: '2500000000', inputTokens: '12000', outputTokens: '4000', reports: '2' },
+        ],
+        byAgent: [{ key: 'layout-worker', label: 'Release verification worker with a long display name', costMicros: '2500000000', inputTokens: '12000', outputTokens: '4000', reports: '2' }],
+      }),
+    }));
+    await openReports(page);
+    await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' });
+    await page.setViewportSize({ width: 375, height: 900 });
+    await expect(page.getByRole('heading', { name: 'Reports', level: 1, exact: true })).toBeInViewport();
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
+      for (const width of [320, 375, 768, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const fontSize of ['100%', '200%']) {
+          await page.evaluate(value => { document.documentElement.style.fontSize = value; }, fontSize);
+          const controls = [
+            ...await page.getByRole('group', { name: 'Report window' }).getByRole('button').all(),
+            ...await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link').all(),
+            page.getByRole('button', { name: 'Saved views', exact: true }),
+          ];
+          for (const control of controls) {
+            const box = await control.boundingBox();
+            expect(box, await control.innerText()).not.toBeNull();
+            expect(box!.height, await control.innerText()).toBeGreaterThanOrEqual(44);
+            expect(box!.width, await control.innerText()).toBeGreaterThanOrEqual(44);
+            expect(box!.x, await control.innerText()).toBeGreaterThanOrEqual(0);
+            expect(box!.x + box!.width, await control.innerText()).toBeLessThanOrEqual(width);
+          }
+          const initial = await page.evaluate(() => ({
+            viewport: innerWidth, document: document.documentElement.scrollWidth,
+            outliers: [...document.querySelectorAll('body *')].filter(element => {
+              const box = element.getBoundingClientRect();
+              return box.width > 1 && box.height > 0 && box.right > innerWidth && !element.closest('.overflow-x-auto');
+            }).slice(0, 20).map(element => ({ tag: element.tagName, className: element.getAttribute('class'), right: element.getBoundingClientRect().right })),
+          }));
+          expect(initial.document, JSON.stringify({ theme, width, fontSize, ...initial })).toBeLessThanOrEqual(width);
+          for (const section of ['Trends', 'Spend', 'Exceptions']) {
+            await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: section, exact: true }).click();
+            const title = section === 'Exceptions' ? 'Reports' : `Reports — ${section}`;
+            await expect(page.getByRole('heading', { name: title, level: 1, exact: true })).toBeFocused();
+            await expect(page.getByRole('region', { name: section, exact: true })).toBeVisible();
+            if (section === 'Trends') await expect(page.getByLabel('Task type')).toBeVisible();
+            if (section === 'Spend') await expect(page.getByRole('img', { name: 'Daily spend over 2 days' })).toBeVisible();
+            if (section === 'Exceptions') await expect(page.getByRole('heading', { name: 'Stalled work', level: 2 })).toBeVisible();
+            const reflow = await page.evaluate(() => ({
+              viewport: innerWidth, document: document.documentElement.scrollWidth,
+              outliers: [...document.querySelectorAll('main *')].filter(element => {
+                const box = element.getBoundingClientRect();
+                return box.width > 1 && box.right > innerWidth && getComputedStyle(element).visibility !== 'hidden';
+              }).slice(0, 12).map(element => ({ tag: element.tagName, className: element.getAttribute('class'), width: element.getBoundingClientRect().width })),
+            }));
+            expect(reflow.document, JSON.stringify({ theme, width, fontSize, section, ...reflow })).toBeLessThanOrEqual(width);
+            if (section === 'Trends') {
+              const select = page.getByLabel('Task type');
+              const box = await select.boundingBox();
+              expect(box!.height).toBeGreaterThanOrEqual(44);
+              expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+            }
+            if (section === 'Exceptions') {
+              const panel = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Churning tasks', level: 2, exact: true }) });
+              const titleBoxes = await panel.getByRole('heading', { name: 'Churning tasks', level: 2, exact: true }).evaluate(element => {
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                return [...range.getClientRects()].map(box => ({ x: box.x, y: box.y, width: box.width, height: box.height }));
+              });
+              const actionBox = await panel.getByRole('link', { name: 'View handoff notes', exact: true }).boundingBox();
+              const overlaps = titleBoxes.some(titleBox =>
+                Math.min(titleBox.x + titleBox.width, actionBox!.x + actionBox!.width) > Math.max(titleBox.x, actionBox!.x)
+                && Math.min(titleBox.y + titleBox.height, actionBox!.y + actionBox!.height) > Math.max(titleBox.y, actionBox!.y));
+              expect(overlaps, JSON.stringify({ theme, width, fontSize, titleBoxes, actionBox })).toBe(false);
+            }
+            if (section === 'Spend') {
+              await expect(page.getByRole('table', { name: 'Daily spend data' })).toContainText('2026-11-02');
+              const table = page.getByRole('region', { name: 'Agent spend table', exact: true });
+              if (await table.evaluate(element => element.scrollWidth > element.clientWidth)) {
+                await table.focus();
+                await table.press('ArrowRight');
+                await expect.poll(() => table.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+                await table.evaluate(element => { element.scrollLeft = 0; });
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
   test('is reached from the sidebar and both report RPCs answer', async ({ page }) => {
     const calls: string[] = [];
     page.on('request', (r) => {

@@ -109,7 +109,8 @@ test.describe('the core journey', () => {
       .last();
     await templateCard.getByRole('button', { name: 'Use template' }).click();
 
-    await expect(page.getByText(PROJECT_NAME).first()).toBeVisible({ timeout: 15_000 });
+    // Confirm the created card, rather than the hidden mobile scope caption.
+    await expect(page.getByRole('main').getByRole('heading', { name: PROJECT_NAME })).toBeVisible({ timeout: 15_000 });
   });
 
   test('creates a task in that project and comments on it', async ({ page }) => {
