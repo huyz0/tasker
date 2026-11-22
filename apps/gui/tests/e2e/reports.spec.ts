@@ -172,11 +172,13 @@ test.describe('Reports', () => {
                 await table.focus();
                 await table.press('ArrowRight');
                 await expect.poll(() => table.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+                await table.evaluate(element => { element.scrollLeft = 0; });
               }
             }
             if ((width === 375 || width === 1280) && fontSize === '100%' || width === 375 && fontSize === '200%') {
               const name = `report-capture-${section.toLowerCase()}-${theme}-${width}-${fontSize.replace('%', '')}.png`;
               const capture = testInfo.outputPath(name);
+              await page.evaluate(() => window.scrollTo(0, 0));
               await page.screenshot({ path: capture, fullPage: true });
               await testInfo.attach(name, { path: capture, contentType: 'image/png' });
             }

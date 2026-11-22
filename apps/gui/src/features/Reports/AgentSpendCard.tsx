@@ -80,11 +80,11 @@ export function AgentSpendCard({ projectId, windowDays }: AgentSpendCardProps) {
               <span className="text-muted-foreground"> · {formatCount(data.totals.inputTokens)} input / {formatCount(data.totals.outputTokens)} output tokens · {formatCount(data.totals.reports)} reports</span>
             </p>
             <DailySpend days={data.byDay} />
-            <div role="region" aria-label="Agent spend table" tabIndex={0} className="max-w-full overflow-x-auto rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <table className="w-full min-w-max type-body" aria-label="Spend by agent">
+            <div role="region" aria-label="Agent spend table" tabIndex={0} className="max-w-full overflow-x-auto scrollbar-thin rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <table className="w-full min-w-96 type-body" aria-label="Spend by agent">
               <thead>
                 <tr className="type-caption text-muted-foreground text-left">
-                  <th className="font-medium py-1">Agent</th>
+                  <th scope="col" className="font-medium py-1">Agent</th>
                   <th className="font-medium py-1 text-right">Cost</th>
                   <th className="font-medium py-1 text-right">Tokens</th>
                   <th className="font-medium py-1 text-right">Reports</th>
@@ -93,7 +93,7 @@ export function AgentSpendCard({ projectId, windowDays }: AgentSpendCardProps) {
               <tbody>
                 {data.byAgent.map((a) => (
                   <tr key={a.key || 'people'} className="border-t">
-                    <td className="py-1.5 pr-4">{a.label}</td>
+                    <td className="py-1.5 pr-4 wrap-anywhere">{a.label}</td>
                     <td className="py-1.5 text-right tabular-nums">{formatMicros(a.costMicros)}</td>
                     <td className="py-1.5 text-right tabular-nums">{formatCount(a.inputTokens + a.outputTokens)}</td>
                     <td className="py-1.5 text-right tabular-nums">{formatCount(a.reports)}</td>

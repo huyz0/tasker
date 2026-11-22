@@ -18,11 +18,11 @@ export function ReportPanel({ title, subtitle, action, children }: {
   return (
     <section className="border rounded-lg bg-surface-panel flex min-w-0 flex-col">
       <div className="p-panel border-b flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 max-w-full flex-1 basis-64 wrap-anywhere">
           <h2 className="type-section-title">{title}</h2>
           <p className="type-caption text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
-        {action}
+        {action && <div className="max-w-full min-w-0 shrink-0 wrap-anywhere">{action}</div>}
       </div>
       <div className="min-w-0 p-2 flex-1">{children}</div>
     </section>
