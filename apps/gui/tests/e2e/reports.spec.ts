@@ -152,6 +152,14 @@ test.describe('Reports', () => {
               expect(box!.height).toBeGreaterThanOrEqual(44);
               expect(box!.x + box!.width).toBeLessThanOrEqual(width);
             }
+            if (section === 'Exceptions') {
+              const panel = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Churning tasks', level: 2, exact: true }) });
+              const titleBox = await panel.getByRole('heading', { name: 'Churning tasks', level: 2, exact: true }).boundingBox();
+              const actionBox = await panel.getByRole('link', { name: 'View handoff notes', exact: true }).boundingBox();
+              const overlaps = Math.min(titleBox!.x + titleBox!.width, actionBox!.x + actionBox!.width) > Math.max(titleBox!.x, actionBox!.x)
+                && Math.min(titleBox!.y + titleBox!.height, actionBox!.y + actionBox!.height) > Math.max(titleBox!.y, actionBox!.y);
+              expect(overlaps, JSON.stringify({ theme, width, fontSize, titleBox, actionBox })).toBe(false);
+            }
             if (section === 'Spend') {
               await expect(page.getByRole('table', { name: 'Daily spend data' })).toContainText('2026-11-02');
               const table = page.getByRole('region', { name: 'Agent spend table', exact: true });
