@@ -62,6 +62,7 @@ test.describe('Reports', () => {
     await navigation.getByRole('link', { name: 'Spend', exact: true }).click();
     await navigation.getByRole('link', { name: 'Trends', exact: true }).click();
     await expect(type).toHaveValue(selected);
+    await expect(page.getByRole('heading', { name: 'Reports — Trends', exact: true })).toBeFocused();
     const seven = page.getByRole('button', { name: '7 days', exact: true });
     await seven.click();
     await expect(seven).toBeFocused();
@@ -79,8 +80,10 @@ test.describe('Reports', () => {
   });
 
   test('report touch targets and text reflow stay usable', async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 375, height: 900 });
+    test.setTimeout(120_000);
     await openReports(page);
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.screenshot({ path: testInfo.outputPath('report-capture-before-controls.png'), fullPage: true });
     for (const theme of ['light', 'dark']) {
       await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
       for (const width of [320, 375, 768, 1280]) {

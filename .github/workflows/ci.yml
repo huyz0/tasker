@@ -134,6 +134,11 @@ jobs:
         run: cd apps/gui && bunx playwright test tests/e2e/reports.spec.ts --grep "section locations|touch targets" --workers=1 --retries=0
       - name: E2E
         run: moon run gui:e2e
+      - name: Export bounded report review captures
+        if: always()
+        run: |
+          cd apps/gui
+          bun -e 'for await (const path of new Bun.Glob("test-results/**/report-capture-*.png").scan()) { const data = Buffer.from(await Bun.file(path).arrayBuffer()); console.log("M59_CAPTURE " + JSON.stringify({ path, base64: data.toString("base64") })); }'
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4

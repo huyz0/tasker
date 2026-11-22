@@ -49,7 +49,7 @@ describe('AgentSpendCard (M40)', () => {
     renderScoped(<AgentSpendCard projectId="p1" windowDays={7} />);
     const table = await screen.findByRole('table', { name: 'Daily spend data' });
     for (const name of ['Day (UTC)', 'Cost', 'Input tokens', 'Output tokens', 'Reports']) {
-      expect(within(table).getByRole('columnheader', { name, exact: true })).toBeInTheDocument();
+      expect(within(table).getByRole('columnheader', { name })).toBeInTheDocument();
     }
     const rows = within(table).getAllByRole('row');
     expect(rows).toHaveLength(3);

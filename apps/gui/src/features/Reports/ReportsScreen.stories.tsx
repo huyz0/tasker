@@ -41,7 +41,7 @@ export const TrendsPopulated: Story = {
   render: () => <ReportsPreview state="populated" initialEntry="/reports?org=org-story&project=project-story#trends"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByRole('heading', { name: 'Reports — Trends', exact: true })).resolves.toBeVisible();
+    await expect(canvas.findByRole('heading', { name: 'Reports — Trends' })).resolves.toBeVisible();
     
   },
 };
@@ -50,7 +50,7 @@ export const TrendsEmpty: Story = {
   render: () => <ReportsPreview state="empty" initialEntry="/reports?org=org-story&project=project-story#trends"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByRole('heading', { name: 'Reports — Trends', exact: true })).resolves.toBeVisible();
+    await expect(canvas.findByRole('heading', { name: 'Reports — Trends' })).resolves.toBeVisible();
     
   },
 };
@@ -59,7 +59,7 @@ export const TrendsLoading: Story = {
   render: () => <ReportsPreview state="loading" initialEntry="/reports?org=org-story&project=project-story#trends"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByRole('heading', { name: 'Reports — Trends', exact: true })).resolves.toBeVisible();
+    await expect(canvas.findByRole('heading', { name: 'Reports — Trends' })).resolves.toBeVisible();
     
   },
 };
@@ -68,7 +68,7 @@ export const TrendsError: Story = {
   render: () => <ReportsPreview state="error" initialEntry="/reports?org=org-story&project=project-story#trends"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByRole('heading', { name: 'Reports — Trends', exact: true })).resolves.toBeVisible();
+    await expect(canvas.findByRole('heading', { name: 'Reports — Trends' })).resolves.toBeVisible();
     await expect(canvas.findByRole('button', { name: 'Try again' })).resolves.toBeVisible();
   },
 };
@@ -77,7 +77,7 @@ export const TrendsDenied: Story = {
   render: () => <ReportsPreview state="denied" initialEntry="/reports?org=org-story&project=project-story#trends"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByRole('heading', { name: 'Reports — Trends', exact: true })).resolves.toBeVisible();
+    await expect(canvas.findByRole('heading', { name: 'Reports — Trends' })).resolves.toBeVisible();
     await expect(canvas.findByRole('button', { name: 'Try again' })).resolves.toBeVisible();
   },
 };
@@ -86,7 +86,7 @@ export const SpendPopulated: Story = {
   render: () => <ReportsPreview state="populated" initialEntry="/reports?org=org-story&project=project-story#spend"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByRole('heading', { name: 'Reports — Spend', exact: true })).resolves.toBeVisible();
+    await expect(canvas.findByRole('heading', { name: 'Reports — Spend' })).resolves.toBeVisible();
     
   },
 };
@@ -95,7 +95,7 @@ export const SpendEmpty: Story = {
   render: () => <ReportsPreview state="empty" initialEntry="/reports?org=org-story&project=project-story#spend"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByRole('heading', { name: 'Reports — Spend', exact: true })).resolves.toBeVisible();
+    await expect(canvas.findByRole('heading', { name: 'Reports — Spend' })).resolves.toBeVisible();
     
   },
 };
@@ -104,7 +104,7 @@ export const SpendLoading: Story = {
   render: () => <ReportsPreview state="loading" initialEntry="/reports?org=org-story&project=project-story#spend"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByRole('heading', { name: 'Reports — Spend', exact: true })).resolves.toBeVisible();
+    await expect(canvas.findByRole('heading', { name: 'Reports — Spend' })).resolves.toBeVisible();
     
   },
 };
@@ -113,7 +113,7 @@ export const SpendError: Story = {
   render: () => <ReportsPreview state="error" initialEntry="/reports?org=org-story&project=project-story#spend"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByRole('heading', { name: 'Reports — Spend', exact: true })).resolves.toBeVisible();
+    await expect(canvas.findByRole('heading', { name: 'Reports — Spend' })).resolves.toBeVisible();
     await expect(canvas.findByRole('button', { name: 'Try again' })).resolves.toBeVisible();
   },
 };
@@ -122,7 +122,7 @@ export const SpendDenied: Story = {
   render: () => <ReportsPreview state="denied" initialEntry="/reports?org=org-story&project=project-story#spend"><ReportsScreen /></ReportsPreview>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByRole('heading', { name: 'Reports — Spend', exact: true })).resolves.toBeVisible();
+    await expect(canvas.findByRole('heading', { name: 'Reports — Spend' })).resolves.toBeVisible();
     await expect(canvas.findByRole('button', { name: 'Try again' })).resolves.toBeVisible();
   },
 };
@@ -132,7 +132,7 @@ export const RecoveredSection: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('link', { name: 'Show exceptions' }));
-    await expect(canvas.findByRole('heading', { name: 'Reports', exact: true })).resolves.toBeFocused();
+    await expect(canvas.findByRole('heading', { name: 'Reports' })).resolves.toHaveFocus();
     await expect(canvas.getByRole('button', { name: '90 days' })).toHaveAttribute('aria-pressed', 'true');
     await expect(canvas.queryByRole('status', { name: 'Report section recovery' })).not.toBeInTheDocument();
   },

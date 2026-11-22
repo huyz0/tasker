@@ -1,5 +1,5 @@
 import { SavedViews } from '../../components/SavedViews/SavedViews';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useReportView } from '../../hooks/useOperationalView';
 import { useQuery } from '@tanstack/react-query';
@@ -52,7 +52,7 @@ export function ReportsScreen() {
   const title = activeSection === 'exceptions' ? 'Reports' : `Reports — ${section!.label}`;
   const root = useRef<HTMLDivElement>(null);
   const previousHash = useRef(location.hash);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (previousHash.current !== location.hash) {
       const heading = root.current?.querySelector('h1');
       if (heading) {
