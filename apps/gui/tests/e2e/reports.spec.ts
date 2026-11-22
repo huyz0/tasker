@@ -154,11 +154,16 @@ test.describe('Reports', () => {
             }
             if (section === 'Exceptions') {
               const panel = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Churning tasks', level: 2, exact: true }) });
-              const titleBox = await panel.getByRole('heading', { name: 'Churning tasks', level: 2, exact: true }).boundingBox();
+              const titleBoxes = await panel.getByRole('heading', { name: 'Churning tasks', level: 2, exact: true }).evaluate(element => {
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                return [...range.getClientRects()].map(box => ({ x: box.x, y: box.y, width: box.width, height: box.height }));
+              });
               const actionBox = await panel.getByRole('link', { name: 'View handoff notes', exact: true }).boundingBox();
-              const overlaps = Math.min(titleBox!.x + titleBox!.width, actionBox!.x + actionBox!.width) > Math.max(titleBox!.x, actionBox!.x)
-                && Math.min(titleBox!.y + titleBox!.height, actionBox!.y + actionBox!.height) > Math.max(titleBox!.y, actionBox!.y);
-              expect(overlaps, JSON.stringify({ theme, width, fontSize, titleBox, actionBox })).toBe(false);
+              const overlaps = titleBoxes.some(titleBox =>
+                Math.min(titleBox.x + titleBox.width, actionBox!.x + actionBox!.width) > Math.max(titleBox.x, actionBox!.x)
+                && Math.min(titleBox.y + titleBox.height, actionBox!.y + actionBox!.height) > Math.max(titleBox.y, actionBox!.y));
+              expect(overlaps, JSON.stringify({ theme, width, fontSize, titleBoxes, actionBox })).toBe(false);
             }
             if (section === 'Spend') {
               await expect(page.getByRole('table', { name: 'Daily spend data' })).toContainText('2026-11-02');
