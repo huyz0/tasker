@@ -117,7 +117,7 @@ milestone's `PROGRESS.md` rather than quietly fixed.
 | **M56** | [Agent Connection](../../.milestones/MILESTONE-56-agent-connection/MILESTONE.md) | done: A person can register an agent, issue a least-privilege token, configure an external worker and verify that credential through an actual authenticated API request. | [M54] |
 | **M57** | [Attempt Correlation](../../.milestones/MILESTONE-57-attempt-correlation/MILESTONE.md) | done: Claims leave durable generation receipts and workers can optionally associate notes, usage and artifacts with the correct claim after release. | [M46, M54] |
 | **M58** | [Operational Views](../../.milestones/MILESTONE-58-operational-views/MILESTONE.md) | done: Task and report filters survive reload and browser history, and people can reopen named tenant-safe personal or explicitly shared query definitions. | [M53] |
-| **M59** | [UI Scope and Report Navigation](../../.milestones/MILESTONE-59-ui-scope-and-report-navigation/MILESTONE.md) | in-progress: People can identify automation scope and navigate readable project reports without losing their current view. | [M51, M58] |
+| **M59** | [UI Scope and Report Navigation](../../.milestones/MILESTONE-59-ui-scope-and-report-navigation/MILESTONE.md) | done: Organization-wide automation scope/canonical project labels; preserved Reports section locations; readable, accessible report presentation. | [M51, M58] |
 
 M21–M29 are sequenced by explicit user priority (like M13 before M10) and
 carry no dependency edge; every numbered milestone before M29 is done. M29

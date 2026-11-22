@@ -85,7 +85,6 @@ export function ReportsScreen() {
     navigate({ pathname: live.pathname, search: live.search, hash });
   };
 
-
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['reports', 'exceptions', activeProjectId, windowDays],
     enabled: !!activeProjectId,
@@ -115,19 +114,19 @@ export function ReportsScreen() {
         description={
           <>
             How work is performed in this project, and whether the agents are carrying it.
-            {data && <span className="mt-1 block text-sm text-foreground tabular-nums">{agentShareStat(data)}</span>}
+            {data && <span className="mt-1 block type-body text-foreground tabular-nums">{agentShareStat(data)}</span>}
           </>
         }
         toolbar={
           <>
-          <SavedViews screen="reports" />
-          <div role="group" aria-label="Report window" className="flex shrink-0 gap-0.5 rounded-md border p-0.5">
+          <div className="flex min-h-row min-w-0"><SavedViews screen="reports" /></div>
+          <div role="group" aria-label="Report window" className="flex max-w-full flex-wrap gap-0.5 rounded-md border p-0.5">
             {REPORT_WINDOWS.map((days) => (
               <button
                 key={days}
                 aria-pressed={windowDays === days}
                 onClick={() => view.update({ windowDays: days })}
-                className={`rounded px-2.5 py-1 text-xs font-medium tabular-nums transition-colors ${
+                className={`min-h-row min-w-row rounded px-3 py-2 type-label tabular-nums transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
                   windowDays === days
                     ? 'bg-primary-subtle text-primary-subtle-foreground'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -166,7 +165,7 @@ export function ReportsScreen() {
 
       {view.invalid.length > 0 && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-surface-panel p-panel type-body">
         <p>Some view settings couldn't be applied.</p>
-        <button type="button" onClick={view.reset} className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted">Reset view</button>
+        <button type="button" onClick={view.reset} className="min-h-row rounded-md border px-3 py-2 type-label hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">Reset view</button>
       </div>}
 
       <div role="region" aria-label="Exceptions" hidden={activeSection !== 'exceptions'}>
@@ -176,7 +175,7 @@ export function ReportsScreen() {
         isEmpty={isEmpty}
         loadingMessage="Loading project reports…"
         emptyMessage="Nothing to report in this window. No stalled work, reopened tasks, churn or agent activity was recorded."
-        emptyAction={<p className="text-xs">Exception cards fill in as agents claim and complete work.</p>}
+        emptyAction={<p className="type-caption">Exception cards fill in as agents claim and complete work.</p>}
         onRetry={() => refetch()}
       >
         {data && (

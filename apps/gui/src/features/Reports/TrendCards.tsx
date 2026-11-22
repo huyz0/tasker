@@ -157,12 +157,12 @@ function FlowCard({ trends, taskTypeId, onTaskTypeChange }: {
       subtitle="Where tasks of one type sit over time. A swelling middle band is where work is queuing."
     >
       <div className="flex flex-col gap-2 p-2">
-        <label className="flex items-center gap-2 self-start text-xs text-muted-foreground">
+        <label className="flex max-w-full flex-wrap items-center gap-2 self-start type-caption text-muted-foreground">
           Task type
           <select
             value={taskTypeId ?? trends.cfdTaskTypeId}
             onChange={(event) => onTaskTypeChange(event.target.value)}
-            className="rounded-md border bg-background px-2 py-1 text-sm text-foreground"
+            className="min-h-row max-w-full min-w-0 rounded-md border bg-background px-2 py-2 type-body text-foreground"
           >
             {trends.taskTypeOptions.map((option) => (
               <option key={option.id} value={option.id}>

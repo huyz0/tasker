@@ -1,13 +1,13 @@
 ---
 id: M59
 title: UI Scope and Report Navigation
-status: in-progress
+status: done
 goal: People can identify automation scope and navigate readable project reports without losing their current view.
 depends_on: [M51, M58]
-surfaces: [gui, specs]
-exit_criteria_met: false
+surfaces: [gui, infra, specs]
+exit_criteria_met: true
 started_at: 2026-11-22
-completed_at: null
+completed_at: 2026-11-22
 ---
 
 # M59 — UI Scope and Report Navigation
@@ -29,8 +29,8 @@ The next useful UI changes build on that delivered behavior.
 
 - [x] Organization-wide automation collections state their scope and schedules show their own project even when another project is selected.
 - [x] Reports sections are addressable and preserve project/window, saved-view application and browser Back/Forward.
-- [ ] Reviewed report controls, typography and daily-spend alternatives work in both themes, narrow layouts and enlarged text.
-- [ ] Behavioral regressions fail before implementation; actual GUI/browser/visual and repository checks support the final review.
+- [x] Reviewed report controls, typography and daily-spend alternatives work in both themes, narrow layouts and enlarged text.
+- [x] Behavioral regressions fail before implementation; actual GUI/browser/visual and repository checks support the final review.
 
 ## 4. Scope
 
@@ -53,8 +53,8 @@ No backend filter, permission, contract, dependency or font-family change.
   - **Files**: apps/gui/src/features/Reports/index.tsx; index.test.tsx; ReportsScreen.stories.tsx; apps/gui/tests/e2e/reports.spec.ts.
   - **Verify**: Direct links, keyboard activation, Back/Forward, window changes and named-view application select the correct visible section without dropping scope/query/hash or unrelated draft state. Loading/error/denied sections remain navigable; new regressions fail on the current screen first.
 
-- [ ] **M59-T03** — Align report presentation tokens, control targets and daily-spend accessibility, then retain rendered evidence.
-  - **Files**: apps/gui/src/features/Reports/ReportPanel.tsx; AgentSpendCard.tsx and tests/stories; Reports/index.tsx; apps/gui/src/index.css; .specs/design/design-system.md; browser verification/evidence.
+- [x] **M59-T03** — Align report presentation tokens, control targets and daily-spend accessibility, then retain rendered evidence.
+  - **Files**: apps/gui/src/components/layout/AppShell.tsx; apps/gui/src/features/Reports/ReportPanel.tsx; FleetScorecardCard.tsx; AgentSpendCard.tsx and tests/stories; Reports/index.tsx; apps/gui/src/index.css; .specs/design/design-system.md; browser verification/evidence.
   - **Verify**: Real DOM geometry proves44px report navigation/window/saved-view targets, reflow at320/375/768/1280px and200% text size; daily cost values have an accessible table. Keep intentional numeric emphasis, verify both themes, run full affected suites and moon check --all, then review four lenses before publication.
 
 ## 6. Verification
@@ -74,3 +74,11 @@ No backend filter, permission, contract, dependency or font-family change.
 - Project labels come from the schedule's canonical project, never the global selector.
 - Larger controls and numeric type need real geometry checks, not only no-overflow assertions.
 - An unavailable runtime is recorded honestly. No screenshot, local execution or participant-study pass is inferred.
+
+## 8. Completed evidence and limits
+
+Corrected source3ac8c9c passes all14 hosted checks:1771 GUI cases/95.34% branches,105 browser passes with no retries/three existing skips,401 story audits in both themes and all37 repository tasks in5m55.199s. The deterministic19-case screen suite and immediate real-browser section activation verify the live-location race fix. CODE-v5 revalidates the implementation after that final finding; earlier review versions remain preserved.
+
+Inspected source-run captures and written observations document the layout corrections. Automatic approval review rejected copying screenshots into git, so no image/base64 payload or temporary review capture/export mechanism is carried forward. Existing source-run artifacts have normal seven-day retention; current rendered geometry checks remain complete.
+
+The final three-task candidate must pass its own combined-head checks before merge. Local runtime execution, manual assistive-technology testing, other browser engines and participant usability remain unmeasured.
