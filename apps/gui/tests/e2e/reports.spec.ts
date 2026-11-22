@@ -46,6 +46,12 @@ async function openReports(page: Page): Promise<void> {
 }
 
 test.describe('Reports', () => {
+  test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.title.includes('touch targets') && testInfo.status !== testInfo.expectedStatus) {
+      await page.screenshot({ path: testInfo.outputPath('report-capture-failure.png'), fullPage: true });
+    }
+  });
+
   test('section locations preserve scope, window, history and keyboard focus', async ({ page }) => {
     await openReports(page);
     const original = new URL(page.url());
@@ -116,7 +122,14 @@ test.describe('Reports', () => {
             expect(box!.x, await control.innerText()).toBeGreaterThanOrEqual(0);
             expect(box!.x + box!.width, await control.innerText()).toBeLessThanOrEqual(width);
           }
-          expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+          const initial = await page.evaluate(() => ({
+            viewport: innerWidth, document: document.documentElement.scrollWidth,
+            outliers: [...document.querySelectorAll('body *')].filter(element => {
+              const box = element.getBoundingClientRect();
+              return box.width > 1 && box.height > 0 && box.right > innerWidth && !element.closest('.overflow-x-auto');
+            }).slice(0, 20).map(element => ({ tag: element.tagName, className: element.getAttribute('class'), right: element.getBoundingClientRect().right })),
+          }));
+          expect(initial.document, JSON.stringify({ theme, width, fontSize, ...initial })).toBeLessThanOrEqual(width);
           for (const section of ['Trends', 'Spend', 'Exceptions']) {
             await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: section, exact: true }).click();
             const title = section === 'Exceptions' ? 'Reports' : `Reports — ${section}`;
