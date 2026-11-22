@@ -1,8 +1,8 @@
 ---
-active_milestone: null
-active_task: null
-last_updated: 2026-11-21
-last_commit: 1a8d53b
+active_milestone: M59
+active_task: M59-T02
+last_updated: 2026-11-22
+last_commit: 134f2fa
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,10 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-22 — M59-T01 complete (1/3).** Organization-wide automation scope and each schedule's canonical project are visible, including the authorized-ID fallback. Actual red and green checks on source17bda23 support CODE-v2 approval. The final three-task delivery chain is being assembled from published main134f2fa; it must pass its own combined checks before merge. Candidate402 tasks/53 milestones:399 done, one dropped, two pending. T02 is next; local runtime and participant results remain unclaimed.
+
+**2026-11-22 — UI follow-up M59 starts.** Published main134f2fa has all15 post-publication checks green. Continue remaining UI recommendations: organization-wide automation scope/project labels, URL-fragment Reports navigation preserving M58 view state, and report typography/control/data accessibility. Three tasks are planned with independent W3C/Carbon research and source-backed acceptance; no new dependency, font family, API filter or view-definition field. T01 is in progress before code. Candidate402 tasks/53 milestones:398 done/one dropped/three pending. The Cloud runtime is starting; no local/rendered execution is claimed. Human usability testing remains unmeasured, and M49 capacity limits remain separate.
 
 **2026-11-21 — M50 lifecycle and recovery verification complete.** Sourcedf71b14 passes all15 applicable checks, exact37 in6m3.175s, both required MySQL versions/recovery/faults, real killed-consumer observer proof and five isolated SQLite recoveries. A real SIGKILL yields getter null/awaited137; tracked .exited settlement now drives fixture lifecycle observation. CODE-v6 approves. The original70-second SQLite timeout and earlier Bun panic remain unattributed; no deterministic cause/fix is claimed for them. Current outcomes/time bounds remain strict, logs/backups stay private, and the runbook distinguishes stopped consumers from pending work. M50 is3/3/all criteria;399 tasks/52 milestones:398 done, one deliberately dropped, zero pending. A fresh final T03 commit reuses normalized T01/T02 from published M49 main654c222; its own combined checks and identical published tree are required. Raw draft #25 preserves WIP/failures. No local clean-tree or production restore claim. Future UI usability/Reports/token and sustained-capacity work remain explicit.
 
@@ -2076,8 +2080,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M56 | Agent Connection | done | M54 | 4 | 4 |
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
+| M59 | UI Scope and Report Navigation | in-progress | M51, M58 | 3 | 1 |
 
-**Total: 399 tasks across 52 milestones — 398 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 402 tasks across 53 milestones — 399 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
