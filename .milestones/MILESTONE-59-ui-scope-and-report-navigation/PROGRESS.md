@@ -22,3 +22,18 @@
 - **Next**: Reproduce the schedule-row gap, implement T01, then complete the
   independent Reports/presentation tasks with actual verification. Keep every
   task unchecked until evidence and four-lens review support completion.
+
+### T01 actual red and scope presentation candidate
+
+- GUI job137115116361 runs the new tests against unchanged application code:
+  two intended failures (Project: Beta and Project: project-archived absent),
+  with1764 existing cases passing. This is an actual hosted red, not inferred.
+- Show each row's canonical project using the existing project metadata and
+  ID fallback; selected metadata uses its checked foreground pair. Add
+  explicit organization-wide scope to workflow/schedule purpose text.
+- Keep list queries, URLs, authorization and start/edit behavior unchanged.
+  Extend synthetic stories with an organization collection and a schedule
+  from Operations while Release is selected. No credential or new endpoint.
+- Update only old exact link-name assertions to include the new accessible
+  project text. T01 remains unchecked pending real green/source review;
+  no local execution or participant result is claimed.

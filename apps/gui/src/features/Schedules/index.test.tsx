@@ -63,8 +63,8 @@ describe('SchedulesScreen (M43)', () => {
 
   it('lists schedules with their cadence or paused, and shows one with its runs', async () => {
     renderScreen();
-    expect(await screen.findByRole('link', { name: /^Triage\s*Every Mon, Thu at 09:00 UTC$/ })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /^Paused one\s*Paused$/ })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /^Triage\s*Every Mon, Thu at 09:00 UTC\s*Project: Alpha$/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^Paused one\s*Paused\s*Project: Alpha$/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: /^Triage\s*Every/ }));
     expect(await screen.findByText('Every Mon, Thu at 09:00 UTC in Alpha')).toBeInTheDocument();
     expect(screen.getByText(/Creates a task "Triage the inbox", skipping while the last one is unfinished/)).toBeInTheDocument();

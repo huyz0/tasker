@@ -169,7 +169,10 @@ export function WorkflowsScreen() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Workflows"
-        description="Repeatable work with steps that wait on each other. Start one and its steps become tasks, handed out in order."
+        description={<>
+          Repeatable work with steps that wait on each other. Start one and its steps become tasks, handed out in order.
+          <span className="mt-1 block type-body text-foreground">Templates are listed across this organization. Runs use the project shown in the start form.</span>
+        </>}
       />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <aside className={`${templateId ? 'hidden lg:flex' : 'flex'} ${showCollectionState ? 'w-full max-w-xl' : 'w-full lg:w-56'} shrink-0 flex-col gap-1`}>
