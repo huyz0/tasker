@@ -119,7 +119,20 @@ test.describe('Reports', () => {
           expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
           for (const section of ['Trends', 'Spend', 'Exceptions']) {
             await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: section, exact: true }).click();
-            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+            const reflow = await page.evaluate(() => ({
+              viewport: innerWidth, document: document.documentElement.scrollWidth,
+              outliers: [...document.querySelectorAll('main *')].filter(element => {
+                const box = element.getBoundingClientRect();
+                return box.width > 1 && box.right > innerWidth && getComputedStyle(element).visibility !== 'hidden';
+              }).slice(0, 12).map(element => ({ tag: element.tagName, className: element.getAttribute('class'), width: element.getBoundingClientRect().width })),
+            }));
+            expect(reflow.document, JSON.stringify({ theme, width, fontSize, section, ...reflow })).toBeLessThanOrEqual(width);
+            if (section === 'Trends') {
+              const select = page.getByLabel('Task type');
+              const box = await select.boundingBox();
+              expect(box!.height).toBeGreaterThanOrEqual(44);
+              expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+            }
             if (section === 'Spend') {
               await expect(page.getByRole('table', { name: 'Daily spend data' })).toContainText('2026-11-02');
               const table = page.getByRole('region', { name: 'Agent spend table', exact: true });

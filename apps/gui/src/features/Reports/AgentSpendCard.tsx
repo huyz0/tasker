@@ -13,7 +13,7 @@ interface DailySpendProps {
 function DailySpend({ days }: DailySpendProps) {
   const max = days.reduce((m, d) => (d.costMicros > m ? d.costMicros : m), 0n);
   return (
-    <>
+    <div className="relative max-w-full overflow-x-auto">
     <div className="flex items-end gap-px h-16" role="img" aria-label={`Daily spend over ${days.length} days`}>
       {days.map((d) => {
         const pct = max === 0n ? 0 : Number((d.costMicros * 100n) / max);
@@ -27,7 +27,8 @@ function DailySpend({ days }: DailySpendProps) {
         );
       })}
     </div>
-    <table className="sr-only">
+    <div className="sr-only">
+    <table>
       <caption>Daily spend data</caption>
       <thead><tr>
         <th scope="col">Day (UTC)</th><th scope="col">Cost</th>
@@ -40,7 +41,8 @@ function DailySpend({ days }: DailySpendProps) {
         </tr>
       ))}</tbody>
     </table>
-    </>
+    </div>
+    </div>
   );
 }
 
