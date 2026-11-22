@@ -35,6 +35,26 @@ describe('SchedulesScreen (M43)', () => {
     mockRpc(WorkflowService, 'ListWorkflowTemplates', { templates: [{ id: 'w1', orgId: 'org-1', name: 'Report', steps: [] }], page: {} });
   });
 
+  it('names each schedule project while another project is selected globally', async () => {
+    mockRpc(ProjectService, 'ListProjects', { projects: [{ id: 'p1', name: 'Alpha' }, { id: 'p2', name: 'Beta' }], page: {} });
+    mockRpc(ScheduleService, 'ListSchedules', { schedules: [
+      triage, { ...triage, id: 's-beta', name: 'Beta release', projectId: 'p2' },
+    ], page: {} });
+    renderScreen('/schedules?org=org-1&project=p1');
+    const beta = await screen.findByRole('link', { name: /^Beta release/ });
+    expect(await within(beta).findByText('Project: Beta')).toBeVisible();
+    const alpha = screen.getByRole('link', { name: /^Triage/ });
+    expect(within(alpha).getByText('Project: Alpha')).toBeVisible();
+  });
+
+  it('keeps the schedule project identifier visible when project metadata is unavailable', async () => {
+    mockRpcError(ProjectService, 'ListProjects', 'permission_denied', 'Project metadata unavailable');
+    mockRpc(ScheduleService, 'ListSchedules', { schedules: [{ ...triage, id: 's-archived', name: 'Archived project work', projectId: 'project-archived' }], page: {} });
+    renderScreen('/schedules?org=org-1&project=p1');
+    const row = await screen.findByRole('link', { name: /^Archived project work/ });
+    expect(await within(row).findByText('Project: project-archived')).toBeVisible();
+  });
+
   it('asks for an organization first', () => {
     mockActiveOrgId = '';
     renderScreen();
