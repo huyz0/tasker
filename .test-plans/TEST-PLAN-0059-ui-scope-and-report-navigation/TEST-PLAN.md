@@ -56,3 +56,13 @@ Run GUI coverage/types/design/Storybook, real browser journeys and the
 repository gate. Record commands, counts, skips and unresolved concerns.
 Final source and published tree must agree; no local result is inferred
 from an unavailable executor.
+
+## Rendered review regressions and publication
+
+- Given375px and200% text, when Churning's action is visible, then actual title text ranges and the action rectangle do not intersect. Measure text ranges rather than only the heading's shrinkable layout box.
+- Given enlarged report text, when the shared mobile shell renders, then branding/scope and utility groups wrap without losing actions or causing document overflow.
+- Given a real newly created project and a hidden mobile scope caption with the same name, then the core journey confirms the project's heading inside main rather than the first matching text node.
+- Given automatic approval rejection of repository screenshot copies, then retain the written source-run review and its existing limited-retention artifact reference; final code contains no new screenshot/base64 export mechanism and keeps every geometry assertion.
+- Given this final three-task candidate, then its own combined-head checks must pass before merge; source07e4dbc evidence does not replace the candidate's verification.
+
+- Given a new report window is already committed to browser history while the section link still belongs to the preceding router render, when the section is activated immediately, then the live window, scope and unrelated parameters survive. The deterministic history-gap unit case and existing rapid real-browser90-day activation must both pass without adding a wait that hides the race.

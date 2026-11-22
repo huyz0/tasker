@@ -22,9 +22,27 @@ export function ReportsPreview({ children, initialEntry = '/reports?org=org-stor
         unclaimed: state === 'populated' ? [{ taskId: 'task-story', taskDisplayId: 'REL-1', taskTitle: 'Review release notes', status: 'todo', waitingSince: new Date(Date.now() - 48 * 3_600_000).toISOString() }] : [],
       }));
       else if (source === 'trends') cache.setQueryData(queryKey, create(GetReportTrendsResponseSchema, {
-        collectedSince: '2026-11-01T00:00:00Z', cfdTaskTypeId: 'untyped', taskTypeOptions: [{ id: 'untyped', name: 'Untyped', taskCount: state === 'populated' ? 1n : 0n }],
+        collectedSince: '2026-11-01T00:00:00Z',
+        ...(state === 'populated' ? {
+          createdCumulative: [{ date: '2026-11-01', count: 4n }, { date: '2026-11-02', count: 6n }],
+          completedCumulative: [{ date: '2026-11-01', count: 2n }, { date: '2026-11-02', count: 4n }],
+          autonomyRate: [{ date: '2026-11-01', rate: 0.5, sampleSize: 2n }, { date: '2026-11-02', rate: 1, sampleSize: 2n }],
+          reworkRate: [{ date: '2026-11-01', rate: 0, sampleSize: 2n }, { date: '2026-11-02', rate: 0.5, sampleSize: 2n }],
+          cfdBands: [
+            { status: 'done', isTerminal: true, counts: [{ date: '2026-11-01', count: 2n }, { date: '2026-11-02', count: 4n }] },
+            { status: 'in_progress', counts: [{ date: '2026-11-01', count: 2n }, { date: '2026-11-02', count: 2n }] },
+          ],
+        } : {}),
+        cfdTaskTypeId: 'untyped', taskTypeOptions: [{ id: 'untyped', name: 'Untyped', taskCount: state === 'populated' ? 1n : 0n }],
       }));
-      else cache.setQueryData(queryKey, create(GetUsageReportResponseSchema, { totals: { reports: 0n } }));
+      else cache.setQueryData(queryKey, create(GetUsageReportResponseSchema, state === 'populated' ? {
+        totals: { reports: 2n, inputTokens: 12000n, outputTokens: 4000n, costMicros: 2500000n },
+        byDay: [
+          { key: '2026-11-01', costMicros: 0n, reports: 0n },
+          { key: '2026-11-02', costMicros: 2500000n, inputTokens: 12000n, outputTokens: 4000n, reports: 2n },
+        ],
+        byAgent: [{ key: 'release-worker', label: 'Release verification worker', costMicros: 2500000n, inputTokens: 12000n, outputTokens: 4000n, reports: 2n }],
+      } : { totals: { reports: 0n } }));
     }
     return cache;
   });
