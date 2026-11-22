@@ -162,7 +162,10 @@ export function SchedulesScreen() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Schedules"
-        description="Routine work that puts itself on the queue - a task or a whole workflow, daily, weekly or monthly."
+        description={<>
+          Routine work that puts itself on the queue - a task or a whole workflow, daily, weekly or monthly.
+          <span className="mt-1 block type-body text-foreground">Schedules are listed across this organization. Each schedule keeps its own project.</span>
+        </>}
       />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <aside className={`${scheduleId ? 'hidden lg:flex' : 'flex'} ${showCollectionState ? 'w-full max-w-xl' : 'w-full lg:w-64'} shrink-0 flex-col gap-1`}>
@@ -170,17 +173,21 @@ export function SchedulesScreen() {
             emptyTitle={showCollectionState ? 'No schedules yet.' : undefined}
             emptyMessage={showCollectionState ? 'Put routine work on a daily, weekly or monthly cadence. For example, schedule a weekly triage task.' : 'No schedules yet.'}
             emptyAction={showCollectionState ? createAction : undefined} onRetry={() => list.refetch()}>
-            {schedules.map((s) => (
+            {schedules.map((s) => {
+              const metadata = 'block type-caption wrap-anywhere ' + (scheduleId === s.id ? 'text-primary-subtle-foreground' : 'text-muted-foreground');
+              return (
               <Link
                 key={s.id}
                 to={scopedTo(`/schedules/${s.id}`)}
                 aria-current={scheduleId === s.id ? 'page' : undefined}
-                className={`text-sm text-left px-3 py-2 rounded-md border ${scheduleId === s.id ? 'bg-primary-subtle text-primary-subtle-foreground border-primary/40' : 'border-transparent hover:bg-muted'}`}
+                className={`min-w-0 text-left px-3 py-2 rounded-md border ${scheduleId === s.id ? 'bg-primary-subtle text-primary-subtle-foreground border-primary/40' : 'border-transparent hover:bg-muted'}`}
               >
-                <span className="block">{s.name}</span>
-                <span className="block text-xs text-muted-foreground">{s.active ? cadenceText(s) : 'Paused'}</span>
+                <span className="block type-item-title wrap-anywhere">{s.name}</span>
+                <span className={metadata}>{s.active ? cadenceText(s) : 'Paused'}</span>
+                <span className={metadata}>Project: {projectName(s.projectId)}</span>
               </Link>
-            ))}
+              );
+            })}
           </ListState>
           {!showCollectionState && createAction}
         </aside>
