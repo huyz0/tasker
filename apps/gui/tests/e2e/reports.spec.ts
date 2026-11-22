@@ -119,6 +119,12 @@ test.describe('Reports', () => {
           expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
           for (const section of ['Trends', 'Spend', 'Exceptions']) {
             await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: section, exact: true }).click();
+            const title = section === 'Exceptions' ? 'Reports' : `Reports — ${section}`;
+            await expect(page.getByRole('heading', { name: title, level: 1, exact: true })).toBeFocused();
+            await expect(page.getByRole('region', { name: section, exact: true })).toBeVisible();
+            if (section === 'Trends') await expect(page.getByLabel('Task type')).toBeVisible();
+            if (section === 'Spend') await expect(page.getByRole('img', { name: 'Daily spend over 2 days' })).toBeVisible();
+            if (section === 'Exceptions') await expect(page.getByRole('heading', { name: 'Stalled work', level: 2 })).toBeVisible();
             const reflow = await page.evaluate(() => ({
               viewport: innerWidth, document: document.documentElement.scrollWidth,
               outliers: [...document.querySelectorAll('main *')].filter(element => {
