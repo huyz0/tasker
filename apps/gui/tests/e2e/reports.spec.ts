@@ -46,6 +46,40 @@ async function openReports(page: Page): Promise<void> {
 }
 
 test.describe('Reports', () => {
+
+  test('section locations preserve scope, window, history and keyboard focus', async ({ page }) => {
+    await openReports(page);
+    const original = new URL(page.url());
+    await page.getByRole('button', { name: '90 days', exact: true }).click();
+    const navigation = page.getByRole('navigation', { name: 'Report sections' });
+    const trends = navigation.getByRole('link', { name: 'Trends', exact: true });
+    await expect(trends).toBeVisible({ timeout: 5_000 });
+    await trends.focus();
+    await trends.press('Enter');
+    await expect(page.getByRole('heading', { name: 'Reports — Trends', exact: true })).toBeFocused();
+    await expect(page.getByRole('img', { name: 'Cumulative flow', exact: true })).toBeVisible();
+    const type = page.getByLabel('Task type');
+    const selected = await type.inputValue();
+    await navigation.getByRole('link', { name: 'Spend', exact: true }).click();
+    await navigation.getByRole('link', { name: 'Trends', exact: true }).click();
+    await expect(type).toHaveValue(selected);
+    await expect(page.getByRole('heading', { name: 'Reports — Trends', exact: true })).toBeFocused();
+    const seven = page.getByRole('button', { name: '7 days', exact: true });
+    await seven.click();
+    await expect(seven).toBeFocused();
+    await expect(page).toHaveURL(/days=7.*#trends$/);
+    const scoped = new URL(page.url());
+    expect(scoped.searchParams.get('org')).toBe(original.searchParams.get('org'));
+    expect(scoped.searchParams.get('project')).toBe(original.searchParams.get('project'));
+    await page.goBack();
+    await expect(page).toHaveURL(/days=90.*#trends$/);
+    await expect(page.getByRole('heading', { name: 'Reports — Trends', exact: true })).toBeVisible();
+    await navigation.getByRole('link', { name: 'Spend', exact: true }).click();
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Reports — Spend', exact: true })).toBeVisible();
+    await expect(navigation.getByRole('link', { name: 'Spend', exact: true })).toHaveAttribute('aria-current', 'location');
+  });
+
   test('is reached from the sidebar and both report RPCs answer', async ({ page }) => {
     const calls: string[] = [];
     page.on('request', (r) => {
@@ -88,8 +122,12 @@ test.describe('Reports', () => {
     await expect(page.getByRole('heading', { name: 'Claimed and silent', level: 3 })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Waiting unclaimed', level: 3 })).toBeVisible();
 
+    await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: 'Spend', exact: true }).click();
+
     // …agent spend (M40), which says why it is empty when nothing was reported…
     await expect(page.getByRole('heading', { name: 'Agent spend', level: 2 })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: 'Trends', exact: true }).click();
 
     // …and the three trend cards, each with its named chart image.
     for (const panel of ['Autonomy and rework', 'Created vs completed', 'Flow']) {
@@ -99,14 +137,13 @@ test.describe('Reports', () => {
       await expect(page.getByRole('img', { name: chart })).toBeVisible({ timeout: 15_000 });
     }
 
-    // The dashboard.spec idiom: a panel is either populated or says why it is
-    // empty — never blank. Heading + subtitle is two lines; anything real
-    // (rows, an empty-state sentence, a chart legend) adds a third.
-    const panels = page.locator('section').filter({ has: page.getByRole('heading', { level: 2 }) });
-    await expect(panels).toHaveCount(8);
-    for (let i = 0; i < 8; i++) {
-      const body = await panels.nth(i).innerText();
-      expect(body.split('\n').filter((l) => l.trim()).length).toBeGreaterThan(2);
+    for (const section of ['Exceptions', 'Trends', 'Spend']) {
+      await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: section, exact: true }).click();
+      const panels = page.locator('section:visible').filter({ has: page.getByRole('heading', { level: 2 }) });
+      await expect(panels).toHaveCount(section === 'Exceptions' ? 4 : section === 'Trends' ? 3 : 1);
+      for (const panel of await panels.all()) {
+        expect((await panel.innerText()).split('\n').filter((line) => line.trim()).length).toBeGreaterThan(2);
+      }
     }
   });
 
@@ -188,6 +225,7 @@ test.describe('Reports', () => {
   test('the CFD task-type selector re-queries trends with that taskTypeId', async ({ page }) => {
     await openReports(page);
 
+    await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: 'Trends', exact: true }).click();
     const typeSelect = page.getByLabel('Task type');
     await expect(typeSelect).toBeVisible({ timeout: 15_000 });
 
