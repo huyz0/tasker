@@ -75,6 +75,10 @@ jobs:
           cd apps/gui && bun install
       # gui:test is `vitest run --coverage`, so this gates merges on both the
       # suite passing and the 95% coverage thresholds in vitest.config.ts.
+      - name: Report section location regressions
+        run: |
+          moon run shared-contract:compile
+          cd apps/gui && bunx vitest run src/features/Reports/index.test.tsx
       - name: Build & Test (Cached)
         run: moon run gui:lint gui:design-lint gui:typecheck gui:test gui:build
       # Storybook's a11y addon is set to `test: 'error'`, which only means
@@ -124,6 +128,8 @@ jobs:
           done
           echo "backend did not come up in 30s"; cat backend.log; exit 1
       # Playwright's own webServer block starts the GUI dev server.
+      - name: Reports section locations
+        run: cd apps/gui && bunx playwright test tests/e2e/reports.spec.ts --grep "section locations" --workers=1 --retries=0
       - name: Saved-view browser types
         run: cd apps/gui && bun run typecheck:e2e:saved-views
       - name: Prove native saved-view intent regression

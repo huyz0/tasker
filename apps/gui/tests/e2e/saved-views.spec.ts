@@ -189,7 +189,7 @@ test('a personal Reports view saves its current window and reopens fresh project
     const fresh = await admin.views.getSavedView({ viewId: body.view.id });
     expect(fresh.view?.projectId).toBe(space.second.id);expect(fresh.definition?.reports?.windowDays).toBe(90);
     await expect(dialog.getByText('View saved.', { exact: true })).toBeVisible();await close(page);
-    await page.goto('/reports?org=' + space.orgId + '&project=' + space.first.id + '&days=7');
+    await page.goto('/reports?org=' + space.orgId + '&project=' + space.first.id + '&days=7#spend');
     await expect(page.getByRole('button', { name: '7 days', exact: true })).toHaveAttribute('aria-pressed', 'true');
     const observed = new Set<string>();
     page.on('request', request => {
@@ -202,6 +202,8 @@ test('a personal Reports view saves its current window and reopens fresh project
     await expect(page.getByRole('button', { name: '90 days', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect.poll(() => new URL(page.url()).searchParams.get('project')).toBe(space.second.id);
     await expect.poll(() => observed.size).toBe(3);
+    await expect(page.getByRole('heading', { name: 'Reports — Spend', exact: true })).toBeVisible();
+    expect(new URL(page.url()).hash).toBe('#spend');
     await page.reload();await expect(page.getByRole('button', { name: '90 days', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.goBack();await expect(page.getByRole('button', { name: '7 days', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.goForward();await expect(page.getByRole('button', { name: '90 days', exact: true })).toHaveAttribute('aria-pressed', 'true');

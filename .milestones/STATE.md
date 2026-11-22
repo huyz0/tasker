@@ -1,8 +1,8 @@
 ---
 active_milestone: M59
-active_task: M59-T02
+active_task: M59-T03
 last_updated: 2026-11-22
-last_commit: 134f2fa
+last_commit: fa167dc
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-22 — M59-T02 complete after live-location revalidation (2/3).** Native report sections preserve the current committed query even across the router render gap; controlled fragments, focus, recovery and mounted independent reads remain. Source3ac8c9c passes all14 checks,1771 GUI cases/95.34% branches,105 browser passes/no retries/three existing skips,401 story audits and37 repository tasks in5m55.199s. CODE-v5 revalidates T02. T03 presentation code and evidence follow in the final task. Candidate402 tasks/53 milestones:400 done, one dropped, one pending. Final combined-head checks remain required before merge.
 
 **2026-11-22 — M59-T01 complete (1/3).** Organization-wide automation scope and each schedule's canonical project are visible, including the authorized-ID fallback. Actual red and green checks on source17bda23 support CODE-v2 approval. The final three-task delivery chain is being assembled from published main134f2fa; it must pass its own combined checks before merge. Candidate402 tasks/53 milestones:399 done, one dropped, two pending. T02 is next; local runtime and participant results remain unclaimed.
 
@@ -2080,9 +2082,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M56 | Agent Connection | done | M54 | 4 | 4 |
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
-| M59 | UI Scope and Report Navigation | in-progress | M51, M58 | 3 | 1 |
+| M59 | UI Scope and Report Navigation | in-progress | M51, M58 | 3 | 2 |
 
-**Total: 402 tasks across 53 milestones — 399 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 402 tasks across 53 milestones — 400 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
