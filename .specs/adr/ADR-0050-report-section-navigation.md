@@ -38,3 +38,7 @@ change. Use a named nav and one current-location link, not tab roles.
 Maintain hidden mounted panels to preserve query isolation/local chart
 state; do not claim request reduction. Handle direct/unknown fragments and
 focus transitions explicitly and verify them in real browser journeys.
+
+## Live-location activation
+
+The final browser run reproduced a just-committed window being overwritten by an older section-link render. Ordinary section and recovery activation therefore reads the existing currentLocation protocol, preserving the live pathname/search and changing only the controlled fragment. A handler whose live pathname has left Reports does nothing; activating the current fragment adds no duplicate history. Modified clicks retain native anchor behavior. This reuses M58's live-URL ownership boundary without expanding a route or saved-view definition.

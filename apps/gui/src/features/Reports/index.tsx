@@ -1,7 +1,8 @@
 import { SavedViews } from '../../components/SavedViews/SavedViews';
-import { useEffect, useLayoutEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useRef, type MouseEvent } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useReportView } from '../../hooks/useOperationalView';
+import { currentLocation } from '../../lib/liveRouterLocation';
 import { useQuery } from '@tanstack/react-query';
 import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../../components/ui/ListState';
@@ -45,6 +46,7 @@ const REPORT_SECTIONS = [
 /** Section locations share the project/window URL and keep independent reads mounted. */
 export function ReportsScreen() {
   const location = useLocation();
+  const navigate = useNavigate();
   const rawSection = location.hash.slice(1);
   const section = REPORT_SECTIONS.find((item) => item.id === rawSection);
   const invalidSection = rawSection !== '' && !section;
@@ -69,6 +71,19 @@ export function ReportsScreen() {
 
   const view = useReportView();
   const { windowDays } = view.value;
+
+  // History commits before the router render; a fast section activation must
+  // preserve the window/scope the user just chose. Modified clicks keep the
+  // anchor's native browser behavior.
+  const activateSection = (event: MouseEvent<HTMLAnchorElement>, id: typeof REPORT_SECTIONS[number]['id']) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+      || event.currentTarget.target && event.currentTarget.target !== '_self') return;
+    event.preventDefault();
+    const live = currentLocation(location);
+    const hash = `#${id}`;
+    if (!/^\\/reports\\/?$/.test(live.pathname) || live.hash === hash) return;
+    navigate({ pathname: live.pathname, search: live.search, hash });
+  };
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['reports', 'exceptions', activeProjectId, windowDays],
@@ -130,6 +145,7 @@ export function ReportsScreen() {
           <Link
             key={item.id}
             to={{ pathname: location.pathname, search: location.search, hash: `#${item.id}` }}
+            onClick={(event) => activateSection(event, item.id)}
             aria-current={activeSection === item.id ? 'location' : undefined}
             className={`inline-flex min-h-row items-center border-b-2 px-3 py-2 type-label outline-none focus-visible:ring-2 focus-visible:ring-ring ${activeSection === item.id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'}`}
           >
@@ -141,7 +157,7 @@ export function ReportsScreen() {
       {invalidSection && (
         <div role="status" aria-label="Report section recovery" className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-surface-panel p-panel type-body">
           <p>This report section is unavailable. Showing Exceptions.</p>
-          <Link to={{ pathname: location.pathname, search: location.search, hash: '#exceptions' }} className="inline-flex min-h-row items-center rounded-md border px-3 py-2 type-label hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+          <Link onClick={(event) => activateSection(event, 'exceptions')} to={{ pathname: location.pathname, search: location.search, hash: '#exceptions' }} className="inline-flex min-h-row items-center rounded-md border px-3 py-2 type-label hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
             Show exceptions
           </Link>
         </div>
