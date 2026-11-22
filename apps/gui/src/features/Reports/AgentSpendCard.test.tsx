@@ -37,6 +37,26 @@ describe('AgentSpendCard (M40)', () => {
     expect(rows[2]).toHaveTextContent('People$0.0151,2001');
   });
 
+  it('exposes each daily value as table data, including a zero-cost day', async () => {
+    mockRpc(ReportService, 'GetUsageReport', {
+      totals: { inputTokens: '12', outputTokens: '4', costMicros: '2500000', reports: '2' },
+      byAgent: [], byProject: [], since: '2026-10-01T00:00:00Z',
+      byDay: [
+        { ...day('2026-10-01', '0', '0'), inputTokens: '0', outputTokens: '0' },
+        { ...day('2026-10-02', '2500000', '2'), inputTokens: '12', outputTokens: '4' },
+      ],
+    });
+    renderScoped(<AgentSpendCard projectId="p1" windowDays={7} />);
+    const table = await screen.findByRole('table', { name: 'Daily spend data' });
+    for (const name of ['Day (UTC)', 'Cost', 'Input tokens', 'Output tokens', 'Reports']) {
+      expect(within(table).getByRole('columnheader', { name, exact: true })).toBeInTheDocument();
+    }
+    const rows = within(table).getAllByRole('row');
+    expect(rows).toHaveLength(3);
+    expect(rows[1]).toHaveTextContent('2026-10-01$0.00000');
+    expect(rows[2]).toHaveTextContent('2026-10-02$2.501242');
+  });
+
   it('says when nothing was reported', async () => {
     mockRpc(ReportService, 'GetUsageReport', { totals: { reports: '0' }, byAgent: [], byProject: [], byDay: [], since: '' });
     renderScoped(<AgentSpendCard projectId="p1" windowDays={30} />);

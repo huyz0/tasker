@@ -78,6 +78,39 @@ test.describe('Reports', () => {
     await expect(navigation.getByRole('link', { name: 'Spend', exact: true })).toHaveAttribute('aria-current', 'location');
   });
 
+  test('report touch targets and text reflow stay usable', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 375, height: 900 });
+    await openReports(page);
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
+      for (const width of [320, 375, 768, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const fontSize of ['100%', '200%']) {
+          await page.evaluate(value => { document.documentElement.style.fontSize = value; }, fontSize);
+          const controls = [
+            ...await page.getByRole('group', { name: 'Report window' }).getByRole('button').all(),
+            ...await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link').all(),
+            page.getByRole('button', { name: 'Saved views', exact: true }),
+          ];
+          for (const control of controls) {
+            const box = await control.boundingBox();
+            expect(box, await control.innerText()).not.toBeNull();
+            expect(box!.height, await control.innerText()).toBeGreaterThanOrEqual(44);
+            expect(box!.width, await control.innerText()).toBeGreaterThanOrEqual(44);
+          }
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+          for (const section of ['Trends', 'Spend', 'Exceptions']) {
+            await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: section, exact: true }).click();
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+          }
+          if (width === 375 && fontSize === '100%') {
+            await testInfo.attach(`reports-${theme}-375`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
+          }
+        }
+      }
+    }
+  });
+
   test('is reached from the sidebar and both report RPCs answer', async ({ page }) => {
     const calls: string[] = [];
     page.on('request', (r) => {
@@ -120,8 +153,12 @@ test.describe('Reports', () => {
     await expect(page.getByRole('heading', { name: 'Claimed and silent', level: 3 })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Waiting unclaimed', level: 3 })).toBeVisible();
 
+    await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: 'Spend', exact: true }).click();
+
     // …agent spend (M40), which says why it is empty when nothing was reported…
     await expect(page.getByRole('heading', { name: 'Agent spend', level: 2 })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: 'Trends', exact: true }).click();
 
     // …and the three trend cards, each with its named chart image.
     for (const panel of ['Autonomy and rework', 'Created vs completed', 'Flow']) {
@@ -131,14 +168,13 @@ test.describe('Reports', () => {
       await expect(page.getByRole('img', { name: chart })).toBeVisible({ timeout: 15_000 });
     }
 
-    // The dashboard.spec idiom: a panel is either populated or says why it is
-    // empty — never blank. Heading + subtitle is two lines; anything real
-    // (rows, an empty-state sentence, a chart legend) adds a third.
-    const panels = page.locator('section').filter({ has: page.getByRole('heading', { level: 2 }) });
-    await expect(panels).toHaveCount(8);
-    for (let i = 0; i < 8; i++) {
-      const body = await panels.nth(i).innerText();
-      expect(body.split('\n').filter((l) => l.trim()).length).toBeGreaterThan(2);
+    for (const section of ['Exceptions', 'Trends', 'Spend']) {
+      await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: section, exact: true }).click();
+      const panels = page.locator('section:visible').filter({ has: page.getByRole('heading', { level: 2 }) });
+      await expect(panels).toHaveCount(section === 'Exceptions' ? 4 : section === 'Trends' ? 3 : 1);
+      for (const panel of await panels.all()) {
+        expect((await panel.innerText()).split('\n').filter((line) => line.trim()).length).toBeGreaterThan(2);
+      }
     }
   });
 
@@ -220,6 +256,7 @@ test.describe('Reports', () => {
   test('the CFD task-type selector re-queries trends with that taskTypeId', async ({ page }) => {
     await openReports(page);
 
+    await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: 'Trends', exact: true }).click();
     const typeSelect = page.getByLabel('Task type');
     await expect(typeSelect).toBeVisible({ timeout: 15_000 });
 

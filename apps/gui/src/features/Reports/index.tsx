@@ -1,5 +1,6 @@
 import { SavedViews } from '../../components/SavedViews/SavedViews';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useReportView } from '../../hooks/useOperationalView';
 import { useQuery } from '@tanstack/react-query';
 import { useLayoutStore } from '../../store/layout';
@@ -35,21 +36,36 @@ function agentShareStat(counts: {
   return `${share} · prior window ${Math.round((priorAgent / priorTotal) * 100)}%`;
 }
 
-/**
- * The project Reports screen (M24) — the on-the-loop monitoring surface.
- * Where the Dashboard answers "what needs me right now", this answers "how is
- * work performed in this project, and are the agents carrying it?".
- *
- * One page, no tabs; exception cards lead in urgency order because agents
- * fail discretely — stuck, looping, or marking things done that aren't — not
- * gradually. T09 adds the three trend cards beneath, driven by the same
- * window selector.
- */
+const REPORT_SECTIONS = [
+  { id: 'exceptions', label: 'Exceptions' },
+  { id: 'trends', label: 'Trends' },
+  { id: 'spend', label: 'Spend' },
+] as const;
+
+/** Section locations share the project/window URL and keep independent reads mounted. */
 export function ReportsScreen() {
+  const location = useLocation();
+  const rawSection = location.hash.slice(1);
+  const section = REPORT_SECTIONS.find((item) => item.id === rawSection);
+  const invalidSection = rawSection !== '' && !section;
+  const activeSection = section?.id ?? 'exceptions';
+  const title = activeSection === 'exceptions' ? 'Reports' : `Reports — ${section!.label}`;
+  const root = useRef<HTMLDivElement>(null);
+  const previousHash = useRef(location.hash);
+  useEffect(() => {
+    if (previousHash.current !== location.hash) {
+      const heading = root.current?.querySelector('h1');
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus();
+      }
+      previousHash.current = location.hash;
+    }
+  }, [location.hash]);
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
-  useEffect(() => setActivePageTitle('Reports'), [setActivePageTitle]);
+  useEffect(() => setActivePageTitle(title), [setActivePageTitle, title]);
 
   const view = useReportView();
   const { windowDays } = view.value;
@@ -77,16 +93,16 @@ export function ReportsScreen() {
     && data.agentRows.length === 0;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div ref={root} className="flex min-w-0 flex-col gap-6">
       <PageHeader
-        title="Reports"
+        title={title}
         description={
           <>
             How work is performed in this project, and whether the agents are carrying it.
             {data && <span className="mt-1 block text-sm text-foreground tabular-nums">{agentShareStat(data)}</span>}
           </>
         }
-        actions={
+        toolbar={
           <>
           <SavedViews screen="reports" />
           <div role="group" aria-label="Report window" className="flex shrink-0 gap-0.5 rounded-md border p-0.5">
@@ -109,11 +125,34 @@ export function ReportsScreen() {
         }
       />
 
+      <nav aria-label="Report sections" className="flex max-w-full flex-wrap gap-1 border-b">
+        {REPORT_SECTIONS.map((item) => (
+          <Link
+            key={item.id}
+            to={{ pathname: location.pathname, search: location.search, hash: `#${item.id}` }}
+            aria-current={activeSection === item.id ? 'location' : undefined}
+            className={`inline-flex min-h-row items-center border-b-2 px-3 py-2 type-label outline-none focus-visible:ring-2 focus-visible:ring-ring ${activeSection === item.id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
+      {invalidSection && (
+        <div role="status" aria-label="Report section recovery" className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-surface-panel p-panel type-body">
+          <p>This report section is unavailable. Showing Exceptions.</p>
+          <Link to={{ pathname: location.pathname, search: location.search, hash: '#exceptions' }} className="inline-flex min-h-row items-center rounded-md border px-3 py-2 type-label hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+            Show exceptions
+          </Link>
+        </div>
+      )}
+
       {view.invalid.length > 0 && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-surface-panel p-panel type-body">
         <p>Some view settings couldn't be applied.</p>
         <button type="button" onClick={view.reset} className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted">Reset view</button>
       </div>}
 
+      <div role="region" aria-label="Exceptions" hidden={activeSection !== 'exceptions'}>
       <ListState
         isLoading={isLoading}
         error={error}
@@ -133,13 +172,17 @@ export function ReportsScreen() {
         )}
       </ListState>
 
-      {/* M40: spend is its own read, like the trends. */}
+      </div>
+
+      <div role="region" aria-label="Spend" hidden={activeSection !== 'spend'}>
+      {/* Spend stays independent of the exceptions read. */}
       <AgentSpendCard projectId={activeProjectId} windowDays={windowDays} />
 
-      {/* Beneath the exceptions on purpose (urgency order, shape.md): trends
-          inform the retro, exceptions demand action today. Its own query, so
-          one failing read never blanks the other half of the screen. */}
+      </div>
+
+      <div role="region" aria-label="Trends" hidden={activeSection !== 'trends'}>
       <TrendsSection projectId={activeProjectId} windowDays={windowDays} />
+      </div>
     </div>
   );
 }

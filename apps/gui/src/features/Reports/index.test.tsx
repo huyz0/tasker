@@ -250,15 +250,17 @@ describe('ReportsScreen', () => {
     expect(screen.getByRole('link', { name: /Refactor the mailer/ })).toHaveAttribute('href', '/tasks/task-5');
     expect(screen.getByRole('cell', { name: 'Builder One' })).toBeInTheDocument();
 
-    // Urgency order is the design: exceptions (stalled, regressions, churn,
-    // scorecard) lead because agents fail discretely; the trend cards follow,
-    // in document order.
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Flow' })).toBeInTheDocument());
-    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual([
-      'Stalled work', 'Went backwards', 'Churning tasks', 'Fleet scorecard', 'Agent spend',
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+      'Stalled work', 'Went backwards', 'Churning tasks', 'Fleet scorecard',
+    ]);
+    const navigation = screen.getByRole('navigation', { name: 'Report sections' });
+    fireEvent.click(within(navigation).getByRole('link', { name: 'Trends' }));
+    await screen.findByRole('heading', { name: 'Flow' });
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
       'Autonomy and rework', 'Created vs completed', 'Flow',
     ]);
+    fireEvent.click(within(navigation).getByRole('link', { name: 'Spend' }));
+    expect(await screen.findByRole('heading', { name: 'Agent spend' })).toBeVisible();
   });
 
   it('computes the agent-share header stat from the four counts', async () => {
