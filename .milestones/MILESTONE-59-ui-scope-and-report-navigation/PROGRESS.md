@@ -55,3 +55,5 @@
   Baseline has no section navigation. Do not infer a red from source alone.
 - **Next**: Observe actual failures, then implement and update the old
   all-panels-at-once assertions to require every panel remain reachable.
+
+- T02 red: CI run 44992604666, GUI job 137116868509: exactly three new navigation/direct-Spend/recovery cases fail; 1766 existing cases pass, including both T01 scope cases. Added an early real-browser section-location check before implementing Reports navigation.

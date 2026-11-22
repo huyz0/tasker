@@ -130,6 +130,8 @@ jobs:
         run: cd apps/gui && bun run test:e2e:saved-view-proof
       - name: Prove claim-history current-page cursor invariant
         run: cd apps/gui && bun run test:e2e:claim-cursor-proof
+      - name: Reports section locations
+        run: cd apps/gui && bunx playwright test tests/e2e/reports.spec.ts --grep "section locations" --workers=1 --retries=0
       - name: E2E
         run: moon run gui:e2e
       - name: Upload Playwright report
