@@ -81,9 +81,22 @@ test.describe('Reports', () => {
 
   test('report touch targets and text reflow stay usable', async ({ page }, testInfo) => {
     test.setTimeout(120_000);
+    // Presentation-only synthetic spend: real scoped RPC/history behavior is
+    // exercised separately above and in saved-views.spec.ts.
+    await page.route('**/GetUsageReport', route => route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify({
+        totals: { costMicros: '2500000000', inputTokens: '12000', outputTokens: '4000', reports: '2' },
+        byDay: [
+          { key: '2026-11-01', costMicros: '0', inputTokens: '0', outputTokens: '0', reports: '0' },
+          { key: '2026-11-02', costMicros: '2500000000', inputTokens: '12000', outputTokens: '4000', reports: '2' },
+        ],
+        byAgent: [{ key: 'layout-worker', label: 'Release verification worker with a long display name', costMicros: '2500000000', inputTokens: '12000', outputTokens: '4000', reports: '2' }],
+      }),
+    }));
     await openReports(page);
+    await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' });
     await page.setViewportSize({ width: 375, height: 900 });
-    await page.screenshot({ path: testInfo.outputPath('report-capture-before-controls.png'), fullPage: true });
+    await expect(page.getByRole('heading', { name: 'Reports', level: 1, exact: true })).toBeInViewport();
     for (const theme of ['light', 'dark']) {
       await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
       for (const width of [320, 375, 768, 1280]) {
@@ -100,14 +113,28 @@ test.describe('Reports', () => {
             expect(box, await control.innerText()).not.toBeNull();
             expect(box!.height, await control.innerText()).toBeGreaterThanOrEqual(44);
             expect(box!.width, await control.innerText()).toBeGreaterThanOrEqual(44);
+            expect(box!.x, await control.innerText()).toBeGreaterThanOrEqual(0);
+            expect(box!.x + box!.width, await control.innerText()).toBeLessThanOrEqual(width);
           }
           expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
           for (const section of ['Trends', 'Spend', 'Exceptions']) {
             await page.getByRole('navigation', { name: 'Report sections' }).getByRole('link', { name: section, exact: true }).click();
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-          }
-          if (width === 375 && fontSize === '100%') {
-            await testInfo.attach(`reports-${theme}-375`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
+            if (section === 'Spend') {
+              await expect(page.getByRole('table', { name: 'Daily spend data' })).toContainText('2026-11-02');
+              const table = page.getByRole('region', { name: 'Agent spend table', exact: true });
+              if (await table.evaluate(element => element.scrollWidth > element.clientWidth)) {
+                await table.focus();
+                await table.press('ArrowRight');
+                await expect.poll(() => table.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+              }
+            }
+            if ((width === 375 || width === 1280) && fontSize === '100%' || width === 375 && fontSize === '200%') {
+              const name = `report-capture-${section.toLowerCase()}-${theme}-${width}-${fontSize.replace('%', '')}.png`;
+              const capture = testInfo.outputPath(name);
+              await page.screenshot({ path: capture, fullPage: true });
+              await testInfo.attach(name, { path: capture, contentType: 'image/png' });
+            }
           }
         }
       }

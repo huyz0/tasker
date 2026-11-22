@@ -16,15 +16,15 @@ export function ReportPanel({ title, subtitle, action, children }: {
   children: ReactNode;
 }) {
   return (
-    <section className="border rounded-lg bg-surface-panel flex flex-col">
-      <div className="p-panel border-b flex items-start justify-between gap-3">
-        <div>
+    <section className="border rounded-lg bg-surface-panel flex min-w-0 flex-col">
+      <div className="p-panel border-b flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h2 className="type-section-title">{title}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+          <p className="type-caption text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
         {action}
       </div>
-      <div className="p-2 flex-1">{children}</div>
+      <div className="min-w-0 p-2 flex-1">{children}</div>
     </section>
   );
 }
@@ -40,8 +40,8 @@ export function TaskLink({ taskId, displayId, title }: { taskId: string; display
       to={scopedTo(`/tasks/${taskId}`)}
       className="flex items-baseline gap-2 min-w-0 rounded-md outline-none hover:underline focus-visible:ring-2 focus-visible:ring-primary/50"
     >
-      <span className="font-mono text-xs text-muted-foreground shrink-0">{displayId}</span>
-      <span className="text-sm font-medium truncate">{title}</span>
+      <span className="type-code text-muted-foreground shrink-0">{displayId}</span>
+      <span className="type-item-title truncate">{title}</span>
     </Link>
   );
 }

@@ -24,7 +24,7 @@ describe('AgentSpendCard (M40)', () => {
       };
     });
     renderScoped(<AgentSpendCard projectId="p1" windowDays={7} />);
-    expect(await screen.findByText('$1.515')).toBeInTheDocument();
+    expect(await screen.findByText('$1.515', { selector: 'span' })).toBeInTheDocument();
     expect(requests[0]).toMatchObject({ projectId: 'p1', days: 7 });
     expect(screen.getByText(/5,000 input \/ 700 output tokens · 3 reports/)).toBeInTheDocument();
     const bars = screen.getByRole('img', { name: 'Daily spend over 2 days' });

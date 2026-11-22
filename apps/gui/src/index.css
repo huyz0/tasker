@@ -51,6 +51,8 @@
   --text-ui-section--line-height: 1.5rem;
   --text-ui-detail: 1.25rem;
   --text-ui-detail--line-height: 1.75rem;
+  --text-ui-metric: 1.5rem;
+  --text-ui-metric--line-height: 2rem;
   --text-ui-body: 0.875rem;
   --text-ui-body--line-height: 1.375rem;
   --text-ui-caption: 0.75rem;
@@ -388,3 +390,5 @@
 @utility type-label { @apply font-ui text-ui-body font-medium; }
 @utility type-caption { @apply font-ui text-ui-caption; }
 @utility type-code { @apply font-data text-ui-caption; }
+
+@utility type-metric { @apply font-ui text-ui-metric font-semibold tabular-nums; }
