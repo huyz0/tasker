@@ -1,8 +1,8 @@
 ---
 active_milestone: M59
-active_task: M59-T03
+active_task: null
 last_updated: 2026-11-22
-last_commit: d24720d
+last_commit: bda0152
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-22 — M59 UI scope and Reports delivery complete (3/3).** Automation collections identify organization scope and each schedule's own project. Reports has preserved fragment navigation and independently mounted reads; typography,44px reviewed controls, accessible daily data and enlarged-text layouts are verified. Source07e4dbc passes all14 hosted checks,1770 GUI cases/95.39% branches,401 story audits and all37 repository tasks in5m52.303s. The broad browser result is104 first-attempt passes, one hidden-caption selector retry and three existing skips; this candidate fixes that selector and must pass its own combined-head gate before merge. CODE-v2/v3/v4 approve the three tasks. Written visual evidence records inspected source-run captures; screenshot copying was rejected by automatic approval review and is not bypassed. Candidate402 tasks/53 milestones:401 done, one dropped, zero pending. Hosted verification is authoritative while the local runtime remains unavailable; participant/manual-AT and capacity limits remain explicit.
 
 **2026-11-22 — M59-T02 complete (2/3).** Reports has native Exceptions/Trends/Spend fragments, preserved project/window/saved-view behavior, explicit recovery and section-only heading focus. The same checked source17bda23 supplies actual unit/browser/story/repository evidence; CODE-v3 approves T02. T03 is in progress before its code enters this delivery chain. Candidate402 tasks/53 milestones:400 done, one dropped, one pending. The final combined head still needs its own checks and a merge; main remains134f2fa.
 
@@ -2082,9 +2084,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M56 | Agent Connection | done | M54 | 4 | 4 |
 | M57 | Attempt Correlation | done | M46, M54 | 5 | 5 |
 | M58 | Operational Views | done | M53 | 5 | 5 |
-| M59 | UI Scope and Report Navigation | in-progress | M51, M58 | 3 | 2 |
+| M59 | UI Scope and Report Navigation | done | M51, M58 | 3 | 3 |
 
-**Total: 402 tasks across 53 milestones — 400 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 402 tasks across 53 milestones — 401 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

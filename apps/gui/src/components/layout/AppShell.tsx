@@ -144,8 +144,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </a>
 
       {/* Mobile Header Menu */}
-      <header className="sticky top-0 z-header flex justify-between h-14 items-center border-b bg-card px-4 md:hidden">
-        <div className="flex items-center gap-4">
+      <header className="sticky top-0 z-header flex min-h-14 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b bg-card px-4 py-2 md:hidden">
+        <div className="flex max-w-full min-w-0 items-center gap-4">
           <button
             onClick={toggleSidebar}
             aria-expanded={sidebarOpen}
@@ -168,7 +168,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* min-w-0 so this group can shrink rather than forcing the document
             wider than the viewport; the trigger is icon-only here (see
             GlobalSearchTrigger's own note on the 375px budget). */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
           <LiveStatusIndicator status={liveStatus} />
           <GlobalSearchTrigger compact />
           <NotificationBell orgId={activeOrgId} />

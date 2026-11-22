@@ -42,13 +42,13 @@ export function FleetScorecardCard({ agentRows, roleRows }: {
   const rows = grouping === 'agents' ? agentRows : roleRows;
 
   const toggle = (
-    <div role="group" aria-label="Scorecard grouping" className="flex shrink-0 gap-0.5 rounded-md border p-0.5">
+    <div role="group" aria-label="Scorecard grouping" className="flex max-w-full flex-wrap gap-0.5 rounded-md border p-0.5">
       {(['agents', 'roles'] as const).map((mode) => (
         <button
           key={mode}
           aria-pressed={grouping === mode}
           onClick={() => setGrouping(mode)}
-          className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+          className={`max-w-full min-w-0 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
             grouping === mode
               ? 'bg-primary-subtle text-primary-subtle-foreground'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'

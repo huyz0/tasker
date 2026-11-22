@@ -125,7 +125,7 @@ jobs:
           echo "backend did not come up in 30s"; cat backend.log; exit 1
       # Playwright's own webServer block starts the GUI dev server.
       - name: Reports section locations
-        run: cd apps/gui && bunx playwright test tests/e2e/reports.spec.ts --grep "section locations" --workers=1 --retries=0
+        run: cd apps/gui && bunx playwright test tests/e2e/reports.spec.ts --grep "section locations|touch targets" --workers=1 --retries=0
       - name: Saved-view browser types
         run: cd apps/gui && bun run typecheck:e2e:saved-views
       - name: Prove native saved-view intent regression

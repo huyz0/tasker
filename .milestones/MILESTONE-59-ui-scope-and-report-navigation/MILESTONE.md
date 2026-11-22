@@ -1,13 +1,13 @@
 ---
 id: M59
 title: UI Scope and Report Navigation
-status: in-progress
+status: done
 goal: People can identify automation scope and navigate readable project reports without losing their current view.
 depends_on: [M51, M58]
-surfaces: [gui, specs]
-exit_criteria_met: false
+surfaces: [gui, infra, specs]
+exit_criteria_met: true
 started_at: 2026-11-22
-completed_at: null
+completed_at: 2026-11-22
 ---
 
 # M59 — UI Scope and Report Navigation
@@ -29,8 +29,8 @@ The next useful UI changes build on that delivered behavior.
 
 - [x] Organization-wide automation collections state their scope and schedules show their own project even when another project is selected.
 - [x] Reports sections are addressable and preserve project/window, saved-view application and browser Back/Forward.
-- [ ] Reviewed report controls, typography and daily-spend alternatives work in both themes, narrow layouts and enlarged text.
-- [ ] Behavioral regressions fail before implementation; actual GUI/browser/visual and repository checks support the final review.
+- [x] Reviewed report controls, typography and daily-spend alternatives work in both themes, narrow layouts and enlarged text.
+- [x] Behavioral regressions fail before implementation; actual GUI/browser/visual and repository checks support the final review.
 
 ## 4. Scope
 
@@ -53,8 +53,8 @@ No backend filter, permission, contract, dependency or font-family change.
   - **Files**: apps/gui/src/features/Reports/index.tsx; index.test.tsx; ReportsScreen.stories.tsx; apps/gui/tests/e2e/reports.spec.ts.
   - **Verify**: Direct links, keyboard activation, Back/Forward, window changes and named-view application select the correct visible section without dropping scope/query/hash or unrelated draft state. Loading/error/denied sections remain navigable; new regressions fail on the current screen first.
 
-- [ ] **M59-T03** — Align report presentation tokens, control targets and daily-spend accessibility, then retain rendered evidence.
-  - **Files**: apps/gui/src/features/Reports/ReportPanel.tsx; AgentSpendCard.tsx and tests/stories; Reports/index.tsx; apps/gui/src/index.css; .specs/design/design-system.md; browser verification/evidence.
+- [x] **M59-T03** — Align report presentation tokens, control targets and daily-spend accessibility, then retain rendered evidence.
+  - **Files**: apps/gui/src/components/layout/AppShell.tsx; apps/gui/src/features/Reports/ReportPanel.tsx; FleetScorecardCard.tsx; AgentSpendCard.tsx and tests/stories; Reports/index.tsx; apps/gui/src/index.css; .specs/design/design-system.md; browser verification/evidence.
   - **Verify**: Real DOM geometry proves44px report navigation/window/saved-view targets, reflow at320/375/768/1280px and200% text size; daily cost values have an accessible table. Keep intentional numeric emphasis, verify both themes, run full affected suites and moon check --all, then review four lenses before publication.
 
 ## 6. Verification
@@ -74,3 +74,11 @@ No backend filter, permission, contract, dependency or font-family change.
 - Project labels come from the schedule's canonical project, never the global selector.
 - Larger controls and numeric type need real geometry checks, not only no-overflow assertions.
 - An unavailable runtime is recorded honestly. No screenshot, local execution or participant-study pass is inferred.
+
+## 8. Completed evidence and limits
+
+Source07e4dbc passes all14 hosted checks,1770 GUI cases/95.39% branches,401 story audits in both themes and all37 repository tasks in5m52.303s. Its early browser geometry/focus journey passes; the broad browser run records104 first-attempt passes, one existing project-journey selector retry and three existing skips. The selector's hidden-mobile-caption mismatch is corrected in this final candidate and must pass its own CI before merge.
+
+Actual source-run captures were inspected against M58's baseline. CODE-v4 resolves the recorded overflow and enlarged-title collision. A written evidence record links that run and states the capture-retention limit; automatic approval review rejected copying the images into git. The final candidate removes temporary image export/capture code while retaining all geometry, loaded-state and overlap assertions. It also separates numeric table cells with static gutters. No image/base64 payload is committed.
+
+The final combined tree must pass its own required checks before publication. Local runtime execution, manual assistive-technology testing, other browser engines and participant usability remain unmeasured.

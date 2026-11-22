@@ -120,6 +120,7 @@ The interface keeps its restrained violet and system sans stack. Typography expr
 | `type-page-title` | `text-ui-page`, 28/36, semibold | Routed page title |
 | `type-section-title` | `text-ui-section`, 18/24, semibold | Panels and task sections |
 | `type-detail-title` | `text-ui-detail`, 20/28, semibold | Open task title |
+| `type-metric` | `text-ui-metric`, 24/32, semibold, tabular | Primary report numeric total |
 | `type-item-title` | `text-ui-body`, 14/22, medium | List item titles |
 | `type-body` | `text-ui-body`, 14/22, regular | Compact operational content |
 | `type-label` | `text-ui-body`, 14/22, medium | Form and control labels |
